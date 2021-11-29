@@ -1,43 +1,47 @@
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class ActorNet(nn.Module):
-    pass
 
-class CriticNet(nn.Module):
-    pass
+class A2CNetBase(nn.Module):
+    """
+    Base class for A2C networks
+    """
+    def __init__(self, architecture):
+        super(A2CNetBase, self).__init__()
+        self.architecture = architecture
+
+    def forward(self, x):
+        return self.architecture(x)
+
+
 
 
 class A2C(object):
 
-    def __init__(self, env, n_episode_iterations: int,
-                 update_frequency: int):
-        self.env = env
-        self.n_episode_iterations = n_episode_iterations
-        self.update_frequency = update_frequency
+    def __init__(self, gamma: float, n_workers: int, tau:float,
+                 max_n_steps: int, max_n_episodes: int,
+                 common_net: A2CNetBase, policy_net: A2CNetBase, value_net: A2CNetBase,
+                 optimizer):
+        self.gamma = gamma
+        self.rewards = []
+        self.n_workers = n_workers
+        self.optimizer = optimizer
+        self.max_n_episodes = max_n_episodes
 
-    def select_action(self):
-        """
-        Select an action to execute
-        :return: The action selected
-        """
+    def optimize_model(self):
         pass
 
-    def episode_step(self):
 
-        for itr in range(1, self.n_episode_iterations + 1):
+    def train(self) -> None:
 
-            # choose an action
-            action = self.select_action()
 
-            # step in the environment with that action
-            # and receive new state and reward
-            time_step = self.env.step(action)
+        for episode in range(self.max_n_episodes):
 
-            # formulate y
+            # for each episode
 
-            # formulate gradients
 
-            # update state
 
-            # do we have to update the target network?
+
+

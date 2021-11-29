@@ -35,7 +35,7 @@ class DefaultHierarchy(HierarchyBase):
 
     def __iter__(self):
         """
-        Make the class Iterable. We need to override __iter__() function inside our class i.e.
+        Make the class Iterable. We need to override __iter__() function inside our class.
         :return:
         """
         return self.iterator

@@ -37,6 +37,34 @@ class ActionBase(metaclass=abc.ABCMeta):
         """
 
 
+def move_next(iterators: List) -> None:
+    """
+    Loop over the iterators and move them
+    to the next item
+    :param iterators: The list of iterators to propagate
+    :return: None
+    """
+    for item in iterators:
+        next(item)
+
+
+class _WithTable(object):
+
+    def __init__(self):
+        super(_WithTable, self).__init__()
+        self.table = {}
+        self.iterators = []
+
+    def add_hierarchy(self, key: str, hierarchy: HierarchyBase) -> None:
+        """
+        Add a hierarchy for the given key
+        :param key: The key to attach the Hierarchy
+        :param hierarchy: The hierarchy to attach
+        :return: None
+        """
+        self.table[key] = hierarchy
+
+
 class ActionTransform(ActionBase):
 
     """
@@ -53,20 +81,36 @@ class ActionTransform(ActionBase):
         pass
 
 
-class ActionSuppress(ActionBase):
+class ActionSuppress(ActionBase, _WithTable):
 
     """
     Implements the suppress action
     """
-    def __init__(self):
+    def __init__(self, suppress_table=None):
         super(ActionSuppress, self).__init__(action_type=ActionType.SUPPRESS)
 
-    def act(self, **ops):
+        if suppress_table is not None:
+            self.table = suppress_table
+
+        # fill in the iterators
+        self.iterators = [iter(self.table[item]) for item in self.table]
+
+    def act(self, **ops) -> None:
         """
-        Perform an action
-        :return:
+        Perform the action
+        :return: None
         """
-        pass
+
+        # generalize the data given
+        for i, item in enumerate(ops["data"]):
+
+            if item in self.table:
+                value = self.table[item].value
+                item = value
+                ops["data"][i] = value
+
+        # update the generalization
+        move_next(iterators=self.iterators)
 
 
 class ActionGeneralize(ActionBase):
