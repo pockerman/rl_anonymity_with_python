@@ -10,7 +10,7 @@ import numpy as np
 from typing import Any, NamedTuple, Generic, Optional, TypeVar
 import multiprocessing as mp
 
-from actions import ActionBase
+from spaces.actions import ActionBase
 
 _Reward = TypeVar('_Reward')
 _Discount = TypeVar('_Discount')
@@ -59,11 +59,51 @@ class TimeStep(NamedTuple, Generic[_Reward, _Discount, _Observation]):
 
 class Environment(object):
 
-    def __init__(self, data_set, action_space):
+    def __init__(self, data_set, action_space,
+                 gamma: float, start_column: str):
         self.data_set = data_set
         self.start_ds = copy.deepcopy(data_set)
         self.current_time_step = self.start_ds
         self.action_space = action_space
+        self.gamma = gamma
+        self.start_column = start_column
+        self.column_distances = None
+
+    def initialize_text_distances(self) -> None:
+        """
+        :return:
+        """
+
+        col_names = self.start_ds.get_columns_names()
+        for col in col_names:
+            # check here: https://stackoverflow.com/questions/43652161/numpy-typeerror-data-type-string-not-understood/43652230
+            if self.start_ds.get_column_type(col_name=col) == np.dtype('str'):
+                self.column_distances[col] = np.zeros(len(self.start_ds.get_column(col_name=col)))
+
+    def sample_action(self):
+        return self.action_space.sample_and_get()
+
+    def prepare_column_states(self):
+        """
+        Prepare the column states to be sent to the agent.
+        If a column is a string we calculate the  cosine distance
+        :return:
+        """
+
+        col_names = self.data_set.get_columns_names()
+        for col in col_names:
+            # check here: https://stackoverflow.com/questions/43652161/numpy-typeerror-data-type-string-not-understood/43652230
+            if self.data_set.get_column_type(col_name=col) == np.dtype('str'):
+
+                # what is the previous and current values for the column
+                current_column = self.data_set.get_column(col_name=col)
+
+                for i, item in enumerate(current_column.vaslues):
+
+
+                self.column_distances[col] = 0.0
+
+
 
     def reset(self) -> TimeStep:
         """
@@ -78,7 +118,10 @@ class Environment(object):
               are also valid in place of a scalar array. Must conform to the
               specification returned by `observation_spec()`.
         """
-        self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0, observation=self.start_ds)
+
+        observation = self.start_ds.get_column(col_name=self.start_column)
+        self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
+                                          observation=self.start_ds, discount=self.gamma)
         return self.current_time_step
 
     def step(self, action: ActionBase) -> TimeStep:
@@ -93,6 +136,9 @@ class Environment(object):
         has been constructed and `reset` has not been called. Again, in this case
         `action` will be ignored.
         """
+
+        # perform the action on the data set
+
         return self.current_time_step
 
 
