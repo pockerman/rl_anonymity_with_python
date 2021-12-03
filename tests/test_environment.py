@@ -2,13 +2,12 @@ import unittest
 from pathlib import Path
 
 import pytest
-import numpy as np
 
 from spaces.environment import Environment
 from spaces.action_space import ActionSpace
 from exceptions.exceptions import Error
 from utils.string_sequence_calculator import DistanceType
-from utils.dataset_wrapper import PandasDSWrapper
+from datasets.dataset_wrapper import PandasDSWrapper
 
 
 class TestEnvironment(unittest.TestCase):

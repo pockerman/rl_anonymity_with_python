@@ -154,7 +154,7 @@ class Environment(object):
 
         # initialize the text distances for
         # the environment
-        self.initialize_text_distances(distance_type=options["distance_type"])
+        self.initialize_text_distances(distance_type=self.distance_calculator.distance_type)
 
         # get the DS as a torch tensor
 
