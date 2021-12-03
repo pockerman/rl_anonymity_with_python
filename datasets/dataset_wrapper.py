@@ -72,7 +72,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
             self.ds = replace(ds=self.ds, options=options["change_col_vals"])
 
         # try to cast to the data types
-        self.ds = change_column_types(ds=self.ds, column_types=self.columns) 
+        self.ds = change_column_types(ds=self.ds, column_types=self.columns)
 
     def set_columns_to_type(self, col_name_types) -> None:
         self.ds.astype(dtype=col_name_types)
@@ -105,4 +105,6 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         col_names = self.get_columns_names()
         col_idx = np.random.choice(col_names, 1)
         return self.get_column(col_name=col_names[col_idx])
+
+
 
