@@ -4,10 +4,11 @@ from typing import Generic, TypeVar
 import pandas as pd
 import numpy as np
 
-from preprocessor.cleanup_utils import read_csv
+from preprocessor.cleanup_utils import read_csv, replace, change_column_types
 
 DS = TypeVar("DS")
 HierarchyBase = TypeVar('HierarchyBase')
+
 
 class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
 
@@ -21,19 +22,42 @@ class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
         Load a data set from a file
         :param filename:
         :param options:
-        :return:
+        :return: None
         """
 
 
 class PandasDSWrapper(DSWrapper[pd.DataFrame]):
-    def __init__(self) -> None:
+
+    """
+    Simple wrapper to a pandas DataFrame object.
+    Facilitates various actions on the original dataset
+    """
+
+    def __init__(self, columns: dir) -> None:
         super(PandasDSWrapper, self).__init__()
+
+        self.columns: dir = columns
 
         # map that holds the hierarchy to be applied
         # on each column in the dataset
         self.column_hierarchy = {}
 
-    def read(self, filename: Path, **options) -> None:
+    def n_rows(self) -> int:
+        """
+        Returns the number of rows of the data set
+        :return:
+        """
+
+        return self.ds.shape[0]
+
+    def n_columns(self) -> int:
+        """
+        Returns the number of rows of the data set
+        :return:
+        """
+        return self.ds.shape[1]
+
+    def read(self, filename: Path,  **options) -> None:
         """
         Load a data set from a file
         :param filename:
@@ -44,6 +68,14 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
                            features_drop_names=options["features_drop_names"],
                            names=options["names"])
 
+        if "change_col_vals" in options:
+            self.ds = replace(ds=self.ds, options=options["change_col_vals"])
+
+        # try to cast to the data types
+        self.ds = change_column_types(ds=self.ds, column_types=self.columns) 
+
+    def set_columns_to_type(self, col_name_types) -> None:
+        self.ds.astype(dtype=col_name_types)
 
     def attach_column_hierarchy(self, col_name: str, hierarchy: HierarchyBase):
         self.column_hierarchy[col_name] = hierarchy
@@ -60,7 +92,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         return pd.unique(vals)
 
     def get_columns_types(self):
-        return self.ds.dtype
+        return list(self.ds.dtypes)
 
     def get_column_type(self, col_name: str):
         return self.ds[col_name].dtype

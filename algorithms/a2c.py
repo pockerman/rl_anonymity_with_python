@@ -8,6 +8,7 @@ Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
 State = TypeVar("State")
 Action = TypeVar("Action")
+TimeStep = TypeVar("TimeStep")
 
 
 class A2CNetBase(nn.Module):
@@ -32,20 +33,30 @@ class A2CNet(object):
 class A2C(Generic[Optimizer]):
 
     def __init__(self, gamma: float, tau: float, n_workers: int,
-                 n_iterations: int, optimizer: Optimizer):
+                 n_iterations: int, update_frequency: int, optimizer: Optimizer):
         self.gamma = gamma
         self.tau = tau
         self.rewards = []
         self.n_workers = n_workers
         self.n_iterations = n_iterations
         self.optimizer = optimizer
+        self.name = "A2C"
 
     def _optimize_model(self):
         pass
 
-    def select_action(self, state: State) -> Action:
+    def select_action(self, observation: State) -> Action:
         pass
 
     def train(self, env: Env) -> None:
-        for episode in range(1, self.n_iterations + 1):
-            pass
+
+        # reset the environment and obtain the
+        # the time step
+        time_step: TimeStep = env.reset()
+
+        for iteration in range(1, self.n_iterations + 1):
+
+            action = self.select_action(observation=time_step.observation)
+
+
+            self._optimize_model()

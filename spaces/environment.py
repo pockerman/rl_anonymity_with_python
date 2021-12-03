@@ -7,10 +7,16 @@ import abc
 import copy
 import enum
 import numpy as np
+import pandas as pd
+import torch
 from typing import Any, NamedTuple, Generic, Optional, TypeVar
 import multiprocessing as mp
 
+from exceptions.exceptions import Error
 from spaces.actions import ActionBase
+from utils.string_sequence_calculator import DistanceType, TextDistanceCalculator
+
+DataSet = TypeVar("DataSet")
 
 _Reward = TypeVar('_Reward')
 _Discount = TypeVar('_Discount')
@@ -60,28 +66,53 @@ class TimeStep(NamedTuple, Generic[_Reward, _Discount, _Observation]):
 class Environment(object):
 
     def __init__(self, data_set, action_space,
-                 gamma: float, start_column: str):
+                 gamma: float, start_column: str, ):
         self.data_set = data_set
         self.start_ds = copy.deepcopy(data_set)
         self.current_time_step = self.start_ds
         self.action_space = action_space
         self.gamma = gamma
         self.start_column = start_column
-        self.column_distances = None
+        self.column_distances = {}
+        self.distance_calculator = None
 
-    def initialize_text_distances(self) -> None:
+    def initialize_text_distances(self, distance_type: DistanceType) -> None:
         """
-        :return:
+        Initialize the text distances for features of type string
+        :return: None
         """
 
+        self.distance_calculator = TextDistanceCalculator(dist_type=distance_type)
         col_names = self.start_ds.get_columns_names()
         for col in col_names:
             # check here: https://stackoverflow.com/questions/43652161/numpy-typeerror-data-type-string-not-understood/43652230
-            if self.start_ds.get_column_type(col_name=col) == np.dtype('str'):
+            if self.start_ds.columns[col] == str:
                 self.column_distances[col] = np.zeros(len(self.start_ds.get_column(col_name=col)))
 
     def sample_action(self):
         return self.action_space.sample_and_get()
+
+    def get_numeric_ds(self) -> torch.Tensor:
+
+        """
+        Returns the underlying data set as a numeric torch Tensor
+        :return: torch.Tensor
+        """
+
+        col_names = self.start_ds.get_columns_names()
+        data = {}
+        for col in col_names:
+
+            if self.start_ds.columns[col] == str:
+                print("col: {0} type {1}".format(col, self.start_ds.get_column_type(col_name=col)))
+            #if self.start_ds.get_column_type(col_name=col) == np.dtype('str'):
+                numpy_vals = self.column_distances[col]
+                data[col] = numpy_vals
+            else:
+                data[col] = self.data_set.get_column(col_name=col).to_numpy()
+
+        target_df = pd.DataFrame(data)
+        return torch.tensor(target_df.to_numpy())
 
     def prepare_column_states(self):
         """
@@ -90,6 +121,10 @@ class Environment(object):
         :return:
         """
 
+        if self.distance_calculator is None:
+            raise Error("Distance calculator is not set. "
+                        "Have you called self.initialize_text_distances?")
+
         col_names = self.data_set.get_columns_names()
         for col in col_names:
             # check here: https://stackoverflow.com/questions/43652161/numpy-typeerror-data-type-string-not-understood/43652230
@@ -97,15 +132,13 @@ class Environment(object):
 
                 # what is the previous and current values for the column
                 current_column = self.data_set.get_column(col_name=col)
+                start_column = self.start_ds.get_column(col_name=col)
 
-                for i, item in enumerate(current_column.vaslues):
+                for item1, item2 in zip(current_column.vaslues, start_column.values):
 
+                    self.column_distances[col] = self.distance_calculator.calculate(txt1=item1, txt2=item2)
 
-                self.column_distances[col] = 0.0
-
-
-
-    def reset(self) -> TimeStep:
+    def reset(self, **options) -> TimeStep:
         """
         Starts a new sequence and returns the first `TimeStep` of this sequence.
         Returns:
@@ -118,6 +151,12 @@ class Environment(object):
               are also valid in place of a scalar array. Must conform to the
               specification returned by `observation_spec()`.
         """
+
+        # initialize the text distances for
+        # the environment
+        self.initialize_text_distances(distance_type=options["distance_type"])
+
+        # get the DS as a torch tensor
 
         observation = self.start_ds.get_column(col_name=self.start_column)
         self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
@@ -140,6 +179,12 @@ class Environment(object):
         # perform the action on the data set
 
         return self.current_time_step
+
+
+def get_ds_as_torch_tensor(ds: Environment) -> torch.Tensor:
+    pass
+
+
 
 
 class MultiprocessEnv(object):

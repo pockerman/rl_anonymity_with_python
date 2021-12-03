@@ -22,3 +22,32 @@ def read_csv(filename: Path, features_drop_names: List[str], names: List[str], d
     df.dropna(inplace=True, axis=0)
 
     return df
+
+
+def replace(ds: pd.DataFrame, options: dict) -> pd.DataFrame:
+    """
+    Replace the values in the given data set according to the passed
+    options. The options should specify for each column the values
+    to be changed and the corresponding values to set
+    :param ds: The dataframe to replace
+    :param options:
+    :return: None
+    """
+    for col in options:
+
+        # get the values to change for each column
+        vals_to_change = options[col]
+        column = ds.loc[:, col]
+
+        for old_val, new_val in vals_to_change:
+            column = column.replace(to_replace=old_val, value=new_val)
+
+        # finally update the ds
+        ds[col] = column
+
+    return ds
+
+
+def change_column_types(ds, column_types) -> pd.DataFrame:
+    ds = ds.astype(dtype=column_types)
+    return ds
