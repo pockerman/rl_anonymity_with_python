@@ -1,4 +1,4 @@
-
+from typing import List
 from gym.spaces.discrete import Discrete
 from spaces.actions import ActionBase
 
@@ -16,6 +16,10 @@ class ActionSpace(Discrete):
             raise ValueError("Action space is saturated. You cannot add a new action")
 
         self.actions.append(action)
+
+    def add_may(self, *actions) -> None:
+        for a in actions:
+            self.add(action=a)
 
     def sample_and_get(self) -> ActionBase:
 

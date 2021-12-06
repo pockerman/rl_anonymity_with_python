@@ -8,6 +8,7 @@ from preprocessor.cleanup_utils import read_csv, replace, change_column_types
 
 DS = TypeVar("DS")
 HierarchyBase = TypeVar('HierarchyBase')
+Transform = TypeVar("Transform")
 
 
 class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
@@ -42,6 +43,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         # on each column in the dataset
         self.column_hierarchy = {}
 
+    @property
     def n_rows(self) -> int:
         """
         Returns the number of rows of the data set
@@ -50,6 +52,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
 
         return self.ds.shape[0]
 
+    @property
     def n_columns(self) -> int:
         """
         Returns the number of rows of the data set
@@ -88,7 +91,6 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
 
         col = self.get_column(col_name=col_name)
         vals = col.values.ravel()
-
         return pd.unique(vals)
 
     def get_columns_types(self):
@@ -105,6 +107,10 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         col_names = self.get_columns_names()
         col_idx = np.random.choice(col_names, 1)
         return self.get_column(col_name=col_names[col_idx])
+
+    def apply_transform(self, transform: Transform) -> None:
+        pass
+
 
 
 

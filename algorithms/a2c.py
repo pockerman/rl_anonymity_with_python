@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
+LossFunction = TypeVar("LossFunction")
 State = TypeVar("State")
 Action = TypeVar("Action")
 TimeStep = TypeVar("TimeStep")
@@ -34,14 +35,17 @@ class A2CNet(nn.Module):
 
     def forward(self, x):
         x = self.common_net(x)
-        return self.policy_net(x), self.value_net(x)
+
+        pol_out = self.policy_net(x)
+        val_out = self.value_net(x)
+        return pol_out, val_out
 
 
 class A2C(Generic[Optimizer]):
 
     def __init__(self, gamma: float, tau: float, n_workers: int,
                  n_iterations: int,  optimizer: Optimizer,
-                 a2c_net: A2CNet):
+                 a2c_net: A2CNet, loss_function: LossFunction):
 
         self.gamma = gamma
         self.tau = tau
@@ -50,6 +54,7 @@ class A2C(Generic[Optimizer]):
         self.n_iterations = n_iterations
         self.optimizer = optimizer
         self.a2c_net = a2c_net
+        self.loss_function = loss_function
         self.name = "A2C"
 
     def _optimize_model(self):

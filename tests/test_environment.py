@@ -68,7 +68,7 @@ class TestEnvironment(unittest.TestCase):
         env.initialize_text_distances(distance_type=DistanceType.COSINE)
         env.prepare_column_states()
 
-        tensor = env.get_numeric_ds()
+        tensor = env.get_ds_as_tensor()
 
         # test the shape of the tensor
         shape0 = tensor.size(dim=0)
