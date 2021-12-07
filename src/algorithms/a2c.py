@@ -60,8 +60,14 @@ class A2C(Generic[Optimizer]):
     def _optimize_model(self):
         pass
 
-    def select_action(self, observation: State) -> Action:
-        pass
+    def select_action(self, env: Env, observation: State) -> Action:
+        """
+        Select an action
+        :param env: The environment over which the agent is trained
+        :param observation: The current observation of the environment
+        :return: Returns an Action type
+        """
+        return env.sample_action()
 
     def update(self):
         pass
@@ -77,7 +83,7 @@ class A2C(Generic[Optimizer]):
         for iteration in range(1, self.n_iterations + 1):
 
             # select an action
-            action = self.select_action(observation=observation)
+            action = self.select_action(env=env, observation=observation)
 
             # step in the environment according
             # to the selected action

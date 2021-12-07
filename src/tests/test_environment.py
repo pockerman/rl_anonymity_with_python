@@ -6,7 +6,7 @@ import pytest
 from spaces.environment import Environment
 from spaces.action_space import ActionSpace
 from exceptions.exceptions import Error
-from utils.string_sequence_calculator import DistanceType
+from utils.string_distance_calculator import DistanceType
 from datasets.dataset_wrapper import PandasDSWrapper
 
 

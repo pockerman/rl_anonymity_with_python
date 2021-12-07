@@ -4,7 +4,7 @@ from datasets.dataset_wrapper import PandasDSWrapper
 
 class MockSubjectsLoader(PandasDSWrapper):
 
-    DEFAULT_COLUMNS  = {"gender": str, "ethnicity": str, "education": int,
+    DEFAULT_COLUMNS = {"gender": str, "ethnicity": str, "education": int,
                        "salary": int, "diagnosis": int, "preventative_treatment": str,
                        "mutation_status": int, }
 

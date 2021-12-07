@@ -49,7 +49,6 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         Returns the number of rows of the data set
         :return:
         """
-
         return self.ds.shape[0]
 
     @property
@@ -59,6 +58,10 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         :return:
         """
         return self.ds.shape[1]
+
+    @property
+    def schema(self) -> dict:
+        return pd.io.json.build_table_schema(self.ds)
 
     def read(self, filename: Path,  **options) -> None:
         """

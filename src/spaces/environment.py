@@ -14,7 +14,7 @@ import multiprocessing as mp
 
 from exceptions.exceptions import Error
 from spaces.actions import ActionBase
-from utils.string_sequence_calculator import DistanceType, TextDistanceCalculator
+from utils.string_distance_calculator import DistanceType, TextDistanceCalculator
 
 DataSet = TypeVar("DataSet")
 
@@ -97,7 +97,7 @@ class Environment(object):
             if self.start_ds.columns[col] == str:
                 self.column_distances[col] = np.zeros(len(self.start_ds.get_column(col_name=col)))
 
-    def sample_action(self):
+    def sample_action(self) -> ActionBase:
         return self.action_space.sample_and_get()
 
     def get_ds_as_tensor(self) -> torch.Tensor:
@@ -119,7 +119,7 @@ class Environment(object):
                 data[col] = self.data_set.get_column(col_name=col).to_numpy()
 
         target_df = pd.DataFrame(data)
-        return torch.tensor(target_df.to_numpy())
+        return torch.tensor(target_df.to_numpy(), dtype=torch.float64)
 
     def prepare_column_states(self):
         """
