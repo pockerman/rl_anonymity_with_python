@@ -1,5 +1,5 @@
 from pathlib import Path
-from datasets.dataset_wrapper import PandasDSWrapper
+from src.datasets.dataset_wrapper import PandasDSWrapper
 
 
 class MockSubjectsLoader(PandasDSWrapper):
@@ -8,7 +8,7 @@ class MockSubjectsLoader(PandasDSWrapper):
                        "salary": int, "diagnosis": int, "preventative_treatment": str,
                        "mutation_status": int, }
 
-    FILENAME = Path("../data/mocksubjects.csv")
+    FILENAME = Path("../../data/mocksubjects.csv")
 
     FEATURES_DROP_NAMES = ["NHSno", "given_name", "surname", "dob"]
 

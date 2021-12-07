@@ -2,7 +2,7 @@
 Trainer
 """
 
-from utils import INFO
+from src.utils import INFO
 from typing import TypeVar
 
 Env = TypeVar("Env")

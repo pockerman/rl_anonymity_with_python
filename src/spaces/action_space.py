@@ -1,6 +1,5 @@
-from typing import List
 from gym.spaces.discrete import Discrete
-from spaces.actions import ActionBase
+from src.spaces.actions import ActionBase
 
 
 class ActionSpace(Discrete):

@@ -1,7 +1,7 @@
 import unittest
 
-from utils.default_hierarchy import DefaultHierarchy
-from spaces.actions import ActionGeneralize, ActionSuppress
+from src.utils.default_hierarchy import DefaultHierarchy
+from src.spaces import ActionSuppress
 
 
 class TestActions(unittest.TestCase):

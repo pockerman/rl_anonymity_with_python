@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from spaces.environment import Environment
-from spaces.action_space import ActionSpace
-from exceptions.exceptions import Error
-from utils.string_distance_calculator import DistanceType
-from datasets.dataset_wrapper import PandasDSWrapper
+from src.spaces.environment import Environment
+from src.spaces.action_space import ActionSpace
+from src.exceptions.exceptions import Error
+from src.utils.string_distance_calculator import DistanceType
+from src.datasets.dataset_wrapper import PandasDSWrapper
 
 
 class TestEnvironment(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestEnvironment(unittest.TestCase):
         """
 
         # read the data
-        filename = Path("../data/mocksubjects.csv")
+        filename = Path("../../data/mocksubjects.csv")
 
         cols_types = {"gender": str, "ethnicity": str, "education": int,
                        "salary": int, "diagnosis": int, "preventative_treatment": str,

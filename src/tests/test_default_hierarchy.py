@@ -1,5 +1,5 @@
 import unittest
-from utils.default_hierarchy import DefaultHierarchy
+from src.utils.default_hierarchy import DefaultHierarchy
 
 
 class TestDefaultHierarchy(unittest.TestCase):
