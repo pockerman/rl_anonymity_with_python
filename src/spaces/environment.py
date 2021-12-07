@@ -3,18 +3,17 @@ RL Environment API taken from
 https://github.com/deepmind/dm_env/blob/master/dm_env/_environment.py
 """
 
-import abc
 import copy
 import enum
 import numpy as np
 import pandas as pd
 import torch
-from typing import Any, NamedTuple, Generic, Optional, TypeVar
+from typing import NamedTuple, Generic, Optional, TypeVar
 import multiprocessing as mp
 
-from exceptions.exceptions import Error
-from spaces.actions import ActionBase
-from utils.string_sequence_calculator import DistanceType, TextDistanceCalculator
+from src.exceptions.exceptions import Error
+from src.spaces.actions import ActionBase
+from src.utils.string_distance_calculator import DistanceType, TextDistanceCalculator
 
 DataSet = TypeVar("DataSet")
 
@@ -76,6 +75,14 @@ class Environment(object):
         self.column_distances = {}
         self.distance_calculator = None
 
+    @property
+    def n_features(self) -> int:
+        return self.start_ds.n_columns
+
+    @property
+    def n_examples(self) -> int:
+        return self.start_ds.n_rows
+
     def initialize_text_distances(self, distance_type: DistanceType) -> None:
         """
         Initialize the text distances for features of type string
@@ -89,10 +96,10 @@ class Environment(object):
             if self.start_ds.columns[col] == str:
                 self.column_distances[col] = np.zeros(len(self.start_ds.get_column(col_name=col)))
 
-    def sample_action(self):
+    def sample_action(self) -> ActionBase:
         return self.action_space.sample_and_get()
 
-    def get_numeric_ds(self) -> torch.Tensor:
+    def get_ds_as_tensor(self) -> torch.Tensor:
 
         """
         Returns the underlying data set as a numeric torch Tensor
@@ -104,15 +111,14 @@ class Environment(object):
         for col in col_names:
 
             if self.start_ds.columns[col] == str:
-                print("col: {0} type {1}".format(col, self.start_ds.get_column_type(col_name=col)))
-            #if self.start_ds.get_column_type(col_name=col) == np.dtype('str'):
+                #print("col: {0} type {1}".format(col, self.start_ds.get_column_type(col_name=col)))
                 numpy_vals = self.column_distances[col]
                 data[col] = numpy_vals
             else:
                 data[col] = self.data_set.get_column(col_name=col).to_numpy()
 
         target_df = pd.DataFrame(data)
-        return torch.tensor(target_df.to_numpy())
+        return torch.tensor(target_df.to_numpy(), dtype=torch.float64)
 
     def prepare_column_states(self):
         """
@@ -154,13 +160,13 @@ class Environment(object):
 
         # initialize the text distances for
         # the environment
-        self.initialize_text_distances(distance_type=options["distance_type"])
+        self.initialize_text_distances(distance_type=self.distance_calculator.distance_type)
 
         # get the DS as a torch tensor
 
         observation = self.start_ds.get_column(col_name=self.start_column)
         self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
-                                          observation=self.start_ds, discount=self.gamma)
+                                          observation=self.get_ds_as_tensor().float(), discount=self.gamma)
         return self.current_time_step
 
     def step(self, action: ActionBase) -> TimeStep:
@@ -176,13 +182,14 @@ class Environment(object):
         `action` will be ignored.
         """
 
+        self.data_set.apply_transform(transform=action)
+
         # perform the action on the data set
+        self.prepare_column_states()
 
-        return self.current_time_step
+        return TimeStep(step_type=StepType.MID, reward=0.0,
+                        observation=self.get_ds_as_tensor().float(), discount=self.gamma)
 
-
-def get_ds_as_torch_tensor(ds: Environment) -> torch.Tensor:
-    pass
 
 
 

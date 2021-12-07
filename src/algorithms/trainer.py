@@ -2,7 +2,7 @@
 Trainer
 """
 
-from utils import INFO
+from src.utils import INFO
 from typing import TypeVar
 
 Env = TypeVar("Env")
@@ -28,5 +28,10 @@ class Trainer(object):
 
             # train for a number of iterations
             self.agent.train(self.env)
+
+            # is it time to update the model?
+            if self.configuration["update_frequency"] % episode == 0:
+                self.agent.update()
+
 
         print("{0} Training finished for agent {1}".format(INFO, self.agent.name))

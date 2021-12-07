@@ -2,13 +2,12 @@ import unittest
 from pathlib import Path
 
 import pytest
-import numpy as np
 
-from spaces.environment import Environment
-from spaces.action_space import ActionSpace
-from exceptions.exceptions import Error
-from utils.string_sequence_calculator import DistanceType
-from utils.dataset_wrapper import PandasDSWrapper
+from src.spaces.environment import Environment
+from src.spaces.action_space import ActionSpace
+from src.exceptions.exceptions import Error
+from src.utils.string_distance_calculator import DistanceType
+from src.datasets.dataset_wrapper import PandasDSWrapper
 
 
 class TestEnvironment(unittest.TestCase):
@@ -20,7 +19,7 @@ class TestEnvironment(unittest.TestCase):
         """
 
         # read the data
-        filename = Path("../data/mocksubjects.csv")
+        filename = Path("../../data/mocksubjects.csv")
 
         cols_types = {"gender": str, "ethnicity": str, "education": int,
                        "salary": int, "diagnosis": int, "preventative_treatment": str,
@@ -69,7 +68,7 @@ class TestEnvironment(unittest.TestCase):
         env.initialize_text_distances(distance_type=DistanceType.COSINE)
         env.prepare_column_states()
 
-        tensor = env.get_numeric_ds()
+        tensor = env.get_ds_as_tensor()
 
         # test the shape of the tensor
         shape0 = tensor.size(dim=0)

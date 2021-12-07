@@ -36,6 +36,10 @@ class TextDistanceCalculator(object):
 
         self._dist_type = dist_type
 
+    @property
+    def distance_type(self) -> DistanceType:
+        return self._dist_type
+
     def calculate(self, txt1, txt2, **options):
 
         # build a calculator

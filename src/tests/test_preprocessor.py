@@ -1,16 +1,15 @@
 import unittest
-import pytest
 import numpy as np
 from pathlib import Path
 import pandas as pd
-from preprocessor.cleanup_utils import read_csv, replace, change_column_types
+from src.preprocessor.cleanup_utils import read_csv, replace, change_column_types
 
 
 class TestPreprocessor(unittest.TestCase):
 
     def test_read_csv(self):
 
-        filename = Path("../data/mocksubjects.csv")
+        filename = Path("../../data/mocksubjects.csv")
         features_drop_names = ["NHSno", "given_name", "surname"]
         names = ["NHSno", "given_name", "surname", "gender",
                  "dob", "ethnicity", "education", "salary",

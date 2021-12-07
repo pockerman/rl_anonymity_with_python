@@ -4,10 +4,11 @@ from typing import Generic, TypeVar
 import pandas as pd
 import numpy as np
 
-from preprocessor.cleanup_utils import read_csv, replace, change_column_types
+from src.preprocessor.cleanup_utils import read_csv, replace, change_column_types
 
 DS = TypeVar("DS")
 HierarchyBase = TypeVar('HierarchyBase')
+Transform = TypeVar("Transform")
 
 
 class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
@@ -42,20 +43,25 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         # on each column in the dataset
         self.column_hierarchy = {}
 
+    @property
     def n_rows(self) -> int:
         """
         Returns the number of rows of the data set
         :return:
         """
-
         return self.ds.shape[0]
 
+    @property
     def n_columns(self) -> int:
         """
         Returns the number of rows of the data set
         :return:
         """
         return self.ds.shape[1]
+
+    @property
+    def schema(self) -> dict:
+        return pd.io.json.build_table_schema(self.ds)
 
     def read(self, filename: Path,  **options) -> None:
         """
@@ -72,7 +78,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
             self.ds = replace(ds=self.ds, options=options["change_col_vals"])
 
         # try to cast to the data types
-        self.ds = change_column_types(ds=self.ds, column_types=self.columns) 
+        self.ds = change_column_types(ds=self.ds, column_types=self.columns)
 
     def set_columns_to_type(self, col_name_types) -> None:
         self.ds.astype(dtype=col_name_types)
@@ -88,7 +94,6 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
 
         col = self.get_column(col_name=col_name)
         vals = col.values.ravel()
-
         return pd.unique(vals)
 
     def get_columns_types(self):
@@ -105,4 +110,10 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         col_names = self.get_columns_names()
         col_idx = np.random.choice(col_names, 1)
         return self.get_column(col_name=col_names[col_idx])
+
+    def apply_transform(self, transform: Transform) -> None:
+        pass
+
+
+
 

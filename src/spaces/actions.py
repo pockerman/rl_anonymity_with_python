@@ -2,7 +2,7 @@ import abc
 import enum
 from typing import List
 
-from utils.hierarchy_base import HierarchyBase
+from src.utils.hierarchy_base import HierarchyBase
 
 
 class ActionType(enum.IntEnum):
@@ -13,6 +13,7 @@ class ActionType(enum.IntEnum):
     TRANSFORM = 0
     SUPPRESS = 1
     GENERALIZE = 2
+    IDENTITY = 3
 
     def transform(self) -> bool:
         return self is ActionType.TRANSFORM
@@ -23,14 +24,20 @@ class ActionType(enum.IntEnum):
     def generalize(self) -> bool:
         return self is ActionType.GENERALIZE
 
+    def identity(self) -> bool:
+        return self is ActionType.IDENTITY
+
 
 class ActionBase(metaclass=abc.ABCMeta):
+    """
+    Base class for actions
+    """
 
     def __init__(self, action_type: ActionType) -> None:
         self.action_type = action_type
 
     @abc.abstractmethod
-    def act(self, **ops):
+    def act(self, **ops) -> None:
         """
         Perform an action
         :return:
@@ -50,7 +57,7 @@ def move_next(iterators: List) -> None:
 
 class _WithTable(object):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(_WithTable, self).__init__()
         self.table = {}
         self.iterators = []
@@ -63,6 +70,22 @@ class _WithTable(object):
         :return: None
         """
         self.table[key] = hierarchy
+
+
+class ActionIdentity(ActionBase):
+    """
+    Implements the identity action
+    """
+
+    def __init__(self) -> None:
+        super(ActionIdentity, self).__init__(action_type=ActionType.IDENTITY)
+
+    def act(self, **ops):
+        """
+        Perform the action
+        :return:
+        """
+        pass
 
 
 class ActionTransform(ActionBase):
