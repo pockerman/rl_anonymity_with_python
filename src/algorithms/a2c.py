@@ -41,20 +41,32 @@ class A2CNet(nn.Module):
         return pol_out, val_out
 
 
+class A2CConfig(object):
+    """
+    Configuration for A2C algorithm
+    """
+
+    def __init__(self):
+        self.gamma: float = 0.99
+        self.tau: float = 1.2
+        self.n_workers: int = 1
+        self.n_iterations_per_episode: int = 100
+        self.optimizer: Optimizer = None
+        self.loss_function: LossFunction = None
+
+
 class A2C(Generic[Optimizer]):
 
-    def __init__(self, gamma: float, tau: float, n_workers: int,
-                 n_iterations: int,  optimizer: Optimizer,
-                 a2c_net: A2CNet, loss_function: LossFunction):
+    def __init__(self, config: A2CConfig, a2c_net: A2CNet):
 
-        self.gamma = gamma
-        self.tau = tau
-        self.rewards = []
-        self.n_workers = n_workers
-        self.n_iterations = n_iterations
-        self.optimizer = optimizer
+        self.gamma = config.gamma
+        self.tau = config.tau
+        self.n_workers = config.n_workers
+        self.n_iterations_per_episode = config.n_iterations_per_episode
+        self.optimizer = config.optimizer
+        self.loss_function = config.loss_function
         self.a2c_net = a2c_net
-        self.loss_function = loss_function
+        self.rewards = []
         self.name = "A2C"
 
     def _optimize_model(self):
@@ -80,7 +92,8 @@ class A2C(Generic[Optimizer]):
 
         observation = time_step.observation
 
-        for iteration in range(1, self.n_iterations + 1):
+        # learn over the episode
+        for iteration in range(1, self.n_iterations_per_episode + 1):
 
             # select an action
             action = self.select_action(env=env, observation=observation)

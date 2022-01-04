@@ -1,7 +1,7 @@
 import unittest
 
 from src.utils.default_hierarchy import DefaultHierarchy
-from src.spaces import ActionSuppress
+from src.spaces.actions import ActionSuppress
 
 
 class TestActions(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestActions(unittest.TestCase):
         suppress_table = {"test": DefaultHierarchy(values=["test", "tes*", "te**", "t***", "****"]),
                           "do_not_test": DefaultHierarchy(values=["do_not_test", "do_not_tes*", "do_not_te**", "do_not_t***", "do_not_****"])}
 
-        suppress_action = ActionSuppress(suppress_table=suppress_table)
+        suppress_action = ActionSuppress(column_name="none", suppress_table=suppress_table)
 
         self.assertEqual(len(suppress_action.table), 2, "Invalid table size")
 
@@ -23,7 +23,7 @@ class TestActions(unittest.TestCase):
                           "do_not_test": DefaultHierarchy(values=["do_not_test", "do_not_tes*",
                                                                   "do_not_te**", "do_not_t***", "do_not_****"])}
 
-        suppress_action = ActionSuppress(suppress_table=suppress_table)
+        suppress_action = ActionSuppress(column_name="none", suppress_table=suppress_table)
 
         suppress_action.act(**{"data": data})
 

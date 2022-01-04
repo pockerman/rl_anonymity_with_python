@@ -33,8 +33,11 @@ class ActionBase(metaclass=abc.ABCMeta):
     Base class for actions
     """
 
-    def __init__(self, action_type: ActionType) -> None:
+    def __init__(self, column_name: str, action_type: ActionType) -> None:
+        self.column_name = column_name
         self.action_type = action_type
+        self.idx = None
+        self.key = (self.column_name, self.action_type)
 
     @abc.abstractmethod
     def act(self, **ops) -> None:
@@ -77,8 +80,8 @@ class ActionIdentity(ActionBase):
     Implements the identity action
     """
 
-    def __init__(self) -> None:
-        super(ActionIdentity, self).__init__(action_type=ActionType.IDENTITY)
+    def __init__(self, column_name: str) -> None:
+        super(ActionIdentity, self).__init__(column_name=column_name, action_type=ActionType.IDENTITY)
 
     def act(self, **ops):
         """
@@ -93,8 +96,8 @@ class ActionTransform(ActionBase):
     """
     Implements the transform action
     """
-    def __init__(self):
-        super(ActionTransform, self).__init__(action_type=ActionType.TRANSFORM)
+    def __init__(self, column_name: str):
+        super(ActionTransform, self).__init__(column_name=column_name, action_type=ActionType.TRANSFORM)
 
     def act(self, **ops):
         """
@@ -109,8 +112,8 @@ class ActionSuppress(ActionBase, _WithTable):
     """
     Implements the suppress action
     """
-    def __init__(self, suppress_table=None):
-        super(ActionSuppress, self).__init__(action_type=ActionType.SUPPRESS)
+    def __init__(self, column_name: str, suppress_table=None):
+        super(ActionSuppress, self).__init__(column_name=column_name, action_type=ActionType.SUPPRESS)
 
         if suppress_table is not None:
             self.table = suppress_table
@@ -136,36 +139,47 @@ class ActionSuppress(ActionBase, _WithTable):
         move_next(iterators=self.iterators)
 
 
-class ActionGeneralize(ActionBase):
+class ActionGeneralize(ActionBase, _WithTable):
     """
     Implements the generalization action
     """
 
-    def __init__(self):
-        super(ActionGeneralize, self).__init__(action_type=ActionType.GENERALIZE)
-        self.generalization_table = {}
+    def __init__(self, column_name: str, generalization_table: dict = None):
+        super(ActionGeneralize, self).__init__(column_name=column_name, action_type=ActionType.GENERALIZE)
+
+        if generalization_table is not None:
+            self.table = generalization_table
+
+        # fill in the iterators
+        self.iterators = [iter(self.table[item]) for item in self.table]
 
     def act(self, **ops):
         """
         Perform an action
         :return:
         """
+
+        # get the values of the column
+        col_vals = ops['data'].values
+
         # generalize the data given
-        for item in ops["data"]:
+        for i, item in enumerate(col_vals):
 
+            #print(item)
             # How do we update the generalizations?
-            value = self.generalization_table[item].value
-            item = value
+            value = self.table[item].value
+            col_vals[i] = value
 
-        # update the generalization
-        self._move_next()
+        ops["data"] = col_vals
+
+        # update the generalization iterators
+        # so next time we visit we update according to
+        # the new values
+        move_next(iterators=self.iterators)
+        return ops['data']
 
     def add_generalization(self, key: str, values: HierarchyBase) -> None:
-        self.generalization_table[key] = values
+        self.table[key] = values
 
-    def _move_next(self):
-
-        for item in self.generalization_table:
-            next(self.generalization_table[item])
 
 

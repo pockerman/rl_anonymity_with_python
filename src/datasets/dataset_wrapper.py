@@ -112,7 +112,12 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         return self.get_column(col_name=col_names[col_idx])
 
     def apply_transform(self, transform: Transform) -> None:
-        pass
+
+        # get the column
+        column = self.get_column(col_name=transform.column_name)
+        column = transform.act(**{"data": column})
+        self.ds[transform.column_name] = column
+
 
 
 

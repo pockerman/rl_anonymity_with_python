@@ -33,5 +33,4 @@ class Trainer(object):
             if self.configuration["update_frequency"] % episode == 0:
                 self.agent.update()
 
-
         print("{0} Training finished for agent {1}".format(INFO, self.agent.name))

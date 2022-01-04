@@ -1,7 +1,7 @@
 import numpy as np
 import textdistance
 import enum
-from src.exceptions import Error
+from src.exceptions.exceptions import Error
 
 
 class DistanceType(enum.IntEnum):
