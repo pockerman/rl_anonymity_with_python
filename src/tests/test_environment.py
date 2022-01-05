@@ -7,7 +7,7 @@ from src.spaces.environment import Environment
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionSuppress, ActionGeneralize
 from src.exceptions.exceptions import Error
-from src.utils.default_hierarchy import DefaultHierarchy
+from src.utils.serial_hierarchy import SerialHierarchy
 from src.utils.string_distance_calculator import DistanceType
 from src.datasets.dataset_wrapper import PandasDSWrapper
 
@@ -35,7 +35,7 @@ class TestEnvironment(unittest.TestCase):
                                            "drop_na": True,
                                            "change_col_vals": {"diagnosis": [('N', 0)]}})
 
-    @pytest.mark.skip(reason="no way of currently testing this")
+    #@pytest.mark.skip(reason="no way of currently testing this")
     def test_prepare_column_states_throw_Error(self):
         # specify the action space. We need to establish how these actions
         # are performed
@@ -47,7 +47,7 @@ class TestEnvironment(unittest.TestCase):
         with pytest.raises(Error):
             env.prepare_column_states()
 
-    @pytest.mark.skip(reason="no way of currently testing this")
+    #@pytest.mark.skip(reason="no way of currently testing this")
     def test_prepare_column_states(self):
         # specify the action space. We need to establish how these actions
         # are performed
@@ -59,7 +59,7 @@ class TestEnvironment(unittest.TestCase):
         env.initialize_text_distances(distance_type=DistanceType.COSINE)
         env.prepare_column_states()
 
-    @pytest.mark.skip(reason="no way of currently testing this")
+    #@pytest.mark.skip(reason="no way of currently testing this")
     def test_get_numeric_ds(self):
         # specify the action space. We need to establish how these actions
         # are performed
@@ -85,24 +85,24 @@ class TestEnvironment(unittest.TestCase):
         # are performed
         action_space = ActionSpace(n=1)
 
-        generalization_table = {"Mixed White/Asian": DefaultHierarchy(values=["Mixed", ]),
-                                "Chinese": DefaultHierarchy(values=["Asian", ]),
-                                "Indian": DefaultHierarchy(values=["Asian", ]),
-                                "Mixed White/Black African": DefaultHierarchy(values=["Mixed", ]),
-                                "Black African": DefaultHierarchy(values=["Black", ]),
-                                "Asian other": DefaultHierarchy(values=["Asian", ]),
-                                "Black other": DefaultHierarchy(values=["Black", ]),
-                                "Mixed White/Black Caribbean": DefaultHierarchy(values=["Mixed", ]),
-                                "Mixed other": DefaultHierarchy(values=["Mixed", ]),
-                                "Arab": DefaultHierarchy(values=["Asian", ]),
-                                "White Irish": DefaultHierarchy(values=["White", ]),
-                                "Not stated": DefaultHierarchy(values=["Not stated"]),
-                                "White Gypsy/Traveller": DefaultHierarchy(values=["White", ]),
-                                "White British": DefaultHierarchy(values=["White", ]),
-                                "Bangladeshi": DefaultHierarchy(values=["Asian", ]),
-                                "White other": DefaultHierarchy(values=["White", ]),
-                                "Black Caribbean": DefaultHierarchy(values=["Black", ]),
-                                "Pakistani": DefaultHierarchy(values=["Asian", ])}
+        generalization_table = {"Mixed White/Asian": SerialHierarchy(values=["Mixed", ]),
+                                "Chinese": SerialHierarchy(values=["Asian", ]),
+                                "Indian": SerialHierarchy(values=["Asian", ]),
+                                "Mixed White/Black African": SerialHierarchy(values=["Mixed", ]),
+                                "Black African": SerialHierarchy(values=["Black", ]),
+                                "Asian other": SerialHierarchy(values=["Asian", ]),
+                                "Black other": SerialHierarchy(values=["Black", ]),
+                                "Mixed White/Black Caribbean": SerialHierarchy(values=["Mixed", ]),
+                                "Mixed other": SerialHierarchy(values=["Mixed", ]),
+                                "Arab": SerialHierarchy(values=["Asian", ]),
+                                "White Irish": SerialHierarchy(values=["White", ]),
+                                "Not stated": SerialHierarchy(values=["Not stated"]),
+                                "White Gypsy/Traveller": SerialHierarchy(values=["White", ]),
+                                "White British": SerialHierarchy(values=["White", ]),
+                                "Bangladeshi": SerialHierarchy(values=["Asian", ]),
+                                "White other": SerialHierarchy(values=["White", ]),
+                                "Black Caribbean": SerialHierarchy(values=["Black", ]),
+                                "Pakistani": SerialHierarchy(values=["Asian", ])}
 
         action_space.add(ActionGeneralize(column_name="ethnicity", generalization_table=generalization_table))
 

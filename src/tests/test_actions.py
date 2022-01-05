@@ -1,6 +1,6 @@
 import unittest
 
-from src.utils.default_hierarchy import DefaultHierarchy
+from src.utils.serial_hierarchy import SerialHierarchy
 from src.spaces.actions import ActionSuppress
 
 
@@ -8,8 +8,8 @@ class TestActions(unittest.TestCase):
 
     def test_suppress_action_creation(self):
 
-        suppress_table = {"test": DefaultHierarchy(values=["test", "tes*", "te**", "t***", "****"]),
-                          "do_not_test": DefaultHierarchy(values=["do_not_test", "do_not_tes*", "do_not_te**", "do_not_t***", "do_not_****"])}
+        suppress_table = {"test": SerialHierarchy(values=["test", "tes*", "te**", "t***", "****"]),
+                          "do_not_test": SerialHierarchy(values=["do_not_test", "do_not_tes*", "do_not_te**", "do_not_t***", "do_not_****"])}
 
         suppress_action = ActionSuppress(column_name="none", suppress_table=suppress_table)
 
@@ -19,8 +19,8 @@ class TestActions(unittest.TestCase):
 
         data = ["test", "do_not_test", "invalid"]
 
-        suppress_table = {"test": DefaultHierarchy(values=["test", "tes*", "te**", "t***", "****"]),
-                          "do_not_test": DefaultHierarchy(values=["do_not_test", "do_not_tes*",
+        suppress_table = {"test": SerialHierarchy(values=["test", "tes*", "te**", "t***", "****"]),
+                          "do_not_test": SerialHierarchy(values=["do_not_test", "do_not_tes*",
                                                                   "do_not_te**", "do_not_t***", "do_not_****"])}
 
         suppress_action = ActionSuppress(column_name="none", suppress_table=suppress_table)

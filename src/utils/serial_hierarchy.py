@@ -1,8 +1,17 @@
+"""
+A SerialHierarchy represents a hierarchy of transformations
+that are applied one after the other
+"""
+
 from typing import List, Any
 from src.utils.hierarchy_base import HierarchyBase
 
 
-class DefaultHierarchyIterator(object):
+class SerialtHierarchyIterator(object):
+    """
+    SerialtHierarchyIterator class. Helper class to iterate over a
+    SerialHierarchy object
+    """
 
     def __init__(self, values: List):
         self.current_position = 0
@@ -27,11 +36,23 @@ class DefaultHierarchyIterator(object):
         raise StopIteration
 
 
-class DefaultHierarchy(HierarchyBase):
+class SerialHierarchy(HierarchyBase):
 
+    """
+    A SerialHierarchy represents a hierarchy of transformations
+    that are applied one after the other. Applications should explicitly
+    provide the list of the ensuing transformations. For example assume that the
+    data field has the value 'foo' then values
+the following list ['fo*', 'f**', '***']
+    """
     def __init__(self, values: List) -> None:
-        super(DefaultHierarchy, self).__init__()
-        self.iterator = DefaultHierarchyIterator(values=values)
+        """
+        Constructor. Initialize the hierarchy by passing the
+        list of the ensuing transformations.
+        :param values:
+        """
+        super(SerialHierarchy, self).__init__()
+        self.iterator = SerialtHierarchyIterator(values=values)
 
     def __iter__(self):
         """
@@ -42,5 +63,8 @@ class DefaultHierarchy(HierarchyBase):
 
     @property
     def value(self) -> Any:
+        """
+        :return: the current value the hierarchy assumes
+        """
         return self.iterator.at
 

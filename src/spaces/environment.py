@@ -175,8 +175,12 @@ class Environment(object):
         :param action: The action to apply on the environment
         :return:
         """
+
+        if action.action_type == ActionType.IDENTITY:
+            return
+
         # apply the transform of the data set
-        self.data_set.apply_transform(transform=action)
+        self.data_set.apply_column_transform(column_name=action.column_name, transform=action)
 
     def step(self, action: ActionBase) -> TimeStep:
         """
@@ -191,14 +195,16 @@ class Environment(object):
         `action` will be ignored.
         """
 
+        self.apply_action(action=action)
+
         # if the action is identity don't bother
         # doing anything
-        if action.action_type == ActionType.IDENTITY:
-            return TimeStep(step_type=StepType.MID, reward=0.0,
-                            observation=self.get_ds_as_tensor().float(), discount=self.gamma)
+        #if action.action_type == ActionType.IDENTITY:
+        #    return TimeStep(step_type=StepType.MID, reward=0.0,
+        #                    observation=self.get_ds_as_tensor().float(), discount=self.gamma)
 
         # apply the transform of the data set
-        self.data_set.apply_transform(transform=action)
+        #self.data_set.apply_column_transform(transform=action)
 
         # perform the action on the data set
         self.prepare_column_states()

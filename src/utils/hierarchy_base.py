@@ -1,20 +1,15 @@
+"""
+HierarchyBase. A hierarchy represents as series of transformations
+that can be applied on data. For example assume that the
+data field has the value 'foo' a hierarchy of transformations then may be
+the following list ['fo*', 'f**', '***']. If this hierarchy is fully applied
+on 'foo' then 'foo' will be completely  suppressed
+"""
+
 import abc
-from pathlib import Path
-from typing import TypeVar
-
-
-#HierarchyBase = TypeVar("HierarchyBase")
 
 
 class HierarchyBase(metaclass=abc.ABCMeta):
 
     def __init__(self):
         pass
-
-    #@abc.abstractmethod
-    #def read_from(self, filename: Path) -> HierarchyBase:
-        """
-        Reads the values of the hierarchy from the file
-        :param filename: The file to read the values of the hierarchy
-        :return: None
-        """

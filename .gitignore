@@ -1,2 +1,5 @@
 src/preprocessor/__pycache__/
 src/exceptions/__pycache__/
+src/utils/__pycache__/
+src/tests/.pytest_cache/
+src/spaces/__pycache__/
