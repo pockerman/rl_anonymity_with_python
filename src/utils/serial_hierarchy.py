@@ -43,7 +43,7 @@ class SerialHierarchy(HierarchyBase):
     that are applied one after the other. Applications should explicitly
     provide the list of the ensuing transformations. For example assume that the
     data field has the value 'foo' then values
-the following list ['fo*', 'f**', '***']
+     the following list ['fo*', 'f**', '***']
     """
     def __init__(self, values: List) -> None:
         """
