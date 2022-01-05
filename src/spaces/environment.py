@@ -12,7 +12,7 @@ from typing import NamedTuple, Generic, Optional, TypeVar
 import multiprocessing as mp
 
 from src.exceptions.exceptions import Error
-from src.spaces.actions import ActionBase
+from src.spaces.actions import ActionBase, ActionType
 from src.utils.string_distance_calculator import DistanceType, TextDistanceCalculator
 
 DataSet = TypeVar("DataSet")
@@ -169,6 +169,19 @@ class Environment(object):
                                           observation=self.get_ds_as_tensor().float(), discount=self.gamma)
         return self.current_time_step
 
+    def apply_action(self, action: ActionBase):
+        """
+        Apply the action on the environment
+        :param action: The action to apply on the environment
+        :return:
+        """
+
+        if action.action_type == ActionType.IDENTITY:
+            return
+
+        # apply the transform of the data set
+        self.data_set.apply_column_transform(column_name=action.column_name, transform=action)
+
     def step(self, action: ActionBase) -> TimeStep:
         """
 
@@ -182,10 +195,22 @@ class Environment(object):
         `action` will be ignored.
         """
 
-        self.data_set.apply_transform(transform=action)
+        self.apply_action(action=action)
+
+        # if the action is identity don't bother
+        # doing anything
+        #if action.action_type == ActionType.IDENTITY:
+        #    return TimeStep(step_type=StepType.MID, reward=0.0,
+        #                    observation=self.get_ds_as_tensor().float(), discount=self.gamma)
+
+        # apply the transform of the data set
+        #self.data_set.apply_column_transform(transform=action)
 
         # perform the action on the data set
         self.prepare_column_states()
+
+        # calculate the information leakage and establish the reward
+        # to return to the agent
 
         return TimeStep(step_type=StepType.MID, reward=0.0,
                         observation=self.get_ds_as_tensor().float(), discount=self.gamma)

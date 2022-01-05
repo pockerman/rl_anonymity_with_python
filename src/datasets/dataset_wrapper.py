@@ -111,8 +111,19 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         col_idx = np.random.choice(col_names, 1)
         return self.get_column(col_name=col_names[col_idx])
 
-    def apply_transform(self, transform: Transform) -> None:
-        pass
+    def apply_column_transform(self, column_name: str, transform: Transform) -> None:
+        """
+        Apply the given transformation on the underlying dataset
+        :param column_name: The column to transform
+        :param transform: The transformation to apply
+        :return: None
+        """
+
+        # get the column
+        column = self.get_column(col_name=column_name)
+        column = transform.act(**{"data": column})
+        self.ds[transform.column_name] = column
+
 
 
 
