@@ -76,9 +76,6 @@ class A2C(Generic[Optimizer]):
         self.memory = []
         self.name = "A2C"
 
-    def _optimize_model(self):
-        pass
-
     def select_action(self, env: Env, observation: State) -> Action:
         """
         Select an action
@@ -96,12 +93,25 @@ class A2C(Generic[Optimizer]):
         pass
 
     def calculate_loss(self):
+        """
+        Calculate the loss
+        :return:
+        """
         pass
 
     def accummulate_batch(self):
+        """
+        Accumulate the memory items
+        :return:
+        """
         pass
 
     def train(self, env: Env) -> None:
+        """
+        Train the agent on the given environment
+        :param env:
+        :return:
+        """
 
         # reset the environment and obtain the
         # the time step
