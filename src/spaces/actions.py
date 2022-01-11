@@ -46,6 +46,13 @@ class ActionBase(metaclass=abc.ABCMeta):
         :return:
         """
 
+    @abc.abstractmethod
+    def get_maximum_number_of_transforms(self):
+        """
+        Returns the maximum number of transforms that the action applies
+        :return:
+        """
+
 
 def move_next(iterators: List) -> None:
     """
@@ -90,6 +97,13 @@ class ActionIdentity(ActionBase):
         """
         pass
 
+    def get_maximum_number_of_transforms(self):
+        """
+        Returns the maximum number of transforms that the action applies
+        :return:
+        """
+        return 1
+
 
 class ActionTransform(ActionBase):
 
@@ -105,6 +119,13 @@ class ActionTransform(ActionBase):
         :return:
         """
         pass
+
+    def get_maximum_number_of_transforms(self):
+        """
+        Returns the maximum number of transforms that the action applies
+        :return:
+        """
+        raise NotImplementedError("Method not implemented")
 
 
 class ActionSuppress(ActionBase, _WithTable):
@@ -137,6 +158,21 @@ class ActionSuppress(ActionBase, _WithTable):
 
         # update the generalization
         move_next(iterators=self.iterators)
+
+    def get_maximum_number_of_transforms(self):
+        """
+        Returns the maximum number of transforms that the action applies
+        :return:
+        """
+        max_transform = 0
+
+        for item in self.table:
+            size = len(self.table[item])
+
+            if size > max_transform:
+                max_transform = size
+
+        return max_transform
 
 
 class ActionGeneralize(ActionBase, _WithTable):
@@ -180,6 +216,22 @@ class ActionGeneralize(ActionBase, _WithTable):
 
     def add_generalization(self, key: str, values: HierarchyBase) -> None:
         self.table[key] = values
+
+    def get_maximum_number_of_transforms(self):
+        """
+        Returns the maximum number of transforms that the action applies
+        :return:
+        """
+        max_transform = 0
+
+        for item in self.table:
+            size = len(self.table[item])
+
+            if size > max_transform:
+                max_transform = size
+
+        return max_transform
+
 
 
 
