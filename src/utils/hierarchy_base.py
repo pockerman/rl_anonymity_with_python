@@ -13,4 +13,11 @@ class HierarchyBase(metaclass=abc.ABCMeta):
 
     def __init__(self):
         pass
+
+    @abc.abstractmethod
+    def is_exhausted(self) -> bool:
+        """
+        Returns true if the hierarchy is finished
+        :return:
+        """
     

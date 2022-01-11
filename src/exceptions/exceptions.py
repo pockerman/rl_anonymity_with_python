@@ -15,3 +15,13 @@ class InvalidFileFormat(Exception):
         return self.message
 
 
+class InvalidParamValue(Exception):
+    def __init__(self, param_name: str, param_value: str):
+        self.message = "Parameter {0} has invalid value {1}".format(param_name, param_value)
+
+    def __str__(self):
+        return self.message
+
+
+
+

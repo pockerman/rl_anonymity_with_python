@@ -60,5 +60,8 @@ class StateSpace(Discrete):
     def update_state(self, state_name, status: ActionStatus):
         self.states[state_name].history.append(status)
 
+    def get_state_by_name(self, name) -> State:
+        return self.states[name]
+
     def __len__(self):
         return len(self.states)

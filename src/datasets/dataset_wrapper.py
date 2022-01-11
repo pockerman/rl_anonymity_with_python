@@ -80,7 +80,20 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         # try to cast to the data types
         self.ds = change_column_types(ds=self.ds, column_types=self.columns)
 
+    def sample_column_name(self) -> str:
+        """
+        Samples a name from the columns
+        :return: a column name
+        """
+        names = self.get_columns_names()
+        return np.random.choice(names)
+
     def set_columns_to_type(self, col_name_types) -> None:
+        """
+        Set the types of the columns
+        :param col_name_types:
+        :return:
+        """
         self.ds.astype(dtype=col_name_types)
 
     def attach_column_hierarchy(self, col_name: str, hierarchy: HierarchyBase):

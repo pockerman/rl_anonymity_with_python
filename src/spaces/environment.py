@@ -74,6 +74,9 @@ class Environment(object):
         self.action_space = action_space
         self.gamma = gamma
         self.start_column = start_column
+        self.current_column: str = start_column
+        self.columns: list = self.data_set.get_columns_names()
+        self.current_column_idx = 0
         self.column_distances = {}
         self.state_space = StateSpace()
         self.distance_calculator = None
@@ -81,6 +84,10 @@ class Environment(object):
 
         # initialize the state space
         self.state_space.init_from_environment(env=self)
+
+    @property
+    def observation_space(self) -> StateSpace:
+        return  self.state_space
 
     @property
     def n_features(self) -> int:
@@ -117,6 +124,14 @@ class Environment(object):
 
     def sample_action(self) -> ActionBase:
         return self.action_space.sample_and_get()
+
+    def get_action(self, aidx: int) -> ActionBase:
+        """
+        Returns the aidx-th action from the action space
+        :param aidx:
+        :return:
+        """
+        return self.action_space[aidx]
 
     def get_column_as_tensor(self, column_name) -> torch.Tensor:
         """
@@ -194,15 +209,27 @@ class Environment(object):
               specification returned by `observation_spec()`.
         """
 
+        self.current_column_idx += 0
+        self.current_column = self.columns[self.current_column_idx]
+        self.action_space.reset()
+
         # initialize the text distances for
         # the environment
         self.initialize_text_distances(distance_type=self.distance_calculator.distance_type)
 
         # get the DS as a torch tensor
-
         observation = self.start_ds.get_column(col_name=self.start_column)
+
+        #
+
+        state = self.state_space.get_state_by_name(name=self.start_column)
+
         self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
-                                          observation=self.get_ds_as_tensor().float(), discount=self.gamma)
+                                          observation=state, discount=self.gamma)
+
+        # update internal data
+        self.current_column_idx += 1
+        self.current_column = self.columns[self.current_column_idx]
         return self.current_time_step
 
     def apply_action(self, action: ActionBase):
@@ -231,6 +258,15 @@ class Environment(object):
         `action` will be ignored.
         """
 
+        print("Applying action {0} on column {1}".format(action.action_type.name, action.column_name))
+
+        if action.is_exhausted():
+            # the selected action is exhausted
+            # by choosing such an action gives neither good
+            # or bad?
+            return TimeStep(step_type=StepType.LAST, reward=0.0,
+                            observation=None, discount=self.gamma)
+
         # apply the action
         self.apply_action(action=action)
 
@@ -244,8 +280,24 @@ class Environment(object):
         # to return to the agent
         reward = self.reward_manager.get_state_reward(self.state_space, action)
 
+        # what is the next state? maybe do it randomly?
+        # or select the next column in the dataset
+        self.current_column_idx += 1
+
+        # check if the environment is finished
+        if self.current_column_idx >= len(self.columns):
+            return TimeStep(step_type=StepType.LAST, reward=0.0,
+                            observation=None, discount=self.gamma)
+
+        if self.action_space.is_exhausted():
+            return TimeStep(step_type=StepType.LAST, reward=0.0,
+                            observation=None, discount=self.gamma)
+
+        self.current_column = self.columns[self.current_column_idx]
+        next_state = self.state_space.get_state_by_name(name=self.current_column)
+
         return TimeStep(step_type=StepType.MID, reward=reward,
-                        observation=self.get_column_as_tensor(column_name=action.column_name).float(),
+                        observation=next_state, #self.get_column_as_tensor(column_name=action.column_name).float(),
                         discount=self.gamma)
 
 

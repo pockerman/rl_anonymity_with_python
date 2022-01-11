@@ -3,6 +3,7 @@ ActionSpace class. This is a wrapper to the discrete
 actions in the actions.py module
 """
 
+import numpy as np
 from gym.spaces.discrete import Discrete
 from src.spaces.actions import ActionBase
 
@@ -66,3 +67,37 @@ class ActionSpace(Discrete):
         """
         action_idx = self.sample()
         return self.actions[action_idx]
+
+    def get_non_exhausted_actions(self) -> list:
+
+        actions_ = []
+
+        for action in self.actions:
+            if not action.is_exhausted():
+                actions_.append(action)
+
+        return actions_
+
+    def sample_and_get_non_exhausted(self) -> ActionBase:
+
+        actions = self.get_non_exhausted_actions()
+        return np.random.choice(actions)
+
+    def is_exhausted(self):
+
+        finished = True
+
+        for action in self.actions:
+            if not action.is_exhausted():
+                return False
+
+        return finished
+
+    def reset(self) -> None:
+        """
+        Reset every action in the action space
+        :return:
+        """
+        for action in self.actions:
+            action.reinit()
+
