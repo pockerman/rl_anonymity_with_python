@@ -13,9 +13,11 @@ import multiprocessing as mp
 
 from src.exceptions.exceptions import Error
 from src.spaces.actions import ActionBase, ActionType
+from src.spaces.state_space import StateSpace, State
 from src.utils.string_distance_calculator import DistanceType, TextDistanceCalculator
 
 DataSet = TypeVar("DataSet")
+RewardManager = TypeVar("RewardManager")
 
 _Reward = TypeVar('_Reward')
 _Discount = TypeVar('_Discount')
@@ -65,7 +67,7 @@ class TimeStep(NamedTuple, Generic[_Reward, _Discount, _Observation]):
 class Environment(object):
 
     def __init__(self, data_set, action_space,
-                 gamma: float, start_column: str, ):
+                 gamma: float, start_column: str, reward_manager: RewardManager):
         self.data_set = data_set
         self.start_ds = copy.deepcopy(data_set)
         self.current_time_step = self.start_ds
@@ -73,11 +75,28 @@ class Environment(object):
         self.gamma = gamma
         self.start_column = start_column
         self.column_distances = {}
+        self.state_space = StateSpace()
         self.distance_calculator = None
+        self.reward_manager: RewardManager = reward_manager
+
+        # initialize the state space
+        self.state_space.init_from_environment(env=self)
 
     @property
     def n_features(self) -> int:
+        """
+        Returns the number of features in the dataset
+        :return:
+        """
         return self.start_ds.n_columns
+
+    @property
+    def feature_names(self) -> list:
+        """
+        Returns the feature names in the dataset
+        :return:
+        """
+        return self.start_ds.get_columns_names()
 
     @property
     def n_examples(self) -> int:
@@ -99,6 +118,24 @@ class Environment(object):
     def sample_action(self) -> ActionBase:
         return self.action_space.sample_and_get()
 
+    def get_column_as_tensor(self, column_name) -> torch.Tensor:
+        """
+        Returns the column in the dataset as a torch tensor
+        :param column_name:
+        :return:
+        """
+        data = {}
+
+        if self.start_ds.columns[column_name] == str:
+
+            numpy_vals = self.column_distances[column_name]
+            data[column_name] = numpy_vals
+        else:
+            data[column_name] = self.data_set.get_column(col_name=column_name).to_numpy()
+
+        target_df = pd.DataFrame(data)
+        return torch.tensor(target_df.to_numpy(), dtype=torch.float64)
+
     def get_ds_as_tensor(self) -> torch.Tensor:
 
         """
@@ -111,7 +148,6 @@ class Environment(object):
         for col in col_names:
 
             if self.start_ds.columns[col] == str:
-                #print("col: {0} type {1}".format(col, self.start_ds.get_column_type(col_name=col)))
                 numpy_vals = self.column_distances[col]
                 data[col] = numpy_vals
             else:
@@ -195,28 +231,22 @@ class Environment(object):
         `action` will be ignored.
         """
 
+        # apply the action
         self.apply_action(action=action)
 
-        # if the action is identity don't bother
-        # doing anything
-        #if action.action_type == ActionType.IDENTITY:
-        #    return TimeStep(step_type=StepType.MID, reward=0.0,
-        #                    observation=self.get_ds_as_tensor().float(), discount=self.gamma)
-
-        # apply the transform of the data set
-        #self.data_set.apply_column_transform(transform=action)
+        # update the state space
+        self.state_space.update_state(state_name=action.column_name, status=action.action_type)
 
         # perform the action on the data set
         self.prepare_column_states()
 
         # calculate the information leakage and establish the reward
         # to return to the agent
+        reward = self.reward_manager.get_state_reward(self.state_space, action)
 
-        return TimeStep(step_type=StepType.MID, reward=0.0,
-                        observation=self.get_ds_as_tensor().float(), discount=self.gamma)
-
-
-
+        return TimeStep(step_type=StepType.MID, reward=reward,
+                        observation=self.get_column_as_tensor(column_name=action.column_name).float(),
+                        discount=self.gamma)
 
 
 class MultiprocessEnv(object):

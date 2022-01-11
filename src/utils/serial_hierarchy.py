@@ -35,6 +35,13 @@ class SerialtHierarchyIterator(object):
 
         raise StopIteration
 
+    def __len__(self):
+        """
+        Returns the total number of items in the iterator
+        :return:
+        """
+        return len(self.values)
+
 
 class SerialHierarchy(HierarchyBase):
 
@@ -67,4 +74,11 @@ class SerialHierarchy(HierarchyBase):
         :return: the current value the hierarchy assumes
         """
         return self.iterator.at
+
+    def __len__(self):
+        """
+        Returns the size of the hierarchy
+        :return:
+        """
+        return len(self.iterator)
 
