@@ -11,6 +11,7 @@ from src.utils.mixins import WithMaxActionMixin
 
 UserDefinedDecreaseMethod = TypeVar('UserDefinedDecreaseMethod')
 Env = TypeVar("Env")
+QTable = TypeVar("QTable")
 
 
 class EpsilonDecreaseOption(Enum):
@@ -41,7 +42,13 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
         self._epsilon_decay_factor = epsilon_decay_factor
         self.user_defined_decrease_method: UserDefinedDecreaseMethod = user_defined_decrease_method
 
-    def __call__(self, q_func: Any, state: Any) -> int:
+    def __call__(self, q_func: QTable, state: Any) -> int:
+        """
+        Execute the policy
+        :param q_func:
+        :param state:
+        :return:
+        """
 
         # select greedy action with probability epsilon
         if random.random() > self._eps:

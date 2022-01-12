@@ -68,7 +68,7 @@ class TestEnvironment(unittest.TestCase):
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99, start_column="gender")
 
         with pytest.raises(Error):
-            env.prepare_column_states()
+            env.prepare_columns_state()
 
     @pytest.mark.skip(reason="no way of currently testing this")
     def test_prepare_column_states(self):
@@ -80,7 +80,7 @@ class TestEnvironment(unittest.TestCase):
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99, start_column="gender")
 
         env.initialize_text_distances(distance_type=DistanceType.COSINE)
-        env.prepare_column_states()
+        env.prepare_columns_state()
 
     @pytest.mark.skip(reason="no way of currently testing this")
     def test_get_numeric_ds(self):
@@ -93,7 +93,7 @@ class TestEnvironment(unittest.TestCase):
                           start_column="gender", reward_manager=self.reward_manager)
 
         env.initialize_text_distances(distance_type=DistanceType.COSINE)
-        env.prepare_column_states()
+        env.prepare_columns_state()
 
         tensor = env.get_ds_as_tensor()
 
@@ -108,27 +108,6 @@ class TestEnvironment(unittest.TestCase):
         # specify the action space. We need to establish how these actions
         # are performed
         action_space = ActionSpace(n=1)
-
-        """
-        generalization_table = {"Mixed White/Asian": SerialHierarchy(values=["Mixed", ]),
-                                "Chinese": SerialHierarchy(values=["Asian", ]),
-                                "Indian": SerialHierarchy(values=["Asian", ]),
-                                "Mixed White/Black African": SerialHierarchy(values=["Mixed", ]),
-                                "Black African": SerialHierarchy(values=["Black", ]),
-                                "Asian other": SerialHierarchy(values=["Asian", ]),
-                                "Black other": SerialHierarchy(values=["Black", ]),
-                                "Mixed White/Black Caribbean": SerialHierarchy(values=["Mixed", ]),
-                                "Mixed other": SerialHierarchy(values=["Mixed", ]),
-                                "Arab": SerialHierarchy(values=["Asian", ]),
-                                "White Irish": SerialHierarchy(values=["White", ]),
-                                "Not stated": SerialHierarchy(values=["Not stated"]),
-                                "White Gypsy/Traveller": SerialHierarchy(values=["White", ]),
-                                "White British": SerialHierarchy(values=["White", ]),
-                                "Bangladeshi": SerialHierarchy(values=["Asian", ]),
-                                "White other": SerialHierarchy(values=["White", ]),
-                                "Black Caribbean": SerialHierarchy(values=["Black", ]),
-                                "Pakistani": SerialHierarchy(values=["Asian", ])}
-        """
 
         action_space.add(ActionGeneralize(column_name="ethnicity", generalization_table=self.generalization_table))
 
@@ -161,10 +140,6 @@ class TestEnvironment(unittest.TestCase):
 
         # this will update the environment
         time_step = env.step(action=action)
-
-
-
-
 
 
 if __name__ == '__main__':

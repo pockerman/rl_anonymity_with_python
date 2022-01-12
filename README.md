@@ -16,5 +16,9 @@ to use the reinforcement learning paradigm in order to train agents to perform t
 places this into a persepctive 
 
 
-![RL anonymity paradigm](images/general_concept.png "Reinforcement learning anonymity schematics") 
+![RL anonymity paradigm](images/general_concept.png "Reinforcement learning anonymity schematics")
+
+## Dependencies 
+
+## Documentation
 

@@ -1,12 +1,10 @@
 import numpy as np
 from typing import TypeVar
 
-from src.policies.policy_adaptor_base import PolicyAdaptorBase
-
 PolicyBase = TypeVar('PolicyBase')
 
 
-class DeterministicAdaptorPolicy(PolicyAdaptorBase):
+class DeterministicAdaptorPolicy(object):
 
     """
     Update a policy by choosing the best action

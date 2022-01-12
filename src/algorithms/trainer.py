@@ -50,10 +50,6 @@ class Trainer(object):
             self.iterations_per_episode.append(n_itrs)
             self.total_rewards[episode] = episode_score
 
-            # is it time to update the model?
-            if self.configuration["update_frequency"] % episode == 0:
-                self.agent.update()
-
             self.actions_after_episode_ends(**{"episode_idx": episode})
 
         print("{0} Training finished for agent {1}".format(INFO, self.agent.name))

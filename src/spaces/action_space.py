@@ -37,13 +37,28 @@ class ActionSpace(Discrete):
         """
         self.actions[key] = value
 
-    def add(self, action: ActionBase) -> None:
+    def get_action_by_column_name(self, column_name: str) -> ActionBase:
         """
-        Add a new action in the space
-        :param action:
-        :return:
+        Get the action that corresponds to the column with
+        the given name. Raises ValueError if such an action does not
+        exist
+        :param column_name: The column name to look for
+        :return: The action that corresponds to this name
         """
 
+        for action in self.actions:
+            if action.column_name == column_name:
+                return action
+
+        raise ValueError("No action exists for column={0}".format(column_name))
+
+    def add(self, action: ActionBase) -> None:
+        """
+        Add a new action in the space. Throws ValueError if the action space
+        is full
+        :param action: the action to add
+        :return: None
+        """
         if len(self.actions) >= self.n:
             raise ValueError("Action space is saturated. You cannot add a new action")
 
@@ -69,9 +84,12 @@ class ActionSpace(Discrete):
         return self.actions[action_idx]
 
     def get_non_exhausted_actions(self) -> list:
-
+        """
+        Returns a list of actions that have not exhausted the
+        transformations that apply on a column.
+        :return: list of actions. List may be empty. Client code should handle this
+        """
         actions_ = []
-
         for action in self.actions:
             if not action.is_exhausted():
                 actions_.append(action)
@@ -79,14 +97,19 @@ class ActionSpace(Discrete):
         return actions_
 
     def sample_and_get_non_exhausted(self) -> ActionBase:
-
+        """
+        Sample an action from the non exhausted actions
+        :return: A non-exhausted action
+        """
         actions = self.get_non_exhausted_actions()
         return np.random.choice(actions)
 
-    def is_exhausted(self):
-
+    def is_exhausted(self) -> bool:
+        """
+        Returns true if all the actions in the space are exhausted
+        :return:
+        """
         finished = True
-
         for action in self.actions:
             if not action.is_exhausted():
                 return False
@@ -99,5 +122,5 @@ class ActionSpace(Discrete):
         :return:
         """
         for action in self.actions:
-            action.reinit()
+            action.reinitialize()
 

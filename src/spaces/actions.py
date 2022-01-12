@@ -74,7 +74,7 @@ class ActionBase(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def reinit(self) -> None:
+    def reinitialize(self) -> None:
         """
         Reinitialize the action to the state when the
         constructor is called
@@ -113,7 +113,7 @@ class ActionIdentity(ActionBase):
         """
         return self.called
 
-    def reinit(self) -> None:
+    def reinitialize(self) -> None:
         """
         Reinitialize the action to the state when the
         constructor is called
@@ -123,7 +123,6 @@ class ActionIdentity(ActionBase):
 
 
 class ActionTransform(ActionBase):
-
     """
     Implements the transform action
     """
@@ -152,7 +151,7 @@ class ActionTransform(ActionBase):
         """
         raise NotImplementedError("Method not implemented")
 
-    def reinit(self) -> None:
+    def reinitialize(self) -> None:
         """
         Reinitialize the action to the state when the
         constructor is called
@@ -162,7 +161,6 @@ class ActionTransform(ActionBase):
 
 
 class ActionSuppress(ActionBase, WithHierarchyTable):
-
     """
     Implements the suppress action
     """
@@ -219,7 +217,7 @@ class ActionSuppress(ActionBase, WithHierarchyTable):
         """
         return self.finished()
 
-    def reinit(self) -> None:
+    def reinitialize(self) -> None:
         """
         Reinitialize the action to the state when the
         constructor is called
@@ -291,7 +289,7 @@ class ActionGeneralize(ActionBase, WithHierarchyTable):
         """
         return self.finished()
 
-    def reinit(self) -> None:
+    def reinitialize(self) -> None:
         """
         Reinitialize the action to the state when the
         constructor is called

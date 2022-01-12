@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     agent = QLearning(algo_config=algo_config)
 
-    configuration = {"n_episodes": 10, "update_frequency": 100}
+    configuration = {"n_episodes": 10, "output_msg_frequency": 100}
 
     # create a trainer to train the A2C agent
     trainer = Trainer(env=env, agent=agent, configuration=configuration)
