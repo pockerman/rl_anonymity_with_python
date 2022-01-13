@@ -15,6 +15,8 @@ from src.exceptions.exceptions import Error
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.state_space import StateSpace, State
 from src.utils.string_distance_calculator import DistanceType, TextDistanceCalculator
+from src.utils.numeric_distance_type import NumericDistanceType
+from src.datasets.dataset_information_leakage import state_leakage
 
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
@@ -77,6 +79,7 @@ class EnvConfig(object):
         self.average_distortion_constraint: float = 0
         self.start_column: str = "None_Column"
         self.gamma: float = 0.99
+        self.numeric_column_distortion_metric_type: NumericDistanceType = NumericDistanceType.INVALID
 
 
 class Environment(object):
@@ -99,6 +102,7 @@ class Environment(object):
         self.state_space = StateSpace()
         self.distance_calculator = None
         self.reward_manager: RewardManager = env_config.reward_manager
+        self.numeric_column_distortion_metric_type = env_config.numeric_column_distortion_metric_type
 
         # initialize the state space
         self.state_space.init_from_environment(env=self)
@@ -219,15 +223,26 @@ class Environment(object):
             start_column = self.start_ds.get_column(col_name=column_name)
 
             row_count = 0
-            print("Distance {0} ".format(self.distance_calculator.calculate(txt1="".join(current_column.values),
-                                                                            txt2="".join(start_column.values))))
 
+            # join the column to calculate the distance
             self.column_distances[column_name] = self.distance_calculator.calculate(txt1="".join(current_column.values),
                                                                                     txt2="".join(start_column.values))
-            #for item1, item2 in zip(current_column.values, start_column.values):
-            #    #self.column_distances[column_name][row_count] = self.distance_calculator.calculate(txt1=item1, txt2=item2)
 
-            #    row_count += 1
+    def get_state_distortion(self, state_name) -> float:
+        """
+        Returns the distortion for the state with the given name
+        :param state_name:
+        :return:
+        """
+        if self.start_ds.columns[state_name] == str:
+            return self.column_distances[state_name]
+        else:
+
+            current_column = self.data_set.get_column(col_name=state_name)
+            start_column = self.start_ds.get_column(col_name=state_name)
+
+            return state_leakage(state1=current_column,
+                                 state2=start_column, dist_type=self.numeric_column_distortion_metric_type)
 
     def prepare_columns_state(self):
         """
@@ -299,6 +314,7 @@ class Environment(object):
         :return:
         """
 
+        # nothing to act on identity
         if action.action_type == ActionType.IDENTITY:
             return
 
@@ -333,6 +349,8 @@ class Environment(object):
         # update the state space
         self.state_space.update_state(state_name=action.column_name, status=action.action_type)
 
+        # prepare the column state. We only do work
+        # if the column is a string
         self.prepare_column_state(column_name=action.column_name)
 
         # perform the action on the data set
@@ -340,7 +358,8 @@ class Environment(object):
 
         # calculate the information leakage and establish the reward
         # to return to the agent
-        reward = self.reward_manager.get_state_reward(self.state_space, action)
+        state_distortion = self.get_state_distortion(state_name=action.column_name)
+        reward = self.reward_manager.get_state_reward(action.column_name, action, state_distortion)
 
         # what is the next state? maybe do it randomly?
         # or select the next column in the dataset

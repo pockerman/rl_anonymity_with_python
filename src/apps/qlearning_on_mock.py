@@ -2,12 +2,13 @@ from src.algorithms.q_learning import QLearning, QLearnConfig
 from src.algorithms.trainer import Trainer
 from src.utils.string_distance_calculator import DistanceType
 from src.spaces.actions import ActionSuppress, ActionIdentity, ActionGeneralize, ActionTransform
-from src.spaces.environment import Environment
+from src.spaces.environment import Environment, EnvConfig
 from src.spaces.action_space import ActionSpace
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.utils.reward_manager import RewardManager
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecreaseOption
 from src.utils.serial_hierarchy import SerialHierarchy
+from src.utils.numeric_distance_type import NumericDistanceType
 
 
 if __name__ == '__main__':
@@ -47,12 +48,23 @@ if __name__ == '__main__':
                           ActionIdentity(column_name="salary"), ActionIdentity(column_name="education"),
                           ActionGeneralize(column_name="ethnicity", generalization_table=generalization_table))
 
+    average_distortion_constraint = {"salary": [0.0, 0.0, 0.0], "education": [0.0, 0.0, 0.0],
+                                     "ethnicity": [3.0, 1.0, -1.0], "gender": [4.0, 1.0, -1.0]}
+
     # specify the reward manager to use
-    reward_manager = RewardManager()
+    reward_manager = RewardManager(average_distortion_constraint=average_distortion_constraint)
+
+    env_config = EnvConfig()
+    env_config.start_column = "gender"
+    env_config.action_space = action_space
+    env_config.reward_manager = reward_manager
+    env_config.data_set = ds
+    env_config.gamma = 0.99
+    env_config.numeric_column_distortion_metric_type = NumericDistanceType.L2
 
     # create the environment
-    env = Environment(data_set=ds, action_space=action_space,
-                      gamma=0.99, start_column="gender", reward_manager=reward_manager)
+    env = Environment(env_config=env_config)
+
     # initialize text distances
     env.initialize_text_distances(distance_type=DistanceType.COSINE)
 
