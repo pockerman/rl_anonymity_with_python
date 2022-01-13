@@ -15,9 +15,12 @@ from src.exceptions.exceptions import Error
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.state_space import StateSpace, State
 from src.utils.string_distance_calculator import DistanceType, TextDistanceCalculator
+from src.utils.numeric_distance_type import NumericDistanceType
+from src.datasets.dataset_information_leakage import state_leakage
 
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
+ActionSpace = TypeVar("ActionSpace")
 
 _Reward = TypeVar('_Reward')
 _Discount = TypeVar('_Discount')
@@ -64,23 +67,53 @@ class TimeStep(NamedTuple, Generic[_Reward, _Discount, _Observation]):
         return self.step_type == StepType.LAST
 
 
-class Environment(object):
+class EnvConfig(object):
+    """
+    The EnvConfig class. Wrapper for the various parameters
+    passed in the Environment class constructor
+    """
+    def __init__(self):
+        self.data_set: DataSet = None
+        self.action_space: ActionSpace = None
+        self.reward_manager: RewardManager = None
+        self.average_distortion_constraint: float = 0
+        self.start_column: str = "None_Column"
+        self.gamma: float = 0.99
+        self.numeric_column_distortion_metric_type: NumericDistanceType = NumericDistanceType.INVALID
 
-    def __init__(self, data_set, action_space,
-                 gamma: float, start_column: str, reward_manager: RewardManager):
-        self.data_set = data_set
-        self.start_ds = copy.deepcopy(data_set)
+
+class Environment(object):
+    """
+    The Environment class. Wrapper to a data set to act
+    as an environment suitable for reinforcement learning
+    """
+
+    def __init__(self, env_config: EnvConfig):
+        self.data_set = env_config.data_set
+        self.start_ds = copy.deepcopy(env_config.data_set)
         self.current_time_step = self.start_ds
-        self.action_space = action_space
-        self.gamma = gamma
-        self.start_column = start_column
+        self.action_space = env_config.action_space
+        self.gamma = env_config.gamma
+        self.start_column = env_config.start_column
+        self.current_column: str = env_config.start_column
+        self.columns: list = self.data_set.get_columns_names()
+        self.current_column_idx = 0
         self.column_distances = {}
         self.state_space = StateSpace()
         self.distance_calculator = None
-        self.reward_manager: RewardManager = reward_manager
+        self.reward_manager: RewardManager = env_config.reward_manager
+        self.numeric_column_distortion_metric_type = env_config.numeric_column_distortion_metric_type
 
         # initialize the state space
         self.state_space.init_from_environment(env=self)
+
+    @property
+    def observation_space(self) -> StateSpace:
+        """
+        Returns the state space
+        :return:
+        """
+        return self.state_space
 
     @property
     def n_features(self) -> int:
@@ -100,6 +133,11 @@ class Environment(object):
 
     @property
     def n_examples(self) -> int:
+        """
+        Returns the number of examples in the data set.
+        For a tabular data set this will be the number of rows
+        :return:
+        """
         return self.start_ds.n_rows
 
     def initialize_text_distances(self, distance_type: DistanceType) -> None:
@@ -113,10 +151,22 @@ class Environment(object):
         for col in col_names:
             # check here: https://stackoverflow.com/questions/43652161/numpy-typeerror-data-type-string-not-understood/43652230
             if self.start_ds.columns[col] == str:
-                self.column_distances[col] = np.zeros(len(self.start_ds.get_column(col_name=col)))
+                self.column_distances[col] = 0.0 #np.zeros(len(self.start_ds.get_column(col_name=col)))
 
     def sample_action(self) -> ActionBase:
+        """
+        Sample an action from the action space
+        :return: the sampled action
+        """
         return self.action_space.sample_and_get()
+
+    def get_action(self, aidx: int) -> ActionBase:
+        """
+        Returns the aidx-th action from the action space
+        :param aidx:
+        :return:
+        """
+        return self.action_space[aidx]
 
     def get_column_as_tensor(self, column_name) -> torch.Tensor:
         """
@@ -156,7 +206,45 @@ class Environment(object):
         target_df = pd.DataFrame(data)
         return torch.tensor(target_df.to_numpy(), dtype=torch.float64)
 
-    def prepare_column_states(self):
+    def prepare_column_state(self, column_name):
+        """
+        Prepare the column state to a numeric value
+        :param column_name:
+        :return:
+        """
+        if self.start_ds.columns[column_name] == str:
+
+            if self.distance_calculator is None:
+                raise Error("Distance calculator is not set. "
+                            "Have you called self.initialize_text_distances?")
+
+            # what is the previous and current values for the column
+            current_column = self.data_set.get_column(col_name=column_name)
+            start_column = self.start_ds.get_column(col_name=column_name)
+
+            row_count = 0
+
+            # join the column to calculate the distance
+            self.column_distances[column_name] = self.distance_calculator.calculate(txt1="".join(current_column.values),
+                                                                                    txt2="".join(start_column.values))
+
+    def get_state_distortion(self, state_name) -> float:
+        """
+        Returns the distortion for the state with the given name
+        :param state_name:
+        :return:
+        """
+        if self.start_ds.columns[state_name] == str:
+            return self.column_distances[state_name]
+        else:
+
+            current_column = self.data_set.get_column(col_name=state_name)
+            start_column = self.start_ds.get_column(col_name=state_name)
+
+            return state_leakage(state1=current_column,
+                                 state2=start_column, dist_type=self.numeric_column_distortion_metric_type)
+
+    def prepare_columns_state(self):
         """
         Prepare the column states to be sent to the agent.
         If a column is a string we calculate the  cosine distance
@@ -170,13 +258,14 @@ class Environment(object):
         col_names = self.data_set.get_columns_names()
         for col in col_names:
             # check here: https://stackoverflow.com/questions/43652161/numpy-typeerror-data-type-string-not-understood/43652230
-            if self.data_set.get_column_type(col_name=col) == np.dtype('str'):
+            #if self.data_set.get_column_type(col_name=col) == np.dtype('str'):
+            if self.start_ds.columns[col] == str:
 
                 # what is the previous and current values for the column
                 current_column = self.data_set.get_column(col_name=col)
                 start_column = self.start_ds.get_column(col_name=col)
 
-                for item1, item2 in zip(current_column.vaslues, start_column.values):
+                for item1, item2 in zip(current_column.values, start_column.values):
 
                     self.column_distances[col] = self.distance_calculator.calculate(txt1=item1, txt2=item2)
 
@@ -194,15 +283,28 @@ class Environment(object):
               specification returned by `observation_spec()`.
         """
 
+        self.current_column_idx = 0
+        self.current_column = self.start_column #self.columns[self.current_column_idx]
+
+        # reset the action space so that we can
+        # re-apply any transformations
+        self.action_space.reset()
+
         # initialize the text distances for
         # the environment
         self.initialize_text_distances(distance_type=self.distance_calculator.distance_type)
 
         # get the DS as a torch tensor
+        #observation = self.start_ds.get_column(col_name=self.start_column)
 
-        observation = self.start_ds.get_column(col_name=self.start_column)
+        state = self.state_space.get_state_by_name(name=self.start_column)
+
         self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
-                                          observation=self.get_ds_as_tensor().float(), discount=self.gamma)
+                                          observation=state, discount=self.gamma)
+
+        # update internal data
+        self.current_column_idx += 1
+        self.current_column = self.columns[self.current_column_idx]
         return self.current_time_step
 
     def apply_action(self, action: ActionBase):
@@ -212,6 +314,7 @@ class Environment(object):
         :return:
         """
 
+        # nothing to act on identity
         if action.action_type == ActionType.IDENTITY:
             return
 
@@ -231,21 +334,51 @@ class Environment(object):
         `action` will be ignored.
         """
 
+        print("Applying action {0} on column {1}".format(action.action_type.name, action.column_name))
+
+        if action.is_exhausted():
+            # the selected action is exhausted
+            # by choosing such an action gives neither good
+            # or bad?
+            return TimeStep(step_type=StepType.LAST, reward=0.0,
+                            observation=None, discount=self.gamma)
+
         # apply the action
         self.apply_action(action=action)
 
         # update the state space
         self.state_space.update_state(state_name=action.column_name, status=action.action_type)
 
+        # prepare the column state. We only do work
+        # if the column is a string
+        self.prepare_column_state(column_name=action.column_name)
+
         # perform the action on the data set
-        self.prepare_column_states()
+        #self.prepare_columns_state()
 
         # calculate the information leakage and establish the reward
         # to return to the agent
-        reward = self.reward_manager.get_state_reward(self.state_space, action)
+        state_distortion = self.get_state_distortion(state_name=action.column_name)
+        reward = self.reward_manager.get_state_reward(action.column_name, action, state_distortion)
+
+        # what is the next state? maybe do it randomly?
+        # or select the next column in the dataset
+        self.current_column_idx += 1
+
+        # check if the environment is finished
+        if self.current_column_idx >= len(self.columns):
+            return TimeStep(step_type=StepType.LAST, reward=0.0,
+                            observation=None, discount=self.gamma)
+
+        if self.action_space.is_exhausted():
+            return TimeStep(step_type=StepType.LAST, reward=0.0,
+                            observation=None, discount=self.gamma)
+
+        self.current_column = self.columns[self.current_column_idx]
+        next_state = self.state_space.get_state_by_name(name=self.current_column)
 
         return TimeStep(step_type=StepType.MID, reward=reward,
-                        observation=self.get_column_as_tensor(column_name=action.column_name).float(),
+                        observation=next_state, #self.get_column_as_tensor(column_name=action.column_name).float(),
                         discount=self.gamma)
 
 

@@ -1,18 +1,17 @@
-import unittest
+"""
+Unit tests for StateSpace
+"""
 
 import unittest
 from pathlib import Path
 
-import pytest
-
 from src.spaces.environment import Environment
 from src.spaces.action_space import ActionSpace
-from src.spaces.actions import ActionSuppress, ActionGeneralize
-from src.exceptions.exceptions import Error
+from src.spaces.actions import ActionGeneralize
 from src.utils.serial_hierarchy import SerialHierarchy
-from src.utils.string_distance_calculator import DistanceType
 from src.datasets.dataset_wrapper import PandasDSWrapper
-from src.spaces.state_space import StateSpace, State
+from src.spaces.state_space import StateSpace
+
 
 class TestStateSpace(unittest.TestCase):
 

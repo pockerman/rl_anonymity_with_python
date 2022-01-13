@@ -11,6 +11,7 @@ class DistanceType(enum.IntEnum):
 
     # Denotes the first `TimeStep` in a sequence.
     COSINE = 0
+    HAMMING = 1
 
 
 class TextDistanceCalculator(object):
@@ -18,7 +19,7 @@ class TextDistanceCalculator(object):
     Wrapper class for text distance calculation
     """
 
-    DISTANCE_TYPES = [DistanceType.COSINE, ]
+    DISTANCE_TYPES = [DistanceType.COSINE, DistanceType.HAMMING]
 
     @staticmethod
     def build_calculator(dist_type: DistanceType):
@@ -28,6 +29,8 @@ class TextDistanceCalculator(object):
 
         if dist_type == DistanceType.COSINE:
             return textdistance.Cosine()
+        elif dist_type == DistanceType.HAMMING:
+            return textdistance.Hamming()
 
     def __init__(self, dist_type):
 
@@ -50,7 +53,7 @@ class TextDistanceCalculator(object):
         if set_options is not None:
             calculator.set_options(**options)
 
-        return calculator.similarity(txt1, txt2)
+        return calculator.distance(txt1, txt2)
 
 
 

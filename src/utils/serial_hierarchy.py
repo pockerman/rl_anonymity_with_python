@@ -26,6 +26,14 @@ class SerialtHierarchyIterator(object):
         """
         return self.values[self.current_position]
 
+    @property
+    def finished(self) -> bool:
+        """
+        Returns true if the iterator is exhausted
+        :return:
+        """
+        return self.current_position >= len(self.values)
+
     def __next__(self):
 
         if self.current_position < len(self.values):
@@ -74,6 +82,13 @@ class SerialHierarchy(HierarchyBase):
         :return: the current value the hierarchy assumes
         """
         return self.iterator.at
+
+    def is_exhausted(self) -> bool:
+        """
+        Returns true if the hierarchy is finished
+        :return:
+        """
+        return self.iterator.finished
 
     def __len__(self):
         """
