@@ -31,6 +31,13 @@ class InvalidSchemaException(Exception):
         return self.message
 
 
+class InvalidStateException(Exception):
+    def __init__(self, type_name: str, state_type: str) -> None:
+        self.message = "Type= {0} is not in state= {1}".format(type_name, state_type)
+
+    def __str__(self):
+        return self.message
+
 
 
 

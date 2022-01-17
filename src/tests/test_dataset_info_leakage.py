@@ -7,7 +7,7 @@ from src.spaces.actions import ActionSuppress, ActionIdentity, ActionGeneralize
 from src.utils.serial_hierarchy import SerialHierarchy
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.utils.reward_manager import RewardManager
-from src.utils.string_distance_calculator import DistanceType
+from src.utils.string_distance_calculator import StringDistanceType
 from src.datasets.dataset_information_leakage import info_leakage
 
 
@@ -69,7 +69,7 @@ class TestDatasetInfoLeakage(unittest.TestCase):
         env = Environment(env_config=env_config)
 
         # initialize text distances
-        env.initialize_text_distances(distance_type=DistanceType.COSINE)
+        env.initialize_text_distances(distance_type=StringDistanceType.COSINE)
 
         distances, sum_distances = info_leakage(ds1=env.data_set, ds2=env.start_ds, column_distances=env.column_distances)
 
@@ -93,7 +93,7 @@ class TestDatasetInfoLeakage(unittest.TestCase):
         env = Environment(env_config=env_config)
 
         # initialize text distances
-        env.initialize_text_distances(distance_type=DistanceType.COSINE)
+        env.initialize_text_distances(distance_type=StringDistanceType.COSINE)
 
         action = env.action_space.get_action_by_column_name(column_name="gender")
 

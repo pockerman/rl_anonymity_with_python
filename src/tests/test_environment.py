@@ -8,7 +8,7 @@ from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionSuppress, ActionGeneralize
 from src.exceptions.exceptions import Error
 from src.utils.serial_hierarchy import SerialHierarchy
-from src.utils.string_distance_calculator import DistanceType
+from src.utils.string_distance_calculator import StringDistanceType
 from src.datasets.dataset_wrapper import PandasDSWrapper
 from src.utils.reward_manager import RewardManager
 
@@ -79,7 +79,7 @@ class TestEnvironment(unittest.TestCase):
         # create the environment and
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99, start_column="gender")
 
-        env.initialize_text_distances(distance_type=DistanceType.COSINE)
+        env.initialize_text_distances(distance_type=StringDistanceType.COSINE)
         env.prepare_columns_state()
 
     @pytest.mark.skip(reason="no way of currently testing this")
@@ -92,7 +92,7 @@ class TestEnvironment(unittest.TestCase):
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99,
                           start_column="gender", reward_manager=self.reward_manager)
 
-        env.initialize_text_distances(distance_type=DistanceType.COSINE)
+        env.initialize_text_distances(distance_type=StringDistanceType.COSINE)
         env.prepare_columns_state()
 
         tensor = env.get_ds_as_tensor()

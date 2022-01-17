@@ -8,13 +8,13 @@ import enum
 import numpy as np
 import pandas as pd
 import torch
-from typing import NamedTuple, Generic, Optional, TypeVar
+from typing import NamedTuple, Generic, Optional, TypeVar, List
 import multiprocessing as mp
 
 from src.exceptions.exceptions import Error
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.state_space import StateSpace, State
-from src.utils.string_distance_calculator import DistanceType, TextDistanceCalculator
+from src.utils.string_distance_calculator import StringDistanceType, TextDistanceCalculator
 from src.utils.numeric_distance_type import NumericDistanceType
 from src.datasets.dataset_information_leakage import state_leakage
 
@@ -79,7 +79,16 @@ class EnvConfig(object):
         self.average_distortion_constraint: float = 0
         self.start_column: str = "None_Column"
         self.gamma: float = 0.99
+        self.string_column_distortion_type: StringDistanceType = StringDistanceType.INVALID
         self.numeric_column_distortion_metric_type: NumericDistanceType = NumericDistanceType.INVALID
+
+
+class DiscreteEnvConfig(EnvConfig):
+    def __init__(self) -> None:
+        super(DiscreteEnvConfig, self).__init__()
+        self.n_states = 10
+        self.min_distortion = 0.4
+        self.max_distortion = 0.7
 
 
 class Environment(object):
@@ -140,7 +149,7 @@ class Environment(object):
         """
         return self.start_ds.n_rows
 
-    def initialize_text_distances(self, distance_type: DistanceType) -> None:
+    def initialize_text_distances(self, distance_type: StringDistanceType) -> None:
         """
         Initialize the text distances for features of type string
         :return: None
@@ -284,7 +293,7 @@ class Environment(object):
         """
 
         self.current_column_idx = 0
-        self.current_column = self.start_column #self.columns[self.current_column_idx]
+        self.current_column = self.start_column
 
         # reset the action space so that we can
         # re-apply any transformations
@@ -334,14 +343,14 @@ class Environment(object):
         `action` will be ignored.
         """
 
-        print("Applying action {0} on column {1}".format(action.action_type.name, action.column_name))
-
         if action.is_exhausted():
             # the selected action is exhausted
             # by choosing such an action gives neither good
             # or bad?
             return TimeStep(step_type=StepType.LAST, reward=0.0,
                             observation=None, discount=self.gamma)
+
+        print("Applying action {0} on column {1}".format(action.action_type.name, action.column_name))
 
         # apply the action
         self.apply_action(action=action)
@@ -381,6 +390,189 @@ class Environment(object):
                         observation=next_state, #self.get_column_as_tensor(column_name=action.column_name).float(),
                         discount=self.gamma)
 
+
+class DiscreteStateEnvironment(object):
+    """
+    The DiscreteStateEnvironment class. Uses state aggregation in order
+    to create bins where the average total distortion of the dataset falls in
+    """
+    def __init__(self, env_config: DiscreteEnvConfig) -> None:
+        self.config = env_config
+        self.state_bins: List[float] = []
+        self.distorted_data_set = copy.deepcopy(self.config.data_set)
+        self.current_time_step: TimeStep = None
+        self.string_distance_calculator: TextDistanceCalculator = None
+
+        # dictionary that holds the distortion for every column
+        # in the dataset
+        self.column_distances = {}
+
+        # hold a copy of the visits per
+        # column. An episode ends when all columns
+        # have been visited
+        self.column_visits = {} #[0] * self.distorted_data_set.n_columns
+        self.create_bins()
+
+    def create_bins(self) -> None:
+        """
+        Create the bins
+        :return:
+        """
+        self.state_bins = np.linspace(0.0, 1.0, self.config.n_states)
+
+    def get_aggregated_state(self, state_val: float) -> int:
+        """
+        Returns the bin index that the state_val corresponds to
+        :param state_val: The value of the state. This typically will be
+        either a column normalized distortion value or the dataset average total
+        distortion
+        :return:
+        """
+        return int(np.digitize(state_val, self.state_bins))
+
+    def initialize_column_counts(self) -> None:
+        """
+        Set the column visit counts to zero
+        :return:
+        """
+        col_names = self.config.data_set.get_columns_names()
+        for col in col_names:
+            self.column_visits[col] = 0
+
+    def all_columns_visited(self) -> bool:
+        """
+        Returns True is all column counts are greater than zero
+        :return:
+        """
+        return all(self.column_visits.values())
+
+    def initialize_distances(self) -> None:
+        """
+        Initialize the text distances for features of type string. We set the
+        normalized distance to 0.0 meaning that no distortion is assumed initially
+        :return: None
+        """
+        self.string_distance_calculator = TextDistanceCalculator(dist_type=self.config.string_column_distortion_type)
+        col_names = self.config.data_set.get_columns_names()
+        for col in col_names:
+            self.column_distances[col] = 0.0
+
+    def apply_action(self, action: ActionBase):
+        """
+        Apply the action on the environment
+        :param action: The action to apply on the environment
+        :return:
+        """
+
+        # update the column visit count
+        self.column_visits[action.column_name] += 1
+
+        # nothing to act on identity
+        if action.action_type == ActionType.IDENTITY:
+            # the distortion for the column has not changed
+            return
+
+        # apply the transform of the data set
+        self.distorted_data_set.apply_column_transform(column_name=action.column_name, transform=action)
+
+        # what is the previous and current values for the column
+        current_column = self.distorted_data_set.get_column(col_name=action.column_name)
+        start_column = self.config.data_set.get_column(col_name=action.column_name)
+
+        # calculate column distortion
+        if self.distorted_data_set.columns[action.column_name] == str:
+            # join the column to calculate the distance
+            distance = self.string_distance_calculator.calculate(txt1="".join(current_column.values),
+                                                                                                  txt2="".join(start_column.values))
+        else:
+            distance = state_leakage(state1=current_column,
+                                     state2=start_column,
+                                     dist_type=self.config.numeric_column_distortion_metric_type)
+
+        self.column_distances[action.column_name] = distance
+
+    def total_average_current_distortion(self) -> float:
+        """
+        Calculates the average total distortion of the dataset
+        by summing over the current computed distances for each column
+        :return:
+        """
+
+        return float(np.mean(self.column_distances.values()))
+
+    def reset(self, **options) -> TimeStep:
+        """
+        Starts a new sequence and returns the first `TimeStep` of this sequence.
+        Returns:
+          A `TimeStep` namedtuple containing:
+            step_type: A `StepType` of `FIRST`.
+            reward: `None`, indicating the reward is undefined.
+            discount: `None`, indicating the discount is undefined.
+            observation: A NumPy array, or a nested dict, list or tuple of arrays.
+              Scalar values that can be cast to NumPy arrays (e.g. Python floats)
+              are also valid in place of a scalar array. Must conform to the
+              specification returned by `observation_spec()`.
+        """
+
+        # reset the copy of the dataset we hold
+        self.distorted_data_set = copy.deepcopy(self.config.data_set)
+
+        # reset the action space so that we can
+        # re-apply any transformations
+        self.config.action_space.reset()
+
+        # initialize the  distances for
+        # the environment
+        self.initialize_distances()
+        self.initialize_column_counts()
+
+        # the value of the state on reset is that no
+        # distortion of the dataset exists
+        state = self.get_aggregated_state(state_val=0.0)
+
+        self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
+                                          observation=state, discount=self.config.gamma)
+
+        return self.current_time_step
+
+    def step(self, action: ActionBase) -> TimeStep:
+        """
+        Apply the action and return new state
+        :param action: The action to apply
+        :return:
+        """
+        # apply the action and update distoration
+        # and column count
+        self.apply_action(action=action)
+
+        current_distortion = self.total_average_current_distortion()
+
+        # get the reward for the current distortion
+        reward = self.config.reward_manager.get_reward(current_distortion)
+
+        # the first exit condition
+        done1 = self.all_columns_visited()
+
+        # if the current distortion is greater than
+        # the maximum allowed distortion then end the
+        # episode; the agent failed. This should be reflected
+        # in the received reward
+        done2 = current_distortion > self.config.max_distortion
+
+        # TODO: We want to consider also the scenario where
+        # the same action is chosen over and over again
+
+        done = done1 or done2
+
+        step_type = StepType.MID
+        next_state = self.get_aggregated_state(state_val=current_distortion)
+
+        if done:
+            step_type = StepType.LAST
+
+        return TimeStep(step_type=step_type, reward=reward,
+                        observation=next_state,
+                        discount=self.config.gamma)
 
 class MultiprocessEnv(object):
 

@@ -22,10 +22,15 @@ class ActionType(enum.IntEnum):
     Defines the status of an Action
     """
 
+    INVALID_TYPE = -1
     TRANSFORM = 0
     SUPPRESS = 1
     GENERALIZE = 2
     IDENTITY = 3
+    RESTORE = 4
+
+    def invalid(self) -> bool:
+        return self is ActionType.RESTORE
 
     def transform(self) -> bool:
         return self is ActionType.TRANSFORM
@@ -38,6 +43,9 @@ class ActionType(enum.IntEnum):
 
     def identity(self) -> bool:
         return self is ActionType.IDENTITY
+
+    def restore(self) -> bool:
+        return self is ActionType.RESTORE
 
 
 class ActionBase(metaclass=abc.ABCMeta):
@@ -122,6 +130,46 @@ class ActionIdentity(ActionBase):
         self.called = False
 
 
+class ActionRestore(ActionBase, WithHierarchyTable):
+    """
+    Implements the restore action
+    """
+
+    def __init__(self, column_name: str, restore_table):
+        super(ActionRestore, self).__init__(column_name=column_name, action_type=ActionType.RESTORE)
+        self.table = restore_table
+
+    def act(self, **ops):
+        """
+        Perform an action
+        :return:
+        """
+        pass
+
+    def get_maximum_number_of_transforms(self):
+        """
+        Returns the maximum number of transforms that the action applies
+        :return:
+        """
+        raise NotImplementedError("Method not implemented")
+
+    def is_exhausted(self) -> bool:
+        """
+        Returns true if the action has exhausted all its
+        transforms
+        :return:
+        """
+        raise NotImplementedError("Method not implemented")
+
+    def reinitialize(self) -> None:
+        """
+        Reinitialize the action to the state when the
+        constructor is called
+        :return:
+        """
+        raise NotImplementedError("Method not implemented")
+
+
 class ActionTransform(ActionBase):
     """
     Implements the transform action
@@ -183,6 +231,7 @@ class ActionSuppress(ActionBase, WithHierarchyTable):
 
         # generalize the data given
         for i, item in enumerate(ops["data"]):
+
             value = self.table[item].value
             col_vals[i] = value
 

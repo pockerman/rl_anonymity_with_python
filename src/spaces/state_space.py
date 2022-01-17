@@ -27,12 +27,22 @@ class State(object):
 
 class StateSpace(Discrete):
     """
-    The State space is accumulates the discrete states
+    The StateSpace class. Models a discrete state space
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(StateSpace, self).__init__(n=0)
         self.states = {}
+
+    def __iter__(self):
+        """
+        Make the class Iterable. We need to override __iter__() function inside our class.
+        :return:
+        """
+        return self.states.__iter__()
+
+    def __getitem__(self, item) -> State:
+        return self.states[item]
 
     def init_from_environment(self, env: Env):
         """
@@ -51,7 +61,12 @@ class StateSpace(Discrete):
         # set the number of discrete states
         self.n = len(self.states)
 
-    def add_state(self, state: State):
+    def add_state(self, state: State) -> None:
+        """
+        Add a new state in the state space
+        :param state:
+        :return:
+        """
         if state.column_name in self.states:
             raise ValueError("Column {0} already exists".format(state.column_name))
 
@@ -64,4 +79,8 @@ class StateSpace(Discrete):
         return self.states[name]
 
     def __len__(self):
+        """
+        Returns the size of the state space
+        :return:
+        """
         return len(self.states)

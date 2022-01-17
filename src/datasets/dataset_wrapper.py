@@ -74,7 +74,9 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
                            features_drop_names=options["features_drop_names"],
                            names=options["names"])
 
-        if "change_col_vals" in options:
+        if "change_col_vals" in options and \
+                options["change_col_vals"] is not None and \
+                len(options["change_col_vals"]) != 0:
             self.ds = replace(ds=self.ds, options=options["change_col_vals"])
 
         # try to cast to the data types

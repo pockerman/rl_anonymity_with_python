@@ -11,8 +11,11 @@ from src.utils.mixins import WithMaxActionMixin
 Env = TypeVar('Env')
 Policy = TypeVar('Policy')
 
-class QLearnConfig(object):
 
+class QLearnConfig(object):
+    """
+    Configuration  for Q-learning
+    """
     def __init__(self):
         self.gamma: float = 1.0
         self.alpha: float = 0.1
@@ -21,15 +24,14 @@ class QLearnConfig(object):
 
 
 class QLearning(WithMaxActionMixin):
+    """
+    Q-learning algorithm implementation
+    """
 
     def __init__(self, algo_config: QLearnConfig):
         super(QLearning, self).__init__()
         self.q_table = {}
         self.config = algo_config
-
-        # monitor performance
-        self.total_rewards: np.array = None
-        self.iterations_per_episode = []
 
     @property
     def name(self) -> str:

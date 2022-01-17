@@ -17,7 +17,7 @@ class Trainer(object):
         self.agent = agent
         self.configuration = configuration
         # monitor performance
-        self.total_rewards: np.array = None
+        self.total_rewards: np.array = np.zeros(configuration['n_episodes'])
         self.iterations_per_episode = []
 
     def actions_before_training(self):

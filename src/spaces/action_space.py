@@ -4,6 +4,7 @@ actions in the actions.py module
 """
 
 import numpy as np
+import random
 from gym.spaces.discrete import Discrete
 from src.spaces.actions import ActionBase
 
@@ -36,6 +37,13 @@ class ActionSpace(Discrete):
         :return: None
         """
         self.actions[key] = value
+
+    def shuffle(self) -> None:
+        """
+        Randomly shuffle the actions in the space
+        :return:
+        """
+        random.shuffle(self.actions)
 
     def get_action_by_column_name(self, column_name: str) -> ActionBase:
         """
