@@ -9,11 +9,11 @@ class TestUpdateableMap(unittest.TestCase):
     def setUp(self) -> None:
 
         self.map = UpdateableMap(list_size=3)
-        values = ["val1", "val2", "val3", "val10"]
+        values = ["val1", "val2", "val3", "val10", "-"]
         key = "key1"
         self.map.insert(key=key, values=values)
 
-        values = ["val4", "val5", "val6", "val10"]
+        values = ["val4", "val5", "val6", "val10", "-"]
         key = "key2"
         self.map.insert(key=key, values=values)
 

@@ -61,14 +61,14 @@ class SerialHierarchy(HierarchyBase):
     data field has the value 'foo' then values
      the following list ['fo*', 'f**', '***']
     """
-    def __init__(self, values: UpdateableMap = None) -> None:
+    def __init__(self, values: dict) -> None:
         """
         Constructor. Initialize the hierarchy by passing the
         list of the ensuing transformations.
         :param values:
         """
         super(SerialHierarchy, self).__init__()
-        self.hierarchy: UpdateableMap = values
+        self.hierarchy: dict = values
 
     def __getitem__(self, item):
         """
@@ -78,18 +78,8 @@ class SerialHierarchy(HierarchyBase):
         """
         return self.hierarchy[item]
 
-    def add(self, key_name: str, values: List[str]):
-        self.hierarchy[key_name] = values
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the hierarchy is finished
-        :return:
-        """
-
-
-
-        return self.iterator.finished
+    def add(self, key: Any, values: Any) -> None:
+        self.hierarchy[key] = values
 
     def __len__(self):
         """

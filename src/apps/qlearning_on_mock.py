@@ -4,7 +4,7 @@ import numpy as np
 from src.algorithms.q_learning import QLearning, QLearnConfig
 from src.algorithms.trainer import Trainer
 from src.utils.string_distance_calculator import StringDistanceType
-from src.spaces.actions import ActionSuppress, ActionIdentity, ActionGeneralize, ActionTransform
+from src.spaces.actions import ActionSuppress, ActionIdentity, ActionStringGeneralize, ActionTransform
 from src.spaces.environment import Environment, EnvConfig
 from src.spaces.action_space import ActionSpace
 from src.datasets.datasets_loaders import MockSubjectsLoader
@@ -70,7 +70,7 @@ if __name__ == '__main__':
                                                                                'M': SerialHierarchy(values=['*', ])}),
                           ActionIdentity(column_name="salary"),
                           ActionIdentity(column_name="education"),
-                          ActionGeneralize(column_name="ethnicity", generalization_table=ethinicity_table),
+                          ActionStringGeneralize(column_name="ethnicity", generalization_table=ethinicity_table),
                           ActionSuppress(column_name="preventative_treatment",
                                          suppress_table={"No":  SerialHierarchy(values=['Maybe', '*']),
                                                          'Yes': SerialHierarchy(values=['Maybe', '*']),

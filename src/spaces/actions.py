@@ -1,9 +1,13 @@
 import abc
 import enum
-from typing import List
+from typing import List, TypeVar, Any
+
+import numpy as np
 
 from src.utils.hierarchy_base import HierarchyBase
 from src.utils.mixins import WithHierarchyTable
+
+Hierarchy = TypeVar("Hierarchy")
 
 
 def move_next(iterators: List) -> None:
@@ -60,35 +64,36 @@ class ActionBase(metaclass=abc.ABCMeta):
         self.key = (self.column_name, self.action_type)
 
     @abc.abstractmethod
-    def act(self, **ops) -> None:
+    def act(self, **ops) -> Any:
         """
         Perform an action
         :return:
         """
 
+    """
     @abc.abstractmethod
     def get_maximum_number_of_transforms(self) -> int:
-        """
+    
         Returns the maximum number of transforms that the action applies
         :return:
-        """
+        
 
     @abc.abstractmethod
     def is_exhausted(self) -> bool:
-        """
+        
         Returns true if the action has exhausted all its
         transforms
         :return:
-        """
+        
 
     @abc.abstractmethod
     def reinitialize(self) -> None:
-        """
+        
         Reinitialize the action to the state when the
         constructor is called
         :return:
-        """
-
+        
+    """
 
 class ActionIdentity(ActionBase):
     """
@@ -99,35 +104,12 @@ class ActionIdentity(ActionBase):
         super(ActionIdentity, self).__init__(column_name=column_name, action_type=ActionType.IDENTITY)
         self.called = False
 
-    def act(self, **ops) -> None:
+    def act(self, **ops) -> Any:
         """
         Perform the action
         :return:
         """
         self.called = True
-
-    def get_maximum_number_of_transforms(self):
-        """
-        Returns the maximum number of transforms that the action applies
-        :return:
-        """
-        return 1
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the action has exhausted all its
-        transforms
-        :return:
-        """
-        return self.called
-
-    def reinitialize(self) -> None:
-        """
-        Reinitialize the action to the state when the
-        constructor is called
-        :return:
-        """
-        self.called = False
 
 
 class ActionRestore(ActionBase, WithHierarchyTable):
@@ -139,35 +121,12 @@ class ActionRestore(ActionBase, WithHierarchyTable):
         super(ActionRestore, self).__init__(column_name=column_name, action_type=ActionType.RESTORE)
         self.table = restore_table
 
-    def act(self, **ops):
+    def act(self, **ops) -> Any:
         """
         Perform an action
         :return:
         """
         pass
-
-    def get_maximum_number_of_transforms(self):
-        """
-        Returns the maximum number of transforms that the action applies
-        :return:
-        """
-        raise NotImplementedError("Method not implemented")
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the action has exhausted all its
-        transforms
-        :return:
-        """
-        raise NotImplementedError("Method not implemented")
-
-    def reinitialize(self) -> None:
-        """
-        Reinitialize the action to the state when the
-        constructor is called
-        :return:
-        """
-        raise NotImplementedError("Method not implemented")
 
 
 class ActionTransform(ActionBase):
@@ -177,48 +136,22 @@ class ActionTransform(ActionBase):
     def __init__(self, column_name: str):
         super(ActionTransform, self).__init__(column_name=column_name, action_type=ActionType.TRANSFORM)
 
-    def act(self, **ops):
+    def act(self, **ops) -> Any:
         """
         Perform an action
         :return:
         """
         pass
 
-    def get_maximum_number_of_transforms(self):
-        """
-        Returns the maximum number of transforms that the action applies
-        :return:
-        """
-        raise NotImplementedError("Method not implemented")
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the action has exhausted all its
-        transforms
-        :return:
-        """
-        raise NotImplementedError("Method not implemented")
-
-    def reinitialize(self) -> None:
-        """
-        Reinitialize the action to the state when the
-        constructor is called
-        :return:
-        """
-        raise NotImplementedError("Method not implemented")
-
 
 class ActionSuppress(ActionBase, WithHierarchyTable):
     """
     Implements the suppress action
     """
-    def __init__(self, column_name: str, suppress_table=None):
+    def __init__(self, column_name: str, suppress_table: Hierarchy):
         super(ActionSuppress, self).__init__(column_name=column_name, action_type=ActionType.SUPPRESS)
 
         self.table = suppress_table
-
-        # fill in the iterators
-        self.iterators = [iter(self.table[item]) for item in self.table]
 
     def act(self, **ops) -> None:
         """
@@ -227,12 +160,12 @@ class ActionSuppress(ActionBase, WithHierarchyTable):
         """
 
         # get the values of the column
-        col_vals = ops['data'].values
+        col_vals = ops['data'] #.values
 
         # generalize the data given
         for i, item in enumerate(ops["data"]):
 
-            value = self.table[item].value
+            value = self.table[item] #.value
             col_vals[i] = value
 
         ops["data"] = col_vals
@@ -240,53 +173,20 @@ class ActionSuppress(ActionBase, WithHierarchyTable):
         # update the generalization iterators
         # so next time we visit we update according to
         # the new values
-        move_next(iterators=self.iterators)
+        #move_next(iterators=self.iterators)
         return ops['data']
 
-    def get_maximum_number_of_transforms(self):
-        """
-        Returns the maximum number of transforms that the action applies
-        :return:
-        """
-        max_transform = 0
 
-        for item in self.table:
-            size = len(self.table[item])
-
-            if size > max_transform:
-                max_transform = size
-
-        return max_transform
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the action has exhausted all its
-        transforms
-        :return:
-        """
-        return self.finished()
-
-    def reinitialize(self) -> None:
-        """
-        Reinitialize the action to the state when the
-        constructor is called
-        :return:
-        """
-        self.reset_iterators()
-
-
-class ActionGeneralize(ActionBase, WithHierarchyTable):
+class ActionStringGeneralize(ActionBase, WithHierarchyTable):
     """
-    Implements the generalization action
+    Implements the generalization action. The generalization_table
+    must implement the __getitem__ function
     """
 
-    def __init__(self, column_name: str, generalization_table: dict = None):
-        super(ActionGeneralize, self).__init__(column_name=column_name, action_type=ActionType.GENERALIZE)
+    def __init__(self, column_name: str, generalization_table:  Hierarchy):
+        super(ActionStringGeneralize, self).__init__(column_name=column_name, action_type=ActionType.GENERALIZE)
 
         self.table = generalization_table
-
-        # fill in the iterators
-        self.iterators = [iter(self.table[item]) for item in self.table]
 
     def act(self, **ops):
         """
@@ -295,56 +195,71 @@ class ActionGeneralize(ActionBase, WithHierarchyTable):
         """
 
         # get the values of the column
-        col_vals = ops['data'].values
+        col_vals = ops['data'] #.values
 
         # generalize the data given
         for i, item in enumerate(col_vals):
 
             # How do we update the generalizations?
-            value = self.table[item].value
+            value = self.table[item]
             col_vals[i] = value
 
         ops["data"] = col_vals
 
-        # update the generalization iterators
-        # so next time we visit we update according to
-        # the new values
-        move_next(iterators=self.iterators)
         return ops['data']
 
-    def add_generalization(self, key: str, values: HierarchyBase) -> None:
-        self.table[key] = values
+    def add(self, key: Any, value: Any) -> None:
+        self.table.add(key, value)
 
-    def get_maximum_number_of_transforms(self):
+
+class ActionNumericBinGeneralize(ActionBase):
+
+    def __init__(self, column_name: str, generalization_table:  Hierarchy):
+        super(ActionNumericBinGeneralize, self).__init__(column_name=column_name, action_type=ActionType.GENERALIZE)
+
+        self.table = generalization_table
+        self.bins = []
+
+        start = self.table[0]
+        for i in range(1, len(self.table)):
+            self.bins.append((start, self.table[i]))
+            start = self.table[i]
+
+    def act(self, **ops):
         """
-        Returns the maximum number of transforms that the action applies
+        Perform an action
         :return:
         """
-        max_transform = 0
 
-        for item in self.table:
-            size = len(self.table[item])
+        # get the values of the column
+        col_vals = ops['data'] #.values
 
-            if size > max_transform:
-                max_transform = size
+        # generalize the data given
+        for i, item in enumerate(col_vals):
 
-        return max_transform
+            # find out the bin it belongs to
+            bin_idx = np.digitize(item, self.table)
 
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the action has exhausted all its
-        transforms
-        :return:
-        """
-        return self.finished()
+            if bin_idx == 0 or bin_idx == len(self.table):
+                # this means data is out of bounds
+                raise ValueError("Invalid bin index of value {0}. "
+                                 "Bin index={1} not in [1, {2}]".format(item, bin_idx, len(self.table)))
 
-    def reinitialize(self) -> None:
-        """
-        Reinitialize the action to the state when the
-        constructor is called
-        :return:
-        """
-        self.reset_iterators()
+            low = self.bins[bin_idx - 1][0]
+            high = self.bins[bin_idx - 1][1]
+
+            # How do we update the generalizations?
+            # use
+            value = (high + low)*0.5
+            col_vals[i] = value
+
+        ops["data"] = col_vals
+        return ops['data']
+
+
+
+
+
 
 
 

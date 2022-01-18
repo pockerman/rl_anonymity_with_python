@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.spaces.environment import Environment
 from src.spaces.action_space import ActionSpace
-from src.spaces.actions import ActionGeneralize
+from src.spaces.actions import ActionStringGeneralize
 from src.utils.serial_hierarchy import SerialHierarchy
 from src.datasets.dataset_wrapper import PandasDSWrapper
 from src.spaces.state_space import StateSpace
@@ -59,7 +59,7 @@ class TestStateSpace(unittest.TestCase):
                                 "Black Caribbean": SerialHierarchy(values=["Black", ]),
                                 "Pakistani": SerialHierarchy(values=["Asian", ])}
 
-        action_space.add(ActionGeneralize(column_name="ethnicity", generalization_table=generalization_table))
+        action_space.add(ActionStringGeneralize(column_name="ethnicity", generalization_table=generalization_table))
 
         # create the environment from the given dataset
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99, start_column="gender")
