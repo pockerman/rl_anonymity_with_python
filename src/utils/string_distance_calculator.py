@@ -21,7 +21,11 @@ class TextDistanceCalculator(object):
     Wrapper class for text distance calculation
     """
 
-    DISTANCE_TYPES = [StringDistanceType.COSINE, StringDistanceType.HAMMING]
+    DISTANCE_TYPES = [StringDistanceType.COSINE, StringDistanceType.HAMMING,
+                      StringDistanceType.COSINE_NORMALIZE, StringDistanceType.HAMMING_NORMALIZE]
+
+    NORMALIZED_DISTANCE_TYPES = [StringDistanceType.COSINE_NORMALIZE,
+                                 StringDistanceType.HAMMING_NORMALIZE]
 
     @staticmethod
     def build_calculator(dist_type: StringDistanceType):
@@ -29,9 +33,9 @@ class TextDistanceCalculator(object):
         if dist_type not in TextDistanceCalculator.DISTANCE_TYPES:
             raise Error("Distance type '{0}' is invalid".format(str(dist_type)))
 
-        if dist_type == StringDistanceType.COSINE:
+        if dist_type == StringDistanceType.COSINE or dist_type == StringDistanceType.COSINE_NORMALIZE:
             return textdistance.Cosine()
-        elif dist_type == StringDistanceType.HAMMING:
+        elif dist_type == StringDistanceType.HAMMING or dist_type == StringDistanceType.HAMMING_NORMALIZE:
             return textdistance.Hamming()
 
     def __init__(self, dist_type):
@@ -54,6 +58,9 @@ class TextDistanceCalculator(object):
 
         if set_options is not None:
             calculator.set_options(**options)
+
+        if self._dist_type in TextDistanceCalculator.NORMALIZED_DISTANCE_TYPES:
+            return calculator.normalized_distance(txt1, txt2)
 
         return calculator.distance(txt1, txt2)
 

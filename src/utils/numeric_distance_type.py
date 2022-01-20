@@ -11,6 +11,8 @@ class NumericDistanceType(enum.IntEnum):
     """
 
     # Denotes the first `TimeStep` in a sequence.
+    INVALID = -1
     L1 = 0
     L2 = 1
-    INVALID = 2
+    L2_NORMALIZED = 2
+    L1_NORMALIZED = 3

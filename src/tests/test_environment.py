@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from src.spaces.environment import Environment
+from src.spaces.discrete_state_environment import Environment
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionSuppress, ActionStringGeneralize
 from src.exceptions.exceptions import Error

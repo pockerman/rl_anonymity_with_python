@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 
 from src.spaces.actions import ActionSuppress, ActionStringGeneralize, ActionIdentity, ActionType
-from src.spaces.actions import ActionNumericBinGeneralize
+from src.spaces.actions import ActionNumericBinGeneralize, ActionNumericStepGeneralize
 
 
 class TestActions(unittest.TestCase):
@@ -13,6 +13,19 @@ class TestActions(unittest.TestCase):
 
         self.assertEqual("col1", action.column_name)
         self.assertEqual(ActionType.IDENTITY, action.action_type)
+
+    def test_step_generalization_action_type(self):
+        action = ActionNumericStepGeneralize(column_name="col1", step=1.0)
+
+        self.assertEqual("col1", action.column_name)
+        self.assertEqual(ActionType.GENERALIZE, action.action_type)
+
+    def test_step_generalization_action_act(self):
+        action = ActionNumericStepGeneralize(column_name="col1", step=1.0)
+
+        data = [1.0, 2.0, 3.0]
+        new_data = action.act(**{"data": data})
+        self.assertEqual([2.0, 4.0, 6.0], new_data)
 
     def test_suppress_action_type(self):
         action = ActionSuppress(column_name="col1", suppress_table=None)

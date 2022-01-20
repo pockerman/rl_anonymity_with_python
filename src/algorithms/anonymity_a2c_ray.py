@@ -6,7 +6,7 @@ import ray
 import ray.rllib.agents.a3c as a3c
 from ray.tune.logger import pretty_print
 from ray.rllib.env.env_context import EnvContext
-from src.spaces.environment import TimeStep, StepType
+from src.spaces.discrete_state_environment import TimeStep, StepType
 from src.spaces.observation_space import ObsSpace
 
 

@@ -1,7 +1,7 @@
 import unittest
 import pytest
 
-from src.spaces.environment import Environment, EnvConfig
+from src.spaces.discrete_state_environment import Environment, EnvConfig
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionSuppress, ActionIdentity, ActionStringGeneralize
 from src.utils.serial_hierarchy import SerialHierarchy

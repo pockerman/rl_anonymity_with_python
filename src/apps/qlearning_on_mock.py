@@ -5,7 +5,7 @@ from src.algorithms.q_learning import QLearning, QLearnConfig
 from src.algorithms.trainer import Trainer
 from src.utils.string_distance_calculator import StringDistanceType
 from src.spaces.actions import ActionSuppress, ActionIdentity, ActionStringGeneralize, ActionTransform
-from src.spaces.environment import Environment, EnvConfig
+from src.spaces.discrete_state_environment import Environment, EnvConfig
 from src.spaces.action_space import ActionSpace
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.utils.reward_manager import RewardManager

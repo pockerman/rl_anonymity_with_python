@@ -42,8 +42,8 @@ class QLearning(WithMaxActionMixin):
         if self.config.policy is None:
             raise InvalidParamValue(param_name="policy", param_value="None")
 
-        for state in range(env.observation_space.n):
-            for action in range(env.action_space.n):
+        for state in range(1, env.n_states):
+            for action in range(env.n_actions):
                 self.q_table[state, action] = 0.0
 
     def actions_after_episode_ends(self, **options):
@@ -59,8 +59,9 @@ class QLearning(WithMaxActionMixin):
     def train(self, env: Env, **options) -> tuple:
 
         # episode score
-        episode_score = 0  # initialize score
+        episode_score = 0
         counter = 0
+        total_distortion = 0
 
         time_step = env.reset()
         state = time_step.observation
@@ -72,24 +73,28 @@ class QLearning(WithMaxActionMixin):
 
             action = env.get_action(action_idx)
 
+            if action.action_type.name == "GENERALIZE" and action.column_name == "salary":
+                print("Attempt to generalize salary")
+            else:
+                print(action.action_type.name, " on ", action.column_name)
+
             # take action A, observe R, S'
             next_time_step = env.step(action)
             next_state = next_time_step.observation
             reward = next_time_step.reward
 
-            next_state_id = next_state.state_id if next_state is not None else None
-
             # add reward to agent's score
-            episode_score += next_time_step.reward
-            self._update_Q_table(state=state.state_id, action=action_idx, reward=reward,
-                                 next_state=next_state_id, n_actions=env.action_space.n)
+            episode_score += reward
+            self._update_Q_table(state=state, action=action_idx, reward=reward,
+                                 next_state=next_state, n_actions=env.n_actions)
             state = next_state  # S <- S'
             counter += 1
+            total_distortion += next_time_step.info["total_distortion"]
 
             if next_time_step.last():
                 break
 
-        return episode_score, counter
+        return episode_score, total_distortion, counter
 
     def _update_Q_table(self, state: int, action: int, n_actions: int, reward: float, next_state: int = None) -> None:
         """

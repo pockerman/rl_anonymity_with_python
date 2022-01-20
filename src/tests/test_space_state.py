@@ -5,7 +5,7 @@ Unit tests for StateSpace
 import unittest
 from pathlib import Path
 
-from src.spaces.environment import Environment
+from src.spaces.discrete_state_environment import Environment
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionStringGeneralize
 from src.utils.serial_hierarchy import SerialHierarchy

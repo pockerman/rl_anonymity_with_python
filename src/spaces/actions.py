@@ -70,30 +70,6 @@ class ActionBase(metaclass=abc.ABCMeta):
         :return:
         """
 
-    """
-    @abc.abstractmethod
-    def get_maximum_number_of_transforms(self) -> int:
-    
-        Returns the maximum number of transforms that the action applies
-        :return:
-        
-
-    @abc.abstractmethod
-    def is_exhausted(self) -> bool:
-        
-        Returns true if the action has exhausted all its
-        transforms
-        :return:
-        
-
-    @abc.abstractmethod
-    def reinitialize(self) -> None:
-        
-        Reinitialize the action to the state when the
-        constructor is called
-        :return:
-        
-    """
 
 class ActionIdentity(ActionBase):
     """
@@ -117,16 +93,28 @@ class ActionRestore(ActionBase, WithHierarchyTable):
     Implements the restore action
     """
 
-    def __init__(self, column_name: str, restore_table):
+    def __init__(self, column_name: str, restore_values: Hierarchy):
         super(ActionRestore, self).__init__(column_name=column_name, action_type=ActionType.RESTORE)
-        self.table = restore_table
+        self.table = restore_values
 
     def act(self, **ops) -> Any:
         """
         Perform an action
         :return:
         """
-        pass
+        # get the values of the column
+        col_vals = ops['data']
+
+        assert len(col_vals) == len(self.table), "Invalid size. Column size does not match self.table size"
+
+        # generalize the data given
+        for i, item in enumerate(ops["data"]):
+            value = self.table[i]
+            col_vals[i] = value
+
+        ops["data"] = col_vals
+        return ops['data']
+
 
 
 class ActionTransform(ActionBase):
@@ -169,11 +157,6 @@ class ActionSuppress(ActionBase, WithHierarchyTable):
             col_vals[i] = value
 
         ops["data"] = col_vals
-
-        # update the generalization iterators
-        # so next time we visit we update according to
-        # the new values
-        #move_next(iterators=self.iterators)
         return ops['data']
 
 
@@ -212,7 +195,7 @@ class ActionStringGeneralize(ActionBase, WithHierarchyTable):
         self.table.add(key, value)
 
 
-class ActionNumericBinGeneralize(ActionBase):
+class ActionNumericBinGeneralize(ActionBase, WithHierarchyTable):
 
     def __init__(self, column_name: str, generalization_table:  Hierarchy):
         super(ActionNumericBinGeneralize, self).__init__(column_name=column_name, action_type=ActionType.GENERALIZE)
@@ -242,7 +225,7 @@ class ActionNumericBinGeneralize(ActionBase):
 
             if bin_idx == 0 or bin_idx == len(self.table):
                 # this means data is out of bounds
-                raise ValueError("Invalid bin index of value {0}. "
+                raise ValueError("Invalid bin index for value {0}. "
                                  "Bin index={1} not in [1, {2}]".format(item, bin_idx, len(self.table)))
 
             low = self.bins[bin_idx - 1][0]
@@ -251,6 +234,30 @@ class ActionNumericBinGeneralize(ActionBase):
             # How do we update the generalizations?
             # use
             value = (high + low)*0.5
+            col_vals[i] = value
+
+        ops["data"] = col_vals
+        return ops['data']
+
+
+class ActionNumericStepGeneralize(ActionBase):
+
+    def __init__(self, column_name: str, step: float):
+        super(ActionNumericStepGeneralize, self).__init__(column_name=column_name, action_type=ActionType.GENERALIZE)
+        self.step = step
+
+    def act(self, **ops):
+        """
+        Perform an action
+        :return:
+        """
+
+        # get the values of the column
+        col_vals = ops['data']
+
+        # generalize the data given
+        for i, item in enumerate(col_vals):
+            value = item + self.step*item
             col_vals[i] = value
 
         ops["data"] = col_vals
