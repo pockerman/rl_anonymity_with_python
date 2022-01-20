@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 
 from src.preprocessor.cleanup_utils import read_csv, replace, change_column_types
+from src.exceptions.exceptions import InvalidDataTypeException
 
 DS = TypeVar("DS")
 HierarchyBase = TypeVar('HierarchyBase')
@@ -41,7 +42,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
 
         # map that holds the hierarchy to be applied
         # on each column in the dataset
-        self.column_hierarchy = {}
+        #self.column_hierarchy = {}
 
     @property
     def n_rows(self) -> int:
@@ -63,6 +64,14 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
     def schema(self) -> dict:
         return pd.io.json.build_table_schema(self.ds)
 
+    def save_to_csv(self, filename: Path) -> None:
+        """
+        Save the underlying dataset in a csv format
+        :param filename:
+        :return:
+        """
+        self.ds.to_csv(filename)
+
     def read(self, filename: Path,  **options) -> None:
         """
         Load a data set from a file
@@ -74,11 +83,32 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
                            features_drop_names=options["features_drop_names"],
                            names=options["names"])
 
-        if "change_col_vals" in options:
+        if "change_col_vals" in options and \
+                options["change_col_vals"] is not None and \
+                len(options["change_col_vals"]) != 0:
             self.ds = replace(ds=self.ds, options=options["change_col_vals"])
 
         # try to cast to the data types
         self.ds = change_column_types(ds=self.ds, column_types=self.columns)
+
+    def normalize_column(self, column_name) -> None:
+        """
+        Normalizes the column with the given name using the following
+        transformation:
+
+        z_i = \frac{x_i - min(x)}{max(x) - min(x)}
+
+        if the column is not of numeric type then this function
+        throws an InvalidDataTypeException
+        :param column_name:
+        :return:
+        """
+
+        data_type = self.columns[column_name]
+        if data_type is not int or data_type is not float:
+            raise InvalidDataTypeException(param_name=column_name, param_types="[int, float]")
+
+        raise NotImplementedError("Function is not implemented")
 
     def sample_column_name(self) -> str:
         """
@@ -96,18 +126,23 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         """
         self.ds.astype(dtype=col_name_types)
 
-    def attach_column_hierarchy(self, col_name: str, hierarchy: HierarchyBase):
-        self.column_hierarchy[col_name] = hierarchy
-
     def get_column(self, col_name: str):
+        """
+        Returns the column with the given name
+        :param col_name:
+        :return:
+        """
         return self.ds.loc[:, col_name]
 
     def get_column_unique_values(self, col_name: str):
-        # what are the unique values?
-
-        col = self.get_column(col_name=col_name)
-        vals = col.values.ravel()
-        return pd.unique(vals)
+       """
+       Returns the unique values for the column
+       :param col_name:
+       :return:
+       """
+       col = self.get_column(col_name=col_name)
+       vals = col.values.ravel()
+       return pd.unique(vals)
 
     def get_columns_types(self):
         return list(self.ds.dtypes)
@@ -134,7 +169,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
 
         # get the column
         column = self.get_column(col_name=column_name)
-        column = transform.act(**{"data": column})
+        column = transform.act(**{"data": column.values})
         self.ds[transform.column_name] = column
 
 

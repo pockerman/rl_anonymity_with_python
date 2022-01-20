@@ -26,8 +26,8 @@ class WithHierarchyTable(object):
 
     def reset_iterators(self):
         """
-            Reinitialize the iterators in the table
-            :return:
+        Reinitialize the iterators in the table
+        :return:
         """
 
         # fill in the iterators

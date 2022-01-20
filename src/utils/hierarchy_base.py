@@ -7,6 +7,7 @@ on 'foo' then 'foo' will be completely  suppressed
 """
 
 import abc
+from typing import Any
 
 
 class HierarchyBase(metaclass=abc.ABCMeta):
@@ -14,10 +15,4 @@ class HierarchyBase(metaclass=abc.ABCMeta):
     def __init__(self):
         pass
 
-    @abc.abstractmethod
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the hierarchy is finished
-        :return:
-        """
     

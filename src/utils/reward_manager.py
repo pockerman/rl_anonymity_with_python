@@ -13,23 +13,21 @@ class RewardManager(object):
     """
     Helper class to assign rewards
     """
-    def __init__(self, average_distortion_constraint: dict) -> None:
-        self.average_distortion_constraint: dict = average_distortion_constraint
+    def __init__(self, bounds: tuple, out_of_max_bound_reward: float,
+                 out_of_min_bound_reward: float,
+                 in_bounds_reward: float) -> None:
+        self.bounds = bounds
+        self.out_of_max_bound_reward: float = out_of_max_bound_reward
+        self.out_of_min_bound_reward = out_of_min_bound_reward
+        self.in_bounds_reward = in_bounds_reward
 
-    def get_state_reward(self, state_name: str, action: Action, state_distortion: float) -> float:
-        """
-        Returns the reward associated with the action
-        applied
-        :param options:
-        :return:
-        """
+    def get_reward_for_state(self, state: float, **options) -> float:
 
-        if state_name not in self.average_distortion_constraint:
-            raise KeyError("state {0} does not exist".format(state_name))
+        if state > self.bounds[1]:
+            return self.out_of_max_bound_reward
 
-        state_rewards = self.average_distortion_constraint[state_name]
+        if state < self.bounds[0]:
+            return self.out_of_min_bound_reward
 
-        if state_distortion < state_rewards[0]:
-            return state_rewards[1]
+        return self.in_bounds_reward
 
-        return state_rewards[2]

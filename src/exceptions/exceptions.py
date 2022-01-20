@@ -23,6 +23,14 @@ class InvalidParamValue(Exception):
         return self.message
 
 
+class InvalidDataTypeException(Exception):
+    def __init__(self, param_name: str, param_types: str):
+        self.message = "Parameter {0} has invalid type. Type not in {1}".format(param_name, param_types)
+
+    def __str__(self):
+        return self.message
+
+
 class InvalidSchemaException(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
@@ -30,6 +38,21 @@ class InvalidSchemaException(Exception):
     def __str__(self):
         return self.message
 
+
+class InvalidStateException(Exception):
+    def __init__(self, type_name: str, state_type: str) -> None:
+        self.message = "Type= {0} is not in state= {1}".format(type_name, state_type)
+
+    def __str__(self):
+        return self.message
+
+
+class IncompatibleVectorSizesException(Exception):
+    def __iter__(self, size1: int, size2: int) -> None:
+        self.message = "Size {0} does not match size {1} ".format(size1, size2)
+
+    def __str__(self):
+        return self.message
 
 
 

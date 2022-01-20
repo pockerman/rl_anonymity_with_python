@@ -4,14 +4,16 @@ import enum
 from src.exceptions.exceptions import Error
 
 
-class DistanceType(enum.IntEnum):
+class StringDistanceType(enum.IntEnum):
     """
-      Defines the status of a `TimeStep` within a sequence.
-      """
+    Enumeration for distinguishing among different string distance metrics.
+    """
 
-    # Denotes the first `TimeStep` in a sequence.
+    INVALID = -1
     COSINE = 0
-    HAMMING = 1
+    COSINE_NORMALIZE = 1
+    HAMMING = 2
+    HAMMING_NORMALIZE = 3
 
 
 class TextDistanceCalculator(object):
@@ -19,17 +21,21 @@ class TextDistanceCalculator(object):
     Wrapper class for text distance calculation
     """
 
-    DISTANCE_TYPES = [DistanceType.COSINE, DistanceType.HAMMING]
+    DISTANCE_TYPES = [StringDistanceType.COSINE, StringDistanceType.HAMMING,
+                      StringDistanceType.COSINE_NORMALIZE, StringDistanceType.HAMMING_NORMALIZE]
+
+    NORMALIZED_DISTANCE_TYPES = [StringDistanceType.COSINE_NORMALIZE,
+                                 StringDistanceType.HAMMING_NORMALIZE]
 
     @staticmethod
-    def build_calculator(dist_type: DistanceType):
+    def build_calculator(dist_type: StringDistanceType):
 
         if dist_type not in TextDistanceCalculator.DISTANCE_TYPES:
             raise Error("Distance type '{0}' is invalid".format(str(dist_type)))
 
-        if dist_type == DistanceType.COSINE:
+        if dist_type == StringDistanceType.COSINE or dist_type == StringDistanceType.COSINE_NORMALIZE:
             return textdistance.Cosine()
-        elif dist_type == DistanceType.HAMMING:
+        elif dist_type == StringDistanceType.HAMMING or dist_type == StringDistanceType.HAMMING_NORMALIZE:
             return textdistance.Hamming()
 
     def __init__(self, dist_type):
@@ -40,7 +46,7 @@ class TextDistanceCalculator(object):
         self._dist_type = dist_type
 
     @property
-    def distance_type(self) -> DistanceType:
+    def distance_type(self) -> StringDistanceType:
         return self._dist_type
 
     def calculate(self, txt1, txt2, **options):
@@ -52,6 +58,9 @@ class TextDistanceCalculator(object):
 
         if set_options is not None:
             calculator.set_options(**options)
+
+        if self._dist_type in TextDistanceCalculator.NORMALIZED_DISTANCE_TYPES:
+            return calculator.normalized_distance(txt1, txt2)
 
         return calculator.distance(txt1, txt2)
 

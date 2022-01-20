@@ -4,6 +4,7 @@ actions in the actions.py module
 """
 
 import numpy as np
+import random
 from gym.spaces.discrete import Discrete
 from src.spaces.actions import ActionBase
 
@@ -36,6 +37,16 @@ class ActionSpace(Discrete):
         :return: None
         """
         self.actions[key] = value
+
+    def __len__(self) -> int:
+        return len(self.actions)
+
+    def shuffle(self) -> None:
+        """
+        Randomly shuffle the actions in the space
+        :return:
+        """
+        random.shuffle(self.actions)
 
     def get_action_by_column_name(self, column_name: str) -> ActionBase:
         """
@@ -83,44 +94,4 @@ class ActionSpace(Discrete):
         action_idx = self.sample()
         return self.actions[action_idx]
 
-    def get_non_exhausted_actions(self) -> list:
-        """
-        Returns a list of actions that have not exhausted the
-        transformations that apply on a column.
-        :return: list of actions. List may be empty. Client code should handle this
-        """
-        actions_ = []
-        for action in self.actions:
-            if not action.is_exhausted():
-                actions_.append(action)
-
-        return actions_
-
-    def sample_and_get_non_exhausted(self) -> ActionBase:
-        """
-        Sample an action from the non exhausted actions
-        :return: A non-exhausted action
-        """
-        actions = self.get_non_exhausted_actions()
-        return np.random.choice(actions)
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if all the actions in the space are exhausted
-        :return:
-        """
-        finished = True
-        for action in self.actions:
-            if not action.is_exhausted():
-                return False
-
-        return finished
-
-    def reset(self) -> None:
-        """
-        Reset every action in the action space
-        :return:
-        """
-        for action in self.actions:
-            action.reinitialize()
 

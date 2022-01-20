@@ -5,6 +5,7 @@ that are applied one after the other
 
 from typing import List, Any
 from src.utils.hierarchy_base import HierarchyBase
+from src.utils.updateable_map import UpdateableMap
 
 
 class SerialtHierarchyIterator(object):
@@ -60,40 +61,30 @@ class SerialHierarchy(HierarchyBase):
     data field has the value 'foo' then values
      the following list ['fo*', 'f**', '***']
     """
-    def __init__(self, values: List) -> None:
+    def __init__(self, values: dict) -> None:
         """
         Constructor. Initialize the hierarchy by passing the
         list of the ensuing transformations.
         :param values:
         """
         super(SerialHierarchy, self).__init__()
-        self.iterator = SerialtHierarchyIterator(values=values)
+        self.hierarchy: dict = values
 
-    def __iter__(self):
+    def __getitem__(self, item):
         """
-        Make the class Iterable. We need to override __iter__() function inside our class.
+        Returns the item-th item
+        :param item:
         :return:
         """
-        return self.iterator
+        return self.hierarchy[item]
 
-    @property
-    def value(self) -> Any:
-        """
-        :return: the current value the hierarchy assumes
-        """
-        return self.iterator.at
-
-    def is_exhausted(self) -> bool:
-        """
-        Returns true if the hierarchy is finished
-        :return:
-        """
-        return self.iterator.finished
+    def add(self, key: Any, values: Any) -> None:
+        self.hierarchy[key] = values
 
     def __len__(self):
         """
         Returns the size of the hierarchy
         :return:
         """
-        return len(self.iterator)
+        return len(self.hierarchy)
 

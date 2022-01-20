@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from src.spaces.environment import Environment
+from src.spaces.discrete_state_environment import Environment
 from src.spaces.action_space import ActionSpace
-from src.spaces.actions import ActionSuppress, ActionGeneralize
+from src.spaces.actions import ActionSuppress, ActionStringGeneralize
 from src.exceptions.exceptions import Error
 from src.utils.serial_hierarchy import SerialHierarchy
-from src.utils.string_distance_calculator import DistanceType
+from src.utils.string_distance_calculator import StringDistanceType
 from src.datasets.dataset_wrapper import PandasDSWrapper
 from src.utils.reward_manager import RewardManager
 
@@ -79,7 +79,7 @@ class TestEnvironment(unittest.TestCase):
         # create the environment and
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99, start_column="gender")
 
-        env.initialize_text_distances(distance_type=DistanceType.COSINE)
+        env.initialize_text_distances(distance_type=StringDistanceType.COSINE)
         env.prepare_columns_state()
 
     @pytest.mark.skip(reason="no way of currently testing this")
@@ -92,7 +92,7 @@ class TestEnvironment(unittest.TestCase):
         env = Environment(data_set=self.ds, action_space=action_space, gamma=0.99,
                           start_column="gender", reward_manager=self.reward_manager)
 
-        env.initialize_text_distances(distance_type=DistanceType.COSINE)
+        env.initialize_text_distances(distance_type=StringDistanceType.COSINE)
         env.prepare_columns_state()
 
         tensor = env.get_ds_as_tensor()
@@ -109,7 +109,7 @@ class TestEnvironment(unittest.TestCase):
         # are performed
         action_space = ActionSpace(n=1)
 
-        action_space.add(ActionGeneralize(column_name="ethnicity", generalization_table=self.generalization_table))
+        action_space.add(ActionStringGeneralize(column_name="ethnicity", generalization_table=self.generalization_table))
 
         # create the environment and
         env = Environment(data_set=self.ds, action_space=action_space,
@@ -130,7 +130,7 @@ class TestEnvironment(unittest.TestCase):
         # specify the action space. We need to establish how these actions
         # are performed
         action_space = ActionSpace(n=1)
-        action_space.add(ActionGeneralize(column_name="ethnicity", generalization_table=self.generalization_table))
+        action_space.add(ActionStringGeneralize(column_name="ethnicity", generalization_table=self.generalization_table))
 
         # create the environment and
         env = Environment(data_set=self.ds, action_space=action_space,
