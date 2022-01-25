@@ -40,10 +40,6 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
 
         self.columns: dir = columns
 
-        # map that holds the hierarchy to be applied
-        # on each column in the dataset
-        #self.column_hierarchy = {}
-
     @property
     def n_rows(self) -> int:
         """
@@ -91,6 +87,11 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         # try to cast to the data types
         self.ds = change_column_types(ds=self.ds, column_types=self.columns)
 
+        if "column_normalization" in options and \
+                options["column_normalization"] is not None:
+            for col in options["column_normalization"]:
+                self.normalize_column(column_name=col)
+
     def normalize_column(self, column_name) -> None:
         """
         Normalizes the column with the given name using the following
@@ -108,7 +109,15 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         if data_type is not int or data_type is not float:
             raise InvalidDataTypeException(param_name=column_name, param_types="[int, float]")
 
-        raise NotImplementedError("Function is not implemented")
+        col_vals = self.get_column(col_name=column_name).values
+
+        min_val = np.min(col_vals)
+        max_val = np.max(col_vals)
+
+        for i in range(len(col_vals)):
+            col_vals[i] = (col_vals[i] - min_val) / (max_val - min_val)
+
+        self.ds[column_name] = col_vals
 
     def sample_column_name(self) -> str:
         """
