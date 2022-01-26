@@ -1,3 +1,5 @@
+from typing import Any
+
 
 class Error(Exception):
     """
@@ -24,8 +26,8 @@ class InvalidParamValue(Exception):
 
 
 class InvalidDataTypeException(Exception):
-    def __init__(self, param_name: str, param_types: str):
-        self.message = "Parameter {0} has invalid type. Type not in {1}".format(param_name, param_types)
+    def __init__(self, param_name: str, param_type: Any, param_types: str):
+        self.message = "Parameter {0} has invalid type. Type {1} not in {2}".format(param_name, str(Any), param_types)
 
     def __str__(self):
         return self.message
@@ -48,7 +50,7 @@ class InvalidStateException(Exception):
 
 
 class IncompatibleVectorSizesException(Exception):
-    def __iter__(self, size1: int, size2: int) -> None:
+    def __init__(self, size1: int, size2: int) -> None:
         self.message = "Size {0} does not match size {1} ".format(size1, size2)
 
     def __str__(self):

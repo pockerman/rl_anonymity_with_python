@@ -16,3 +16,4 @@ class NumericDistanceType(enum.IntEnum):
     L2 = 1
     L2_NORMALIZED = 2
     L1_NORMALIZED = 3
+    L2_AVG = 4

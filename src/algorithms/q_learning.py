@@ -56,6 +56,21 @@ class QLearning(WithMaxActionMixin):
 
         self.config.policy.actions_after_episode(options['episode_idx'])
 
+    def play(self, env: Env) -> None:
+        """
+        Play the game on the environment. This should produce
+        a distorted dataset
+        :param env:
+        :return:
+        """
+
+        # loop over the columns and for the
+        # column get the action that corresponds to
+        # the max payout.
+        # TODO: This will no work as the distortion is calculated
+        # by summing over the columns.
+        raise NotImplementedError("Function not implemented")
+
     def train(self, env: Env, **options) -> tuple:
 
         # episode score
@@ -73,10 +88,10 @@ class QLearning(WithMaxActionMixin):
 
             action = env.get_action(action_idx)
 
-            if action.action_type.name == "GENERALIZE" and action.column_name == "salary":
-                print("Attempt to generalize salary")
-            else:
-                print(action.action_type.name, " on ", action.column_name)
+            #if action.action_type.name == "GENERALIZE" and action.column_name == "salary":
+             #   print("Attempt to generalize salary")
+            #else:
+             #   print(action.action_type.name, " on ", action.column_name)
 
             # take action A, observe R, S'
             next_time_step = env.step(action)

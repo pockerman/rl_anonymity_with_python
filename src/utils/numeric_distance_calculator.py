@@ -25,13 +25,25 @@ def _numeric_distance_calculator(state1: Vector, state2: Vector, dist_type: Nume
         raise IncompatibleVectorSizesException(size1=len(state1), size2=len(state2))
 
     if dist_type == NumericDistanceType.L1:
-        return _l1_state_leakage(state1=state1, state2=state2)
+        return np.linalg.norm(state1 - state2, ord=1)
     elif dist_type == NumericDistanceType.L2:
-        return _l1_state_leakage(state1=state1, state2=state2)
+        return np.linalg.norm(state1 - state2, ord=None)
     elif dist_type == NumericDistanceType.L2_NORMALIZED:
         return _normalized_l2_distance(state1=state1, state2=state2)
+    elif dist_type == NumericDistanceType.L2_AVG:
+        return _avg_l2_distance(state1=state1, state2=state2)
 
     raise InvalidParamValue(param_name="dist_type", param_value=dist_type.name)
+
+
+def _avg_l2_distance(state1: Vector, state2: Vector) -> float:
+
+    size = len(state1)
+    dist = 0.0
+    for item1, item2 in zip(state1, state2):
+        dist += ((item1 - item2) ** 2)
+
+    return np.sqrt(dist / float(size))
 
 
 def _normalized_l2_distance(state1: Vector, state2: Vector) -> float:
@@ -49,8 +61,11 @@ def _normalized_l2_distance(state1: Vector, state2: Vector) -> float:
 
     return np.sqrt(dist)
 
+
+"""
 def _l2_state_leakage(state1: Vector, state2: Vector) -> float:
     return np.linalg.norm(state1 - state2, ord=None)
 
 def _l1_state_leakage(state1: Vector, state2: Vector) -> float:
     return np.linalg.norm(state1 - state2, ord=1)
+"""
