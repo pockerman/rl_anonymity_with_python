@@ -106,8 +106,9 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         """
 
         data_type = self.columns[column_name]
-        if data_type is not int or data_type is not float:
-            raise InvalidDataTypeException(param_name=column_name, param_types="[int, float]")
+
+        if data_type is not type(1) and data_type is not type(1.0):
+            raise InvalidDataTypeException(param_name=column_name, param_type=data_type, param_types="[int, float]")
 
         col_vals = self.get_column(col_name=column_name).values
 
@@ -115,7 +116,7 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         max_val = np.max(col_vals)
 
         for i in range(len(col_vals)):
-            col_vals[i] = (col_vals[i] - min_val) / (max_val - min_val)
+            col_vals[i] = float((col_vals[i] - min_val)) / float((max_val - min_val))
 
         self.ds[column_name] = col_vals
 

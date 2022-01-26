@@ -6,7 +6,7 @@ actions in the actions.py module
 import numpy as np
 import random
 from gym.spaces.discrete import Discrete
-from src.spaces.actions import ActionBase
+from src.spaces.actions import ActionBase, ActionType
 
 
 class ActionSpace(Discrete):
@@ -48,7 +48,7 @@ class ActionSpace(Discrete):
         """
         random.shuffle(self.actions)
 
-    def get_action_by_column_name(self, column_name: str) -> ActionBase:
+    def get_action_by_name_and_type(self, column_name: str, action_type: ActionType) -> ActionBase:
         """
         Get the action that corresponds to the column with
         the given name. Raises ValueError if such an action does not
@@ -58,10 +58,11 @@ class ActionSpace(Discrete):
         """
 
         for action in self.actions:
-            if action.column_name == column_name:
+            if action.column_name == column_name and \
+                    action.action_type == action_type:
                 return action
 
-        raise ValueError("No action exists for column={0}".format(column_name))
+        raise ValueError("No action exists for column={0} with type {1}".format(column_name, action_type.name))
 
     def add(self, action: ActionBase) -> None:
         """

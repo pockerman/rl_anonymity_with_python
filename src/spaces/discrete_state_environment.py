@@ -17,10 +17,10 @@ from src.utils.string_distance_calculator import StringDistanceType, TextDistanc
 from src.utils.numeric_distance_type import NumericDistanceType
 from src.utils.numeric_distance_calculator import NumericDistanceCalculator
 
-
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
 ActionSpace = TypeVar("ActionSpace")
+DistortionCalculator = TypeVar('DistortionCalculator')
 
 _Reward = TypeVar('_Reward')
 _Discount = TypeVar('_Discount')
@@ -72,19 +72,21 @@ class DiscreteEnvConfig(object):
     """
     Configuration for discrete environment
     """
+
     def __init__(self) -> None:
         self.data_set: DataSet = None
         self.action_space: ActionSpace = None
         self.reward_manager: RewardManager = None
         self.average_distortion_constraint: float = 0.0
         self.gamma: float = 0.99
-        self.string_column_distortion_type: StringDistanceType = StringDistanceType.INVALID
-        self.numeric_column_distortion_metric_type: NumericDistanceType = NumericDistanceType.INVALID
+        # self.string_column_distortion_type: StringDistanceType = StringDistanceType.INVALID
+        # self.numeric_column_distortion_metric_type: NumericDistanceType = NumericDistanceType.INVALID
         self.n_states: int = 10
         self.min_distortion: float = 0.4
         self.max_distortion: float = 0.7
         self.n_rounds_below_min_distortion: int = 10
         self.distorted_set_path: Path = None
+        self.distortion_calculator: DistortionCalculator = None
 
 
 class DiscreteStateEnvironment(object):
@@ -92,13 +94,14 @@ class DiscreteStateEnvironment(object):
     The DiscreteStateEnvironment class. Uses state aggregation in order
     to create bins where the average total distortion of the dataset falls in
     """
+
     def __init__(self, env_config: DiscreteEnvConfig) -> None:
         self.config = env_config
         self.n_rounds_below_min_distortion = 0
         self.state_bins: List[float] = []
         self.distorted_data_set = copy.deepcopy(self.config.data_set)
         self.current_time_step: TimeStep = None
-        self.string_distance_calculator: TextDistanceCalculator = None
+        # self.string_distance_calculator: TextDistanceCalculator = None
 
         # dictionary that holds the distortion for every column
         # in the dataset
@@ -126,7 +129,8 @@ class DiscreteStateEnvironment(object):
         return self.config.action_space[aidx]
 
     def save_current_dataset(self, episode_index: int) -> None:
-        self.distorted_data_set.save_to_csv(filename=Path(str(self.config.distorted_set_path) + "_" + str(episode_index)))
+        self.distorted_data_set.save_to_csv(
+            filename=Path(str(self.config.distorted_set_path) + "_" + str(episode_index)))
 
     def create_bins(self) -> None:
         """
@@ -167,7 +171,7 @@ class DiscreteStateEnvironment(object):
         normalized distance to 0.0 meaning that no distortion is assumed initially
         :return: None
         """
-        self.string_distance_calculator = TextDistanceCalculator(dist_type=self.config.string_column_distortion_type)
+        # self.string_distance_calculator = TextDistanceCalculator(dist_type=self.config.string_column_distortion_type)
         col_names = self.config.data_set.get_columns_names()
         for col in col_names:
             self.column_distances[col] = 0.0
@@ -194,14 +198,21 @@ class DiscreteStateEnvironment(object):
         current_column = self.distorted_data_set.get_column(col_name=action.column_name)
         start_column = self.config.data_set.get_column(col_name=action.column_name)
 
+        datatype = 'float'
         # calculate column distortion
         if self.distorted_data_set.columns[action.column_name] == str:
+            current_column = "".join(current_column.values)
+            start_column = "".join(start_column.values)
+            datatype = 'str'
+
             # join the column to calculate the distance
-            distance = self.string_distance_calculator.calculate(txt1="".join(current_column.values),
-                                                                 txt2="".join(start_column.values))
-        else:
-            distance = NumericDistanceCalculator(dist_type=self.config.numeric_column_distortion_metric_type)\
-                .calculate(state1=current_column, state2=start_column)
+            # distance = self.string_distance_calculator.calculate(txt1="".join(current_column.values),
+            #                                                     txt2="".join(start_column.values))
+        # else:
+        #    distance = NumericDistanceCalculator(dist_type=self.config.numeric_column_distortion_metric_type)\
+        #       .calculate(state1=current_column, state2=start_column)
+
+        distance = self.config.distortion_calculator.calculate(current_column, start_column, datatype)
 
         self.column_distances[action.column_name] = distance
 
@@ -212,7 +223,8 @@ class DiscreteStateEnvironment(object):
         :return:
         """
 
-        return float(np.mean(list(self.column_distances.values())))
+        return self.config.distortion_calculator.total_distortion(
+            list(self.column_distances.values()))  # float(np.mean(list(self.column_distances.values())))
 
     def reset(self, **options) -> TimeStep:
         """
@@ -294,6 +306,31 @@ class DiscreteStateEnvironment(object):
         step_type = StepType.MID
         next_state = self.get_aggregated_state(state_val=current_distortion)
 
+        # get the bin for the min distortion
+        min_dist_bin = self.get_aggregated_state(state_val=self.config.min_distortion)
+        max_dist_bin = self.get_aggregated_state(state_val=self.config.max_distortion)
+
+        # TODO: these modifications will cause the agent to always
+        # move close to transition points
+        if next_state < min_dist_bin <= self.current_time_step.observation:
+            # the agent chose to step into the chaos again
+            # we punish him with double the reward
+            reward = 2.0 * self.config.reward_manager.out_of_min_bound_reward
+        elif next_state > max_dist_bin >= self.current_time_step.observation:
+            # the agent is going to chaos from above
+            # punish him
+            reward = 2.0 * self.config.reward_manager.out_of_max_bound_reward
+
+        elif next_state >= min_dist_bin > self.current_time_step.observation:
+            # the agent goes towards the transition of min point so give a higher reward
+            # for this
+            reward = 0.95 * self.config.reward_manager.in_bounds_reward
+
+        elif next_state <= max_dist_bin < self.current_time_step.observation:
+            # the agent goes towards the transition of max point so give a higher reward
+            # for this
+            reward = 0.95 * self.config.reward_manager.in_bounds_reward
+
         if next_state >= self.n_states:
             done = True
 
@@ -301,9 +338,11 @@ class DiscreteStateEnvironment(object):
             step_type = StepType.LAST
             next_state = None
 
-        return TimeStep(step_type=step_type, reward=reward,
-                        observation=next_state,
-                        discount=self.config.gamma, info={"total_distortion": current_distortion})
+        self.current_time_step = TimeStep(step_type=step_type, reward=reward,
+                                          observation=next_state,
+                                          discount=self.config.gamma, info={"total_distortion": current_distortion})
+
+        return self.current_time_step
 
 
 class MultiprocessEnv(object):
