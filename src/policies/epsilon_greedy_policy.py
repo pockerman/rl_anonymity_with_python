@@ -6,7 +6,6 @@ import numpy as np
 from enum import Enum
 from typing import Any, TypeVar
 
-
 from src.utils.mixins import WithMaxActionMixin
 
 UserDefinedDecreaseMethod = TypeVar('UserDefinedDecreaseMethod')
@@ -42,7 +41,10 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
         self._epsilon_decay_factor = epsilon_decay_factor
         self.user_defined_decrease_method: UserDefinedDecreaseMethod = user_defined_decrease_method
 
-    def __call__(self, q_func: QTable, state: Any) -> int:
+    def __str__(self) -> str:
+        return self.__name__
+
+    def __call__(self, q_table: QTable, state: Any) -> int:
         """
         Execute the policy
         :param q_func:
@@ -50,17 +52,26 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
         :return:
         """
 
+        # update the store q_table
+        self.q_table = q_table
+
         # select greedy action with probability epsilon
         if random.random() > self._eps:
-            self.q_table = q_func
             return self.max_action(state=state, n_actions=self._n_actions)
-
         else:
 
             # otherwise, select an action randomly
             # what happens if we select an action that
             # has exhausted it's transforms?
             return random.choice(np.arange(self._n_actions))
+
+    def on_state(self, state: Any) -> int:
+        """
+        Returns the optimal action on the current state
+        :param state:
+        :return:
+        """
+        return self.max_action(state=state, n_actions=self._n_actions)
 
     def actions_after_episode(self, episode_idx: int, **options) -> None:
         """

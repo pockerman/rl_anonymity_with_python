@@ -5,7 +5,6 @@ that are applied one after the other
 
 from typing import List, Any
 from src.utils.hierarchy_base import HierarchyBase
-from src.utils.updateable_map import UpdateableMap
 
 
 class SerialtHierarchyIterator(object):
