@@ -27,7 +27,7 @@ class IterationControl(object):
 
         # TODO: There is no way currently we go back
         # to acceptable distortions
-        if VERSION == '0.0.1-alpha':
+        if VERSION == '0.0.3-alpha':
             if distortion > self.max_dist:
                 print("{0} Finished iteration with distortion={1} "
                       "in [{2}, {3}]. Number of iterations={4}".format(INFO, distortion, self.min_dist,
