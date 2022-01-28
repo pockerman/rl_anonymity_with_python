@@ -6,10 +6,11 @@ import numpy as np
 from typing import TypeVar
 
 from src.exceptions.exceptions import InvalidParamValue
-from src.utils.mixins import WithMaxActionMixin
+from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase
 
 Env = TypeVar('Env')
 Policy = TypeVar('Policy')
+Criterion = TypeVar('Criterion')
 
 
 class QLearnConfig(object):
@@ -39,8 +40,8 @@ class QLearning(WithMaxActionMixin):
 
     def actions_before_training(self, env: Env, **options):
 
-        if self.config.policy is None:
-            raise InvalidParamValue(param_name="policy", param_value="None")
+        if not isinstance(self.config.policy, WithQTableMixinBase):
+            raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
 
         for state in range(1, env.n_states):
             for action in range(env.n_actions):
@@ -56,10 +57,11 @@ class QLearning(WithMaxActionMixin):
 
         self.config.policy.actions_after_episode(options['episode_idx'])
 
-    def play(self, env: Env) -> None:
+    def play(self, env: Env, stop_criterion: Criterion) -> None:
         """
         Play the game on the environment. This should produce
         a distorted dataset
+        :param stop_criterion:
         :param env:
         :return:
         """
@@ -69,7 +71,23 @@ class QLearning(WithMaxActionMixin):
         # the max payout.
         # TODO: This will no work as the distortion is calculated
         # by summing over the columns.
-        raise NotImplementedError("Function not implemented")
+
+        # set the q_table for the policy
+        self.config.policy.q_table = self.q_table
+        total_dist = env.total_average_current_distortion()
+        while stop_criterion.continue_itr(total_dist):
+
+            if stop_criterion.iteration_counter == 12:
+                print("Break...")
+
+            # use the policy to select an action
+            state_idx = env.get_aggregated_state(total_dist)
+            action_idx = self.config.policy.on_state(state_idx)
+            action = env.get_action(action_idx)
+            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state_idx, total_dist,
+                                                                                  action.column_name + "-" + action.action_type.name))
+            env.step(action=action)
+            total_dist = env.total_average_current_distortion()
 
     def train(self, env: Env, **options) -> tuple:
 
@@ -84,14 +102,9 @@ class QLearning(WithMaxActionMixin):
         for itr in range(self.config.n_itrs_per_episode):
 
             # epsilon-greedy action selection
-            action_idx = self.config.policy(q_func=self.q_table, state=state)
+            action_idx = self.config.policy(q_table=self.q_table, state=state)
 
             action = env.get_action(action_idx)
-
-            #if action.action_type.name == "GENERALIZE" and action.column_name == "salary":
-             #   print("Attempt to generalize salary")
-            #else:
-             #   print(action.action_type.name, " on ", action.column_name)
 
             # take action A, observe R, S'
             next_time_step = env.step(action)
@@ -111,7 +124,8 @@ class QLearning(WithMaxActionMixin):
 
         return episode_score, total_distortion, counter
 
-    def _update_Q_table(self, state: int, action: int, n_actions: int, reward: float, next_state: int = None) -> None:
+    def _update_Q_table(self, state: int, action: int, n_actions: int,
+                        reward: float, next_state: int = None) -> None:
         """
         Update the Q-value for the state
         """

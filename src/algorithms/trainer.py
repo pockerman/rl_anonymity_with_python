@@ -32,6 +32,17 @@ class Trainer(object):
             avg[i] = self.total_rewards[i] / self.iterations_per_episode[i]
         return avg
 
+    def avg_distortion(self) -> np.array:
+        """
+        Returns the average reward per episode
+        :return:
+        """
+        avg = np.zeros(self.configuration['n_episodes'])
+
+        for i in range(len(self.total_distortions)):
+            avg[i] = self.total_distortions[i] / self.iterations_per_episode[i]
+        return avg
+
     def actions_before_training(self):
         """
         Any actions to perform before training begins

@@ -129,6 +129,11 @@ class DiscreteStateEnvironment(object):
         return self.config.action_space[aidx]
 
     def save_current_dataset(self, episode_index: int) -> None:
+        """
+        Save the current distorted datase for the given episode index
+        :param episode_index:
+        :return:
+        """
         self.distorted_data_set.save_to_csv(
             filename=Path(str(self.config.distorted_set_path) + "_" + str(episode_index)))
 
@@ -192,7 +197,8 @@ class DiscreteStateEnvironment(object):
             return
 
         # apply the transform of the data set
-        self.distorted_data_set.apply_column_transform(column_name=action.column_name, transform=action)
+        self.distorted_data_set.apply_column_transform(column_name=action.column_name,
+                                                       transform=action)
 
         # what is the previous and current values for the column
         current_column = self.distorted_data_set.get_column(col_name=action.column_name)
@@ -205,14 +211,8 @@ class DiscreteStateEnvironment(object):
             start_column = "".join(start_column.values)
             datatype = 'str'
 
-            # join the column to calculate the distance
-            # distance = self.string_distance_calculator.calculate(txt1="".join(current_column.values),
-            #                                                     txt2="".join(start_column.values))
-        # else:
-        #    distance = NumericDistanceCalculator(dist_type=self.config.numeric_column_distortion_metric_type)\
-        #       .calculate(state1=current_column, state2=start_column)
-
-        distance = self.config.distortion_calculator.calculate(current_column, start_column, datatype)
+        distance = self.config.distortion_calculator.calculate(current_column,
+                                                               start_column, datatype)
 
         self.column_distances[action.column_name] = distance
 
@@ -312,35 +312,38 @@ class DiscreteStateEnvironment(object):
 
         # TODO: these modifications will cause the agent to always
         # move close to transition points
-        if next_state < min_dist_bin <= self.current_time_step.observation:
-            # the agent chose to step into the chaos again
-            # we punish him with double the reward
-            reward = 2.0 * self.config.reward_manager.out_of_min_bound_reward
-        elif next_state > max_dist_bin >= self.current_time_step.observation:
-            # the agent is going to chaos from above
-            # punish him
-            reward = 2.0 * self.config.reward_manager.out_of_max_bound_reward
+        if next_state is not None and self.current_time_step.observation is not None:
+            if next_state < min_dist_bin <= self.current_time_step.observation:
+                # the agent chose to step into the chaos again
+                # we punish him with double the reward
+                reward = 2.0 * self.config.reward_manager.out_of_min_bound_reward
+            elif next_state > max_dist_bin >= self.current_time_step.observation:
+                # the agent is going to chaos from above
+                # punish him
+                reward = 2.0 * self.config.reward_manager.out_of_max_bound_reward
 
-        elif next_state >= min_dist_bin > self.current_time_step.observation:
-            # the agent goes towards the transition of min point so give a higher reward
-            # for this
-            reward = 0.95 * self.config.reward_manager.in_bounds_reward
+            elif next_state >= min_dist_bin > self.current_time_step.observation:
+                # the agent goes towards the transition of min point so give a higher reward
+                # for this
+                reward = 0.95 * self.config.reward_manager.in_bounds_reward
 
-        elif next_state <= max_dist_bin < self.current_time_step.observation:
-            # the agent goes towards the transition of max point so give a higher reward
-            # for this
-            reward = 0.95 * self.config.reward_manager.in_bounds_reward
+            elif next_state <= max_dist_bin < self.current_time_step.observation:
+                # the agent goes towards the transition of max point so give a higher reward
+                # for this
+                reward = 0.95 * self.config.reward_manager.in_bounds_reward
 
-        if next_state >= self.n_states:
+        if next_state is None or next_state >= self.n_states:
             done = True
 
         if done:
             step_type = StepType.LAST
             next_state = None
 
-        self.current_time_step = TimeStep(step_type=step_type, reward=reward,
+        self.current_time_step = TimeStep(step_type=step_type,
+                                          reward=reward,
                                           observation=next_state,
-                                          discount=self.config.gamma, info={"total_distortion": current_distortion})
+                                          discount=self.config.gamma,
+                                          info={"total_distortion": current_distortion})
 
         return self.current_time_step
 
