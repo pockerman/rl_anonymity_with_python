@@ -74,7 +74,7 @@ class QLearning(WithMaxActionMixin):
 
         # set the q_table for the policy
         self.config.policy.q_table = self.q_table
-        total_dist = env.total_average_current_distortion()
+        total_dist = env.total_current_distortion()
         while stop_criterion.continue_itr(total_dist):
 
             if stop_criterion.iteration_counter == 12:
@@ -87,7 +87,7 @@ class QLearning(WithMaxActionMixin):
             print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state_idx, total_dist,
                                                                                   action.column_name + "-" + action.action_type.name))
             env.step(action=action)
-            total_dist = env.total_average_current_distortion()
+            total_dist = env.total_current_distortion()
 
     def train(self, env: Env, **options) -> tuple:
 
