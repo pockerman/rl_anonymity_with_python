@@ -128,14 +128,16 @@ class DiscreteStateEnvironment(object):
     def get_action(self, aidx: int) -> ActionBase:
         return self.config.action_space[aidx]
 
-    def save_current_dataset(self, episode_index: int) -> None:
+    def save_current_dataset(self, episode_index: int, save_index: bool = False) -> None:
         """
         Save the current distorted datase for the given episode index
         :param episode_index:
+        :param save_index:
         :return:
         """
         self.distorted_data_set.save_to_csv(
-            filename=Path(str(self.config.distorted_set_path) + "_" + str(episode_index)))
+            filename=Path(str(self.config.distorted_set_path) + "_" + str(episode_index)),
+            save_index=save_index)
 
     def create_bins(self) -> None:
         """
@@ -216,15 +218,14 @@ class DiscreteStateEnvironment(object):
 
         self.column_distances[action.column_name] = distance
 
-    def total_average_current_distortion(self) -> float:
+    def total_current_distortion(self) -> float:
         """
-        Calculates the average total distortion of the dataset
-        by summing over the current computed distances for each column
+        Calculates the current total distortion of the dataset.
         :return:
         """
 
         return self.config.distortion_calculator.total_distortion(
-            list(self.column_distances.values()))  # float(np.mean(list(self.column_distances.values())))
+            list(self.column_distances.values()))
 
     def reset(self, **options) -> TimeStep:
         """
@@ -270,7 +271,7 @@ class DiscreteStateEnvironment(object):
         self.apply_action(action=action)
 
         # calculate the distortion of the dataset
-        current_distortion = self.total_average_current_distortion()
+        current_distortion = self.total_current_distortion()
 
         # get the reward for the current distortion
         reward = self.config.reward_manager.get_reward_for_state(state=current_distortion, **{"action": action})
@@ -312,6 +313,7 @@ class DiscreteStateEnvironment(object):
 
         # TODO: these modifications will cause the agent to always
         # move close to transition points
+        # TODO: Remove the magic constants
         if next_state is not None and self.current_time_step.observation is not None:
             if next_state < min_dist_bin <= self.current_time_step.observation:
                 # the agent chose to step into the chaos again

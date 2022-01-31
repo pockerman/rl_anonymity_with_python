@@ -29,7 +29,6 @@ class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
 
 
 class PandasDSWrapper(DSWrapper[pd.DataFrame]):
-
     """
     Simple wrapper to a pandas DataFrame object.
     Facilitates various actions on the original dataset
@@ -60,15 +59,15 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
     def schema(self) -> dict:
         return pd.io.json.build_table_schema(self.ds)
 
-    def save_to_csv(self, filename: Path) -> None:
+    def save_to_csv(self, filename: Path, save_index: bool) -> None:
         """
         Save the underlying dataset in a csv format
         :param filename:
         :return:
         """
-        self.ds.to_csv(filename)
+        self.ds.to_csv(filename, index=save_index)
 
-    def read(self, filename: Path,  **options) -> None:
+    def read(self, filename: Path, **options) -> None:
         """
         Load a data set from a file
         :param filename:
@@ -145,14 +144,14 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         return self.ds.loc[:, col_name]
 
     def get_column_unique_values(self, col_name: str):
-       """
+        """
        Returns the unique values for the column
        :param col_name:
        :return:
        """
-       col = self.get_column(col_name=col_name)
-       vals = col.values.ravel()
-       return pd.unique(vals)
+        col = self.get_column(col_name=col_name)
+        vals = col.values.ravel()
+        return pd.unique(vals)
 
     def get_columns_types(self):
         return list(self.ds.dtypes)
@@ -181,8 +180,3 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         column = self.get_column(col_name=column_name)
         column = transform.act(**{"data": column.values})
         self.ds[transform.column_name] = column
-
-
-
-
-

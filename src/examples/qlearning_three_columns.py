@@ -151,11 +151,10 @@ if __name__ == '__main__':
     # create the environment
     env = DiscreteStateEnvironment(env_config=env_config)
     env.reset()
-    env.save_current_dataset(episode_index=-1)
 
-    # save the original dataset for comparison
-    env.save_current_dataset(episode_index=-1)
-    env.reset()
+    # save the data before distortion so that we can
+    # later load it on ARX
+    env.save_current_dataset(episode_index=-1, save_index=False)
 
     # configuration for the Q-learner
     algo_config = QLearnConfig()
@@ -195,7 +194,8 @@ if __name__ == '__main__':
 
     stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
     agent.play(env=env, stop_criterion=stop_criterion)
-    env.save_current_dataset(episode_index=-2)
-
+    env.save_current_dataset(episode_index=-2, save_index=False)
+    print("{0} Done....".format(INFO))
+    print("=============================================")
 
 
