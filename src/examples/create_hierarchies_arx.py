@@ -3,6 +3,7 @@ This example shows how to create hierarchies suitable to
 be loaded in the ARX tool
 """
 import csv
+import numpy as np
 from src.datasets.datasets_loaders import MockSubjectsLoader
 
 
@@ -14,8 +15,8 @@ def get_ethnicity_hierarchy():
     ethnicity_hierarchy["Chinese"] = ["Asian", "Asian"]
     ethnicity_hierarchy["Indian"] = ["Asian", "Asian"]
     ethnicity_hierarchy["Mixed White/Black African"] = ["White/Black", "Mixed"]
-    ethnicity_hierarchy["Black African"] = ["Black", "African"]
-    ethnicity_hierarchy["Asian other"] = ["Asian", "Other"]
+    ethnicity_hierarchy["Black African"] = ["African", "Black"]
+    ethnicity_hierarchy["Asian other"] = ["Asian", "Asian"]
     ethnicity_hierarchy["Black other"] = ["Black", "Other"]
     ethnicity_hierarchy["Mixed White/Black Caribbean"] = ["White/Black", "Mixed"]
     ethnicity_hierarchy["Mixed other"] = ["Mixed", "Mixe"]
@@ -26,7 +27,7 @@ def get_ethnicity_hierarchy():
     ethnicity_hierarchy["White British"] = ["British", "European"]
     ethnicity_hierarchy["Bangladeshi"] = ["Asian", "Asian"]
     ethnicity_hierarchy["White other"] = ["White", "White"]
-    ethnicity_hierarchy["Black Caribbean"] = ["Black", "Caribbean"]
+    ethnicity_hierarchy["Black Caribbean"] = ["Caribbean", "Black"]
     ethnicity_hierarchy["Pakistani"] = ["Asian", "Asian"]
 
     return ethnicity_hierarchy
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     # the values and create the hierarchy file
     filename = "/home/alex/qi3/drl_anonymity/data/hierarchies/ethnicity_hierarchy.csv"
     with open(filename, 'w') as fh:
-        writer = csv.writer(fh, delimiter=",")
+        writer = csv.writer(fh, delimiter=";")
 
         ethnicity_column = ds.get_column(col_name="ethnicity").values
 
@@ -63,4 +64,26 @@ if __name__ == '__main__':
             row = [val]
             row.extend(ehnicity_map[val])
             writer.writerow(row)
+
+    # get the salary column
+    filename = "/home/alex/qi3/drl_anonymity/data/hierarchies/salary_hierarchy.csv"
+
+    # create bins for the salary generalization
+    unique_salary = ds.get_column_unique_values(col_name="salary")
+    unique_salary.sort()
+
+    # modify slightly the max value because
+    # we get out of bounds
+    bins = np.linspace(unique_salary[0], unique_salary[-1] + 1, 10)
+
+    with open(filename, 'w') as fh:
+        writer = csv.writer(fh, delimiter=";")
+
+        start = bins[0]
+        for i in range(1, bins.shape[0]): #ethnicity_column:
+            end = bins[i]
+
+            row = [start, end]
+            writer.writerow(row)
+            start = end
 
