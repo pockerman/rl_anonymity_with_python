@@ -5,6 +5,7 @@ Trainer
 import numpy as np
 from typing import TypeVar
 from src.utils import INFO
+from src.utils.function_wraps import time_func
 
 Env = TypeVar("Env")
 Agent = TypeVar("Agent")
@@ -60,6 +61,7 @@ class Trainer(object):
             if self.env.config.distorted_set_path is not None:
                 self.env.save_current_dataset(options["episode_idx"])
 
+    @time_func
     def train(self):
 
         print("{0} Training agent {1}".format(INFO, self.agent.name))

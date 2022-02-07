@@ -26,6 +26,8 @@ from src.utils import INFO
 
 def get_ethinicity_hierarchy():
     ethnicity_hierarchy = SerialHierarchy(values={})
+
+    """
     ethnicity_hierarchy.add("Mixed White/Asian", "White/Asian")
     ethnicity_hierarchy.add("White/Asian", "White")
 
@@ -67,7 +69,42 @@ def get_ethinicity_hierarchy():
     ethnicity_hierarchy.add("Asian", "Asian")
     ethnicity_hierarchy.add("Black", "Black")
     ethnicity_hierarchy.add("Not stated", "Not stated")
+    """
 
+    ethnicity_hierarchy["Mixed White/Asian"] = "White/Asian"
+    ethnicity_hierarchy["White/Asian"] = "Mixed"
+
+    ethnicity_hierarchy["Chinese"] = "Asian"
+    ethnicity_hierarchy["Indian"] = "Asian"
+    ethnicity_hierarchy["Mixed White/Black African"] = "White/Black"
+    ethnicity_hierarchy["White/Black"] = "Mixed"
+
+    ethnicity_hierarchy["Black African"] = "African"
+    ethnicity_hierarchy["African"] = "Black"
+    ethnicity_hierarchy["Asian other"] = "Asian"
+    ethnicity_hierarchy["Black other"] = "Black"
+    ethnicity_hierarchy["Mixed White/Black Caribbean"] = "White/Black"
+    ethnicity_hierarchy["White/Black"] = "Mixed"
+
+    ethnicity_hierarchy["Mixed other"] = "Mixed"
+    ethnicity_hierarchy["Arab"] = "Asian"
+    ethnicity_hierarchy["White Irish"] = "Irish"
+    ethnicity_hierarchy["Irish"] = "European"
+    ethnicity_hierarchy["Not stated"] = "Not stated"
+    ethnicity_hierarchy["White Gypsy/Traveller"] = "White"
+    ethnicity_hierarchy["White British"] = "British"
+    ethnicity_hierarchy["British"] = "European"
+    ethnicity_hierarchy["Bangladeshi"] = "Asian"
+    ethnicity_hierarchy["White other"] = "White"
+    ethnicity_hierarchy["Black Caribbean"] = "Caribbean"
+    ethnicity_hierarchy["Caribbean"] = "Black"
+    ethnicity_hierarchy["Pakistani"] = "Asian"
+
+    ethnicity_hierarchy["European"] = "European"
+    ethnicity_hierarchy["Mixed"] = "Mixed"
+    ethnicity_hierarchy["Asian"] = "Asian"
+    ethnicity_hierarchy["Black"] = "Black"
+    ethnicity_hierarchy["White"] = "White"
     return ethnicity_hierarchy
 
 
@@ -86,7 +123,7 @@ if __name__ == '__main__':
     # fix the rewards. Assume that any average distortion in
     # (0.4, 0.7) suits us
     MAX_DISTORTION = 0.7
-    MIN_DISTORTION = 0.4
+    MIN_DISTORTION = 0.3
     OUT_OF_MAX_BOUND_REWARD = -1.0
     OUT_OF_MIN_BOUND_REWARD = -1.0
     IN_BOUNDS_REWARD = 5.0
@@ -99,7 +136,9 @@ if __name__ == '__main__':
                                                              "education", "mutation_status"]
     MockSubjectsLoader.FEATURES_DROP_NAMES = drop_columns
 
-    # do a salary normalization
+    # do a salary normalization so that we work with
+    # salaries in [0, 1] this is needed as we will
+    # be using normalized distances
     MockSubjectsLoader.NORMALIZED_COLUMNS = ["salary"]
 
     # specify the columns to use
@@ -113,7 +152,7 @@ if __name__ == '__main__':
     unique_salary.sort()
 
     # modify slightly the max value because
-    # we get out of bounds
+    # we get out of bounds for the maximum salary
     bins = np.linspace(unique_salary[0], unique_salary[-1] + 1, N_STATES)
 
     # establish the action space. For every column
@@ -147,6 +186,8 @@ if __name__ == '__main__':
         numeric_column_distortion_metric_type=NumericDistanceType.L2_AVG,
         string_column_distortion_metric_type=StringDistanceType.COSINE_NORMALIZE,
         dataset_distortion_type=DistortionCalculationType.SUM)
+    env_config.reward_factor = 0.95
+    env_config.punish_factor = 2.0
 
     # create the environment
     env = DiscreteStateEnvironment(env_config=env_config)

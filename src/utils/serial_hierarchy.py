@@ -77,6 +77,17 @@ class SerialHierarchy(HierarchyBase):
         """
         return self.hierarchy[item]
 
+    def __setitem__(self, key, value):
+        """
+        Set the key-th item to the given value.
+        If the key-th item has already been set it overrides
+        the existing value
+        :param key:
+        :param value:
+        :return:
+        """
+        self.hierarchy[key] = value
+
     def add(self, key: Any, values: Any) -> None:
         self.hierarchy[key] = values
 

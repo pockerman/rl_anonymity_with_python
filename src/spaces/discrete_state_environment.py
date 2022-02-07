@@ -84,6 +84,8 @@ class DiscreteEnvConfig(object):
         self.n_states: int = 10
         self.min_distortion: float = 0.4
         self.max_distortion: float = 0.7
+        self.punish_factor: float = 2.0
+        self.reward_factor: float = 0.95
         self.n_rounds_below_min_distortion: int = 10
         self.distorted_set_path: Path = None
         self.distortion_calculator: DistortionCalculator = None
@@ -318,21 +320,21 @@ class DiscreteStateEnvironment(object):
             if next_state < min_dist_bin <= self.current_time_step.observation:
                 # the agent chose to step into the chaos again
                 # we punish him with double the reward
-                reward = 2.0 * self.config.reward_manager.out_of_min_bound_reward
+                reward = self.config.punish_factor * self.config.reward_manager.out_of_min_bound_reward
             elif next_state > max_dist_bin >= self.current_time_step.observation:
                 # the agent is going to chaos from above
                 # punish him
-                reward = 2.0 * self.config.reward_manager.out_of_max_bound_reward
+                reward = self.config.punish_factor * self.config.reward_manager.out_of_max_bound_reward
 
             elif next_state >= min_dist_bin > self.current_time_step.observation:
                 # the agent goes towards the transition of min point so give a higher reward
                 # for this
-                reward = 0.95 * self.config.reward_manager.in_bounds_reward
+                reward = self.config.reward_factor * self.config.reward_manager.in_bounds_reward
 
             elif next_state <= max_dist_bin < self.current_time_step.observation:
                 # the agent goes towards the transition of max point so give a higher reward
                 # for this
-                reward = 0.95 * self.config.reward_manager.in_bounds_reward
+                reward = self.config.reward_factor * self.config.reward_manager.in_bounds_reward
 
         if next_state is None or next_state >= self.n_states:
             done = True

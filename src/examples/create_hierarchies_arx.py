@@ -19,7 +19,7 @@ def get_ethnicity_hierarchy():
     ethnicity_hierarchy["Asian other"] = ["Asian", "Asian"]
     ethnicity_hierarchy["Black other"] = ["Black", "Other"]
     ethnicity_hierarchy["Mixed White/Black Caribbean"] = ["White/Black", "Mixed"]
-    ethnicity_hierarchy["Mixed other"] = ["Mixed", "Mixe"]
+    ethnicity_hierarchy["Mixed other"] = ["Mixed", "Mixed"]
     ethnicity_hierarchy["Arab"] = ["Asian", "Asian"]
     ethnicity_hierarchy["White Irish"] = ["Irish", "European"]
     ethnicity_hierarchy["Not stated"] = ["Not stated", "Not stated"]
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     unique_salary.sort()
 
     # modify slightly the max value because
-    # we get out of bounds
+    # we get out of bounds for the maximum salary
     bins = np.linspace(unique_salary[0], unique_salary[-1] + 1, 10)
 
     with open(filename, 'w') as fh:
