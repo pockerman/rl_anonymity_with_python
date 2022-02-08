@@ -59,6 +59,15 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
     def schema(self) -> dict:
         return pd.io.json.build_table_schema(self.ds)
 
+    def show_head(self, n: int) -> None:
+        print(self.ds.head(n))
+
+    def describe(self):
+        print(self.ds.describe())
+
+    def info(self):
+        print(self.ds.info())
+
     def save_to_csv(self, filename: Path, save_index: bool) -> None:
         """
         Save the underlying dataset in a csv format
@@ -84,7 +93,15 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
             self.ds = replace(ds=self.ds, options=options["change_col_vals"])
 
         # try to cast to the data types
-        self.ds = change_column_types(ds=self.ds, column_types=self.columns)
+
+        # get a subset of the columns to change the types
+        col_names = self.get_columns_names()
+        col_types = {}
+        for name in col_names:
+            if name in self.columns:
+                col_types[name] = self.columns[name]
+
+        self.ds = change_column_types(ds=self.ds, column_types=col_types) #self.columns)
 
         if "column_normalization" in options and \
                 options["column_normalization"] is not None:
