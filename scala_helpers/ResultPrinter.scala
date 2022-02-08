@@ -28,6 +28,7 @@ object ResultPrinter {
       System.out.println(" - No solution found!")
       return
     }
+
     // Initialize
     val identifiers = new Array[StringBuffer](qis.size)
     val generalizations = new Array[StringBuffer](qis.size)
@@ -59,8 +60,7 @@ object ResultPrinter {
     for (i <- 0 until qis.size) {
       System.out.println("   * " + identifiers(i) + ": " + generalizations(i))
     }
-    System.out.println(" - Statistics")
-    System.out.println(result.getOutput(result.getGlobalOptimum, false).getStatistics.getEquivalenceClassStatistics)
+  
   }
 
   def printHandle(handle: DataHandle): Unit = {

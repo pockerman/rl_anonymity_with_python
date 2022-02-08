@@ -9,6 +9,7 @@ import base.DefaultConfiguration
 import org.deidentifier.arx.AttributeType.{Hierarchy, listMicroAggregationFunctions}
 import org.deidentifier.arx.aggregates.AggregateFunction
 import org.deidentifier.arx.aggregates.AggregateFunction.AggregateFunctionBuilder
+import org.deidentifier.arx.metric.Metric
 //import org.deidentifier.arx.aggregates.AggregateFunction.AggregateFunctionBuilder.*
 import org.deidentifier.arx.aggregates.HierarchyBuilderIntervalBased
 import org.deidentifier.arx.criteria.KAnonymity
@@ -23,6 +24,10 @@ import postprocessor.ResultPrinter.{printHandle, printHandleTop, printResult}
 
 
 object MeasureDataQuality extends App{
+
+  // file to save the distorted dataset
+  // produced by running K-anonymity on it
+  val dataFileKAnonymityDist: File = new File("/home/alex/qi3/drl_anonymity/src/examples/q_learn_distorted_sets/kanonymity_distorted.csv")
 
   def buildSalaryHierarchy: HierarchyBuilderIntervalBased[lang.Double] = {
 
@@ -57,7 +62,7 @@ object MeasureDataQuality extends App{
     System.out.println(s"Number of rows ${dataOrg.getHandle.getNumRows}")
     System.out.println(s"Number of cols ${dataOrg.getHandle.getNumColumns}")
 
-    printHandleTop(handle = dataOrg.getHandle, n = 5)
+    //printHandleTop(handle = dataOrg.getHandle, n = 5)
     System.out.println("Done...")
 
     (dataOrg, dataDist)
@@ -72,8 +77,8 @@ object MeasureDataQuality extends App{
 
     val summaryStatsDist = dataHandleDist.getStatistics().getSummaryStatistics(true)
     val summaryStatsOrg  = dataHandleOrg.getStatistics().getSummaryStatistics(true)
-    // getEquivalenceClassStatistics(); //getEquivalenceClassStatistics();
 
+    println(dataHandleDist.getStatistics().getEquivalenceClassStatistics)
     for((key, value) <- summaryStatsDist){
       println(s"Column: ${key}")
       println("-----------------------Distorted/Original")
@@ -93,7 +98,7 @@ object MeasureDataQuality extends App{
     val dataFile: File = new File("/home/alex/qi3/drl_anonymity/data/hierarchies/normalized_salary_mocksubjects.csv")
     val data: Data = Data.create(dataFile, Charset.defaultCharset, ',')
 
-    printHandleTop(handle = data.getHandle, n = 5)
+    //printHandleTop(handle = data.getHandle, n = 5)
 
     // set the attribute types if AttributeType.IDENTIFYING_ATTRIBUTE
     // then the attribute will be removed
@@ -109,21 +114,15 @@ object MeasureDataQuality extends App{
     // keep the diagnosis as an insensitive attribute
     data.getDefinition().setAttributeType("diagnosis", AttributeType.INSENSITIVE_ATTRIBUTE)
 
-    // quasi-sensitive attriutes we set the
+    // quasi-sensitive attributes we set the
     // hierarchies
     // the ethnicity hierarchy file
     val ethnicityHierarchyFile: File = new File("/home/alex/qi3/drl_anonymity/data/hierarchies/ethnicity_hierarchy.csv")
     data.getDefinition().setAttributeType("ethnicity", Hierarchy.create(ethnicityHierarchyFile,
-      StandardCharsets.UTF_8, ';'))/*AttributeType.QUASI_IDENTIFYING_ATTRIBUTE)*/
+      StandardCharsets.UTF_8, ';'))
 
     // the salary hierarchy
-    //val salaryHierarchyFile: File = new File("/home/alex/qi3/drl_anonymity/data/hierarchies/salary_hierarchy.csv")
     data.getDefinition().setAttributeType("salary", buildSalaryHierarchy) //AttributeType.QUASI_IDENTIFYING_ATTRIBUTE)
-
-
-    // create the ethnicity hierarchy
-    //val ethnicityHierarchy = Hierarchy.create(ethnicityHierarchyFile,
-    //  Charset.defaultCharset, ',')
 
     // create the hierarchies for the ethnicity and
     // salary
@@ -132,24 +131,37 @@ object MeasureDataQuality extends App{
     val config = ARXConfiguration.create
     config.addPrivacyModel(new KAnonymity(5))
     config.setSuppressionLimit(0.02d)
-
+    config.setQualityModel(Metric.createEntropyMetric())
 
     // anonymize the data using K-anonimity
     val result = anonymizer.anonymize(data, config)
 
+    val optimum = result.getGlobalOptimum
+
     // Print info
     printResult(result, data)
 
+    // this forks a new thread???
+    System.out.println(" - Statistics")
+    System.out.println(result.getOutput(result.getGlobalOptimum, false).getStatistics.getEquivalenceClassStatistics)
+
+    // save the dataset to disk
+    //result.getOutput(optimum).save(dataFileKAnonymityDist, ',')
+
     // Process results
-    System.out.println(" - Transformed data:")
-    printHandle(handle = result.getOutput(false))
+    //System.out.println(" - Transformed data:")
+    //printHandle(handle = result.getOutput(false))
     System.out.println("Done!")
 
   }
 
   // execute Experiment 1
-  //experiment1
+  println("=================================")
+  println("Running Experiment 1")
+  experiment1
 
+  println("=================================")
+  println("Running K-anonymity")
   //exploreHierarchy
   // run K-anonimity
   runKAnonimity
