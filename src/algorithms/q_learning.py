@@ -89,7 +89,7 @@ class QLearning(WithMaxActionMixin):
             env.step(action=action)
             total_dist = env.total_current_distortion()
 
-    def train(self, env: Env, **options) -> tuple:
+    def on_episode(self, env: Env, **options) -> tuple:
 
         # episode score
         episode_score = 0

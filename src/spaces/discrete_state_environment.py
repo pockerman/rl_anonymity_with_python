@@ -4,68 +4,18 @@ https://github.com/deepmind/dm_env/blob/master/dm_env/_environment.py
 """
 
 import copy
-import enum
 import numpy as np
 from pathlib import Path
-import pandas as pd
-import torch
-from typing import NamedTuple, Generic, Optional, TypeVar, List
+from typing import TypeVar, List
 import multiprocessing as mp
 
 from src.spaces.actions import ActionBase, ActionType
-from src.utils.string_distance_calculator import StringDistanceType, TextDistanceCalculator
-from src.utils.numeric_distance_type import NumericDistanceType
-from src.utils.numeric_distance_calculator import NumericDistanceCalculator
+from src.spaces.time_step import TimeStep, StepType
 
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
 ActionSpace = TypeVar("ActionSpace")
 DistortionCalculator = TypeVar('DistortionCalculator')
-
-_Reward = TypeVar('_Reward')
-_Discount = TypeVar('_Discount')
-_Observation = TypeVar('_Observation')
-
-
-class StepType(enum.IntEnum):
-    """
-      Defines the status of a `TimeStep` within a sequence.
-      """
-
-    # Denotes the first `TimeStep` in a sequence.
-    FIRST = 0
-
-    # Denotes any `TimeStep` in a sequence that is not FIRST or LAST.
-    MID = 1
-
-    # Denotes the last `TimeStep` in a sequence.
-    LAST = 2
-
-    def first(self) -> bool:
-        return self is StepType.FIRST
-
-    def mid(self) -> bool:
-        return self is StepType.MID
-
-    def last(self) -> bool:
-        return self is StepType.LAST
-
-
-class TimeStep(NamedTuple, Generic[_Reward, _Discount, _Observation]):
-    step_type: StepType
-    info: dict
-    reward: Optional[_Reward]
-    discount: Optional[_Discount]
-    observation: _Observation
-
-    def first(self) -> bool:
-        return self.step_type == StepType.FIRST
-
-    def mid(self) -> bool:
-        return self.step_type == StepType.MID
-
-    def last(self) -> bool:
-        return self.step_type == StepType.LAST
 
 
 class DiscreteEnvConfig(object):
@@ -79,8 +29,6 @@ class DiscreteEnvConfig(object):
         self.reward_manager: RewardManager = None
         self.average_distortion_constraint: float = 0.0
         self.gamma: float = 0.99
-        # self.string_column_distortion_type: StringDistanceType = StringDistanceType.INVALID
-        # self.numeric_column_distortion_metric_type: NumericDistanceType = NumericDistanceType.INVALID
         self.n_states: int = 10
         self.min_distortion: float = 0.4
         self.max_distortion: float = 0.7
@@ -114,6 +62,10 @@ class DiscreteStateEnvironment(object):
         # have been visited
         self.column_visits = {}
         self.create_bins()
+
+    @property
+    def columns_attribute_types(self) -> dict:
+        return self.config.data_set.columns_attribute_types
 
     @property
     def action_space(self):
