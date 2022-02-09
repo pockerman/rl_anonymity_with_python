@@ -74,7 +74,7 @@ class Trainer(object):
             ignore = self.env.reset()
 
             # train for a number of iterations
-            episode_score, total_distortion, n_itrs = self.agent.train(self.env)
+            episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
 
             print("{0} Episode score={1}, episode total distortion {2}".format(INFO, episode_score, total_distortion / n_itrs))
 
