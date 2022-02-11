@@ -45,6 +45,8 @@ class DiscreteStateEnvironment(object):
     to create bins where the average total distortion of the dataset falls in
     """
 
+    IS_TILED_ENV_CONSTRAINT = False
+
     def __init__(self, env_config: DiscreteEnvConfig) -> None:
         self.config = env_config
         self.n_rounds_below_min_distortion = 0
