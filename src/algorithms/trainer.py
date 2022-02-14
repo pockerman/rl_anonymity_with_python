@@ -54,6 +54,14 @@ class Trainer(object):
 
         self.agent.actions_before_training(self.env)
 
+    def actions_before_episode_begins(self, **options) -> None:
+        """
+        Perform any actions necessary before the training begins
+        :param options:
+        :return:
+        """
+        self.agent.actions_before_episode_begins(**options)
+
     def actions_after_episode_ends(self, **options):
         self.agent.actions_after_episode_ends(**options)
 
@@ -71,8 +79,9 @@ class Trainer(object):
             print("{0} On episode {1}/{2}".format(INFO, episode, self.configuration["n_episodes"]))
 
             # reset the environment
-            ignore = self.env.reset()
+            #ignore = self.env.reset()
 
+            self.actions_before_episode_begins(**{"env": self.env})
             # train for a number of iterations
             episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
 

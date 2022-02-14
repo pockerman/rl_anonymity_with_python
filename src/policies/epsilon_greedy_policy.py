@@ -13,7 +13,7 @@ Env = TypeVar("Env")
 QTable = TypeVar("QTable")
 
 
-class EpsilonDecreaseOption(Enum):
+class EpsilonDecayOption(Enum):
     """
     Options for reducing epsilon
     """
@@ -27,14 +27,14 @@ class EpsilonDecreaseOption(Enum):
 
 class EpsilonGreedyPolicy(WithMaxActionMixin):
 
-    def __init__(self, env: Env, eps: float,
-                 decay_op: EpsilonDecreaseOption,
+    def __init__(self, eps: float, n_actions: int,
+                 decay_op: EpsilonDecayOption,
                  max_eps: float = 1.0, min_eps: float = 0.001,
                  epsilon_decay_factor: float = 0.01,
                  user_defined_decrease_method: UserDefinedDecreaseMethod = None) -> None:
         super(WithMaxActionMixin, self).__init__()
         self._eps = eps
-        self._n_actions = env.action_space.n
+        self._n_actions = n_actions
         self._decay_op = decay_op
         self._max_eps = max_eps
         self._min_eps = min_eps
@@ -81,23 +81,23 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
         :return: None
         """
 
-        if self._decay_op == EpsilonDecreaseOption.NONE:
+        if self._decay_op == EpsilonDecayOption.NONE:
             return
 
-        if self._decay_op == EpsilonDecreaseOption.USER_DEFINED:
+        if self._decay_op == EpsilonDecayOption.USER_DEFINED:
             self._eps = self.user_defined_decrease_method(self._eps, episode_idx)
 
-        if self._decay_op == EpsilonDecreaseOption.INVERSE_STEP:
+        if self._decay_op == EpsilonDecayOption.INVERSE_STEP:
 
             if episode_idx == 0:
                 episode_idx = 1
 
             self._eps = 1.0 / episode_idx
 
-        elif self._decay_op == EpsilonDecreaseOption.EXPONENTIAL:
+        elif self._decay_op == EpsilonDecayOption.EXPONENTIAL:
             self._eps = self._min_eps + (self._max_eps - self._min_eps) * np.exp(-self._epsilon_decay_factor * episode_idx)
 
-        elif self._decay_op == EpsilonDecreaseOption.CONSTANT_RATE:
+        elif self._decay_op == EpsilonDecayOption.CONSTANT_RATE:
             self._eps -= self._epsilon_decay_factor
 
         if self._eps < self._min_eps:
