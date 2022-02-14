@@ -13,7 +13,7 @@ from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
 from src.utils.reward_manager import RewardManager
 from src.utils.serial_hierarchy import SerialHierarchy
-from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecreaseOption
+from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.policies.softmax_policy import SoftMaxPolicy
 from src.utils.numeric_distance_type import NumericDistanceType
 from src.utils.string_distance_calculator import StringDistanceType
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     # configuration params
     EPS = 1.0
-    EPSILON_DECAY_OPTION = EpsilonDecreaseOption.CONSTANT_RATE #.INVERSE_STEP
+    EPSILON_DECAY_OPTION = EpsilonDecayOption.CONSTANT_RATE #.INVERSE_STEP
     EPSILON_DECAY_FACTOR = 0.01
     GAMMA = 0.99
     ALPHA = 0.1
