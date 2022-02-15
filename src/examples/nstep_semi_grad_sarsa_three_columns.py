@@ -1,12 +1,8 @@
-"""
-Simple example that shows how to apply QLearning
-on a dataset with three columns
-"""
-import numpy as np
 import random
+import numpy as np
 from pathlib import Path
 
-from src.algorithms.q_learning import QLearning, QLearnConfig
+from src.algorithms.sarsa_semi_gradient import SARSAnConfig, SARSAn
 from src.algorithms.trainer import Trainer
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.spaces.action_space import ActionSpace
@@ -19,9 +15,34 @@ from src.utils.numeric_distance_type import NumericDistanceType
 from src.utils.string_distance_calculator import StringDistanceType
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment, DiscreteEnvConfig
+from src.spaces.tiled_environment import TiledEnv
 from src.utils.iteration_control import IterationControl
 from src.utils.plot_utils import plot_running_avg
 from src.utils import INFO
+
+# configuration params
+EPS = 1.0
+EPSILON_DECAY_OPTION = EpsilonDecayOption.CONSTANT_RATE #.INVERSE_STEP
+EPSILON_DECAY_FACTOR = 0.01
+GAMMA = 0.99
+ALPHA = 0.1
+N_EPISODES = 1001
+N_ITRS_PER_EPISODE = 30
+N_STATES = 10
+REWARD_FACTOR = 0.95
+PUNISH_FACTOR = 2.0
+
+
+# fix the rewards. Assume that any average distortion in
+# (0.4, 0.7) suits us
+MAX_DISTORTION = 0.7
+MIN_DISTORTION = 0.3
+OUT_OF_MAX_BOUND_REWARD = -1.0
+OUT_OF_MIN_BOUND_REWARD = -1.0
+IN_BOUNDS_REWARD = 5.0
+OUTPUT_MSG_FREQUENCY = 100
+N_ROUNDS_BELOW_MIN_DISTORTION = 10
+SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/nstep_semi_grad_sarsa_learn_distorted_sets/distorted_set"
 
 
 def get_ethinicity_hierarchy():
@@ -64,31 +85,7 @@ def get_ethinicity_hierarchy():
     return ethnicity_hierarchy
 
 
-if __name__ == '__main__':
-
-    # set the seed for random engine
-    random.seed(42)
-
-    # configuration params
-    EPS = 1.0
-    EPSILON_DECAY_OPTION = EpsilonDecayOption.CONSTANT_RATE #.INVERSE_STEP
-    EPSILON_DECAY_FACTOR = 0.01
-    GAMMA = 0.99
-    ALPHA = 0.1
-    N_EPISODES = 1001
-    N_ITRS_PER_EPISODE = 30
-    N_STATES = 10
-    # fix the rewards. Assume that any average distortion in
-    # (0.4, 0.7) suits us
-    MAX_DISTORTION = 0.7
-    MIN_DISTORTION = 0.3
-    OUT_OF_MAX_BOUND_REWARD = -1.0
-    OUT_OF_MIN_BOUND_REWARD = -1.0
-    IN_BOUNDS_REWARD = 5.0
-    OUTPUT_MSG_FREQUENCY = 100
-    N_ROUNDS_BELOW_MIN_DISTORTION = 10
-    SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/q_learn_distorted_sets/distorted_set"
-
+def load_dataset() -> MockSubjectsLoader:
     # specify the columns to drop
     drop_columns = MockSubjectsLoader.FEATURES_DROP_NAMES + ["preventative_treatment", "gender",
                                                              "education", "mutation_status"]
@@ -104,6 +101,15 @@ if __name__ == '__main__':
     ds = MockSubjectsLoader()
 
     assert ds.n_columns == 3, "Invalid number of columns {0} not equal to 3".format(ds.n_columns)
+
+    return ds
+
+if __name__ == '__main__':
+
+    # set the seed for random engine
+    random.seed(42)
+
+    ds = load_dataset()
 
     # create bins for the salary generalization
     unique_salary = ds.get_column_unique_values(col_name="salary")
@@ -144,11 +150,14 @@ if __name__ == '__main__':
         numeric_column_distortion_metric_type=NumericDistanceType.L2_AVG,
         string_column_distortion_metric_type=StringDistanceType.COSINE_NORMALIZE,
         dataset_distortion_type=DistortionCalculationType.SUM)
-    env_config.reward_factor = 0.95
-    env_config.punish_factor = 2.0
+    env_config.reward_factor = REWARD_FACTOR
+    env_config.punish_factor = PUNISH_FACTOR
 
     # create the environment
     env = DiscreteStateEnvironment(env_config=env_config)
+
+    # we will use a tiled environment in this example
+    tiled_env = TiledEnv()
     env.reset()
 
     # save the data before distortion so that we can
@@ -196,5 +205,3 @@ if __name__ == '__main__':
     env.save_current_dataset(episode_index=-2, save_index=False)
     print("{0} Done....".format(INFO))
     print("=============================================")
-
-
