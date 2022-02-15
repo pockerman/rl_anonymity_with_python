@@ -36,6 +36,5 @@ class TestSARSAn(unittest.TestCase):
             self.assertEqual("Estimator has not been set", str(e))
 
 
-
 if __name__ == '__main__':
     unittest.main()
