@@ -7,6 +7,7 @@ import numpy as np
 from typing import TypeVar
 
 from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase
+from src.utils.episode_info import EpisodeInfo
 from src.algorithms.q_estimator import QEstimator
 from src.exceptions.exceptions import InvalidParamValue
 
@@ -75,7 +76,7 @@ class SARSAn(WithMaxActionMixin):
         # reset the estimator
         self.config.estimator.reset(self.config.reset_estimator_z_traces)
 
-    def on_episode(self, env: Env) -> tuple:
+    def on_episode(self, env: Env) -> EpisodeInfo:
         """
         Train the agent on the given algorithm
         :param env:
@@ -86,28 +87,27 @@ class SARSAn(WithMaxActionMixin):
         time_step = env.reset()
         state = time_step.observation
 
+        action_idx = self.config.policy(self.q_table, state)
+        action = env.get_action(action_idx)
+
         # vars to measure performance
         episode_score = 0
         counter = 0
         total_distortion = 0
         T = float('inf')
-        actions = []
-        rewards = []
+        actions = [action_idx]
+        rewards = [0.0]
+        states = [state]
         for itr in range(self.config.n_itrs_per_episode):
 
             if itr < T:
-                # select an action using the current
-                # policy
-                action_idx = self.config.policy(self.q_table, state)
-
-                action = env.get_action(action_idx)
-                actions.append(action)
 
                 # take action A, observe R, S'
                 next_time_step = env.step(action)
                 next_state = next_time_step.observation
                 reward = next_time_step.reward
 
+                total_distortion += next_time_step.info["total_distortion"]
                 episode_score += reward
                 rewards.append(reward)
 
@@ -115,9 +115,10 @@ class SARSAn(WithMaxActionMixin):
                     T = itr + 1
                 else:
 
-                    # take the next step
-                    pass
-            """
+                    next_action_idx = self.config.policy(self.q_table, next_state)
+                    next_action = env.get_action(next_action_idx)
+                    actions.append(next_action)
+
             # should we update
             update_time = itr + 1 - self.config.n
             if update_time >= 0:
@@ -137,6 +138,14 @@ class SARSAn(WithMaxActionMixin):
             if update_time == T - 1:
                 break
 
+            counter += 1
             state = next_state
             action = next_action
-            """
+
+
+        episode_info = EpisodeInfo()
+        episode_info.episode_score = episode_score
+        episode_info.total_distortion = total_distortion
+        episode_info.info["m_iterations"] = counter
+        return episode_info
+

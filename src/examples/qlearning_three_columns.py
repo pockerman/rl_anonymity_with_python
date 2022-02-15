@@ -27,50 +27,6 @@ from src.utils import INFO
 def get_ethinicity_hierarchy():
     ethnicity_hierarchy = SerialHierarchy(values={})
 
-    """
-    ethnicity_hierarchy.add("Mixed White/Asian", "White/Asian")
-    ethnicity_hierarchy.add("White/Asian", "White")
-
-    ethnicity_hierarchy.add("Chinese", "Asian")
-    ethnicity_hierarchy.add("Indian", "Asian")
-
-    ethnicity_hierarchy.add("Mixed White/Black African", "African-Mixed")
-    ethnicity_hierarchy.add("African-Mixed", "Mixed")
-
-    ethnicity_hierarchy.add("Black African", "African")
-    ethnicity_hierarchy.add("African", "African")
-
-    ethnicity_hierarchy.add("Asian other", "Asian")
-    ethnicity_hierarchy.add("Black other", "Black")
-
-    ethnicity_hierarchy.add("Mixed White/Black Caribbean", "Caribbean-Mixed")
-    ethnicity_hierarchy.add("Caribbean-Mixed", "Mixed")
-
-    ethnicity_hierarchy.add("Mixed other", "Mixed")
-    ethnicity_hierarchy.add("Arab", "Asian")
-
-    ethnicity_hierarchy.add("White Irish", "European-White")
-    ethnicity_hierarchy.add("European-White", "European")
-
-    ethnicity_hierarchy.add("Not stated", "Not stated")
-    ethnicity_hierarchy.add("White Gypsy/Traveller", "White")
-
-    ethnicity_hierarchy.add("White British", "British")
-    ethnicity_hierarchy.add("British", "European")
-
-    ethnicity_hierarchy.add("Bangladeshi", "Asian")
-    ethnicity_hierarchy.add("White other", "White")
-    ethnicity_hierarchy.add("Black Caribbean", "Black")
-    ethnicity_hierarchy.add("Pakistani", "Asian")
-
-    ethnicity_hierarchy.add("White", "White")
-    ethnicity_hierarchy.add("Mixed", "Mixed")
-    ethnicity_hierarchy.add("European", "European")
-    ethnicity_hierarchy.add("Asian", "Asian")
-    ethnicity_hierarchy.add("Black", "Black")
-    ethnicity_hierarchy.add("Not stated", "Not stated")
-    """
-
     ethnicity_hierarchy["Mixed White/Asian"] = "White/Asian"
     ethnicity_hierarchy["White/Asian"] = "Mixed"
 
@@ -109,6 +65,8 @@ def get_ethinicity_hierarchy():
 
 
 if __name__ == '__main__':
+
+    # set the seed for random engine
     random.seed(42)
 
     # configuration params

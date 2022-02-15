@@ -54,9 +54,32 @@ The images below show the overall running distortion average and running reward 
 
 ## Dependencies 
 
+The following packages are required. 
+
 - NumPy
+- <a href="https://www.sphinx-doc.org/en/master/">Sphinx</a> 
+- <a href="#">Python Pandas</a>
+
+You can use 
+
+```
+pip install -r requirements.txt
+```
+
+## Examples
+
+- <a href="src/examples/qlearning_three_columns.py"> Qlearning agent on a three columns dataset</a>
+- <a href="src/examples/nstep_semi_grad_sarsa_three_columns.py"> n-step semi-gradient SARSA on  a three columns dataset</a>
 
 ## Documentation
+
+You will need <a href="https://www.sphinx-doc.org/en/master/">Sphinx</a> in order to generate the API documentation. Assuming that Sphinx is already installed
+on your machine execute the following commands (see also <a href="https://www.sphinx-doc.org/en/master/tutorial/index.html">Sphinx tutorial</a>). 
+
+```
+sphinx-quickstart docs
+sphinx-build -b html docs/source/ docs/build/html
+```
 
 ## References
 
