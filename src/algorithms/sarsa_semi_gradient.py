@@ -51,9 +51,9 @@ class SARSAn(WithMaxActionMixin):
         :param env:
         :return:
         """
-
+        # validate
         is_tiled = getattr(env, "IS_TILED_ENV_CONSTRAINT", None)
-        if is_tiled is None or is_tiled == False:
+        if is_tiled is None or is_tiled is False:
             raise ValueError("The given environment does not "
                              "satisfy the IS_TILED_ENV_CONSTRAINT constraint")
 
@@ -68,7 +68,7 @@ class SARSAn(WithMaxActionMixin):
 
     def actions_before_episode_begins(self, **options) -> None:
         """
-        Actions for the agent to perform 
+        Actions for the agent to perform
         :param options:
         :return:
         """
@@ -117,7 +117,7 @@ class SARSAn(WithMaxActionMixin):
 
                     # take the next step
                     pass
-
+            """
             # should we update
             update_time = itr + 1 - self.config.n
             if update_time >= 0:
@@ -131,7 +131,7 @@ class SARSAn(WithMaxActionMixin):
                     q_values_next = self.config.estimator.predict(states[update_time + self.config.n])
                     target += q_values_next[actions[update_time + self.config.n]]
 
-                 # Update step
+                # Update step
                 self.config.estimator.update(states[update_time], actions[update_time], target)
 
             if update_time == T - 1:
@@ -139,5 +139,4 @@ class SARSAn(WithMaxActionMixin):
 
             state = next_state
             action = next_action
-
-
+            """
