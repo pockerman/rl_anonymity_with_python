@@ -9,7 +9,7 @@ from src.spaces.discrete_state_environment import Environment, EnvConfig
 from src.spaces.action_space import ActionSpace
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.utils.reward_manager import RewardManager
-from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecreaseOption
+from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.utils.serial_hierarchy import SerialHierarchy
 from src.utils.numeric_distance_type import NumericDistanceType
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     algo_config.gamma = 0.99
     algo_config.alpha = 0.1
     algo_config.policy = EpsilonGreedyPolicy(eps=EPS, env=env,
-                                             decay_op=EpsilonDecreaseOption.INVERSE_STEP)
+                                             decay_op=EpsilonDecayOption.INVERSE_STEP)
 
     agent = QLearning(algo_config=algo_config)
 
