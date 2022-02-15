@@ -1,4 +1,4 @@
-# RL anonymity
+# RL anonymity (with Python)
 
 An experimental effort to use reinforcement learning techniques for data anonymization. 
 
