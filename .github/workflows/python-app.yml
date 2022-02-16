@@ -34,3 +34,7 @@ jobs:
     - name: Test with unittest
       run: |
         pytest
+    - name: Upload Unit Test Results
+      if: always()
+      with:
+        files: test-results/**/*.xml
