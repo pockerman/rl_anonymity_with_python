@@ -59,6 +59,7 @@ class State(object):
     """
     def __init__(self):
         self.idx = -1
+        self.bin_idx = -1
         self.total_distortion: float = 0.0
         self.column_names = []
 
