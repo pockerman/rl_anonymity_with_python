@@ -6,33 +6,43 @@ from typing import TypeVar
 from src.extern.tile_coding import IHT, tiles
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep
+from src.exceptions.exceptions import InvalidParamValue
 
 Env = TypeVar('Env')
 State = TypeVar('State')
 
 
-class TiledEnv(object):
+class TiledEnvConfig(object):
+    """
+    Configuration for the TiledEnvironment
+    """
+    def __init__(self):
+        self.env: Env = None
+        self.num_tilings: int = 0
+        self.max_size = 0
+        self.tiling_dim = 0
+        self.column_scales = {}
 
+
+class TiledEnv(object):
     IS_TILED_ENV_CONSTRAINT = True
 
-    def __init__(self, env: Env, num_tilings: int, max_size: int,
-                 tiling_dim: int) -> None:
+    def __init__(self, config: TiledEnvConfig) -> None:
 
-        self.env = env
-        self.max_size = max_size
-        self.num_tilings = num_tilings
-        self.tiling_dim = tiling_dim
-
-        # Initialize index hash table (IHT) for tile coding.
-        # This assigns a unique index to each tile up to max_size tiles.
-        # Ensure max_size >= total number of tiles (num_tilings x tiling_dim x tiling_dim)
-        # to ensure no duplicates.
-        self.iht = IHT(max_size)
+        self.env = config.env
+        self.max_size = config.max_size
+        self.num_tilings = config.num_tilings
+        self.tiling_dim = config.tiling_dim
 
         # set up the columns scaling
         # only the columns that are to be altered participate in the
         # tiling
-        self.columns_scales = {}
+        self.column_scales = config.column_scales
+
+        # Initialize index hash table (IHT) for tile coding.
+        # This assigns a unique index to each tile up to max_size tiles.
+        self._validate()
+        self.iht = IHT(self.max_size)
 
     def step(self, action: ActionBase) -> TimeStep:
         """
@@ -40,8 +50,7 @@ class TiledEnv(object):
         :param action: The action to apply
         :return:
         """
-
-        pass
+        return self.env.step(action)
 
     @property
     def action_space(self):
@@ -119,7 +128,6 @@ class TiledEnv(object):
         Calculates the current total distortion of the dataset.
         :return:
         """
-
         return self.env.total_current_distortion()
 
     def reset(self, **options) -> TimeStep:
@@ -146,7 +154,6 @@ class TiledEnv(object):
         """
         scaled_state_vals = []
         for name in state:
-
             scaled_state_vals.append(state[name] * self.columns_scales[name])
 
         return scaled_state_vals
@@ -162,9 +169,19 @@ class TiledEnv(object):
         featurized = tiles(self.iht, self.num_tilings, scaled_state, [action])
         return featurized
 
+    def _validate(self) -> None:
+        if self.max_size <= 0:
+            raise InvalidParamValue(param_name="max_size",
+                                    param_value=str(self.max_size) + " should be > 0")
 
+        # Ensure max_size >= total number of tiles (num_tilings x tiling_dim x tiling_dim)
+        # to ensure no duplicates.
+        if self.max_size < self.num_tilings * self.tiling_dim * self.tiling_dim:
+            raise InvalidParamValue(param_name="max_size",
+                                    param_value=str(self.max_size) +
+                                    " should be >=num_tilings * tiling_dim * tiling_dim")
 
-
-
-
+        if len(self.column_scales) == 0:
+            raise InvalidParamValue(param_name="column_scales",
+                                    param_value=str(len(self.column_scales)) + " should not be empty")
 

@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 
 from src.algorithms.sarsa_semi_gradient import SARSAnConfig, SARSAn
+from src.algorithms.q_estimator import QEstimator
 from src.algorithms.trainer import Trainer
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.spaces.action_space import ActionSpace
@@ -43,6 +44,16 @@ IN_BOUNDS_REWARD = 5.0
 OUTPUT_MSG_FREQUENCY = 100
 N_ROUNDS_BELOW_MIN_DISTORTION = 10
 SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/nstep_semi_grad_sarsa_learn_distorted_sets/distorted_set"
+NUM_TILINGS = 5
+TILING_DIM = 8
+BOOTSTRAP_N = 6
+
+# Step size is interpreted as the fraction of the way we want
+# to move towards the target. To compute the learning rate alpha,
+# scale by number of tilings.
+STEP_SIZE = 0.5
+
+MAX_SIZE = 4096
 
 
 def get_ethinicity_hierarchy():
@@ -98,17 +109,18 @@ def load_dataset() -> MockSubjectsLoader:
 
     # specify the columns to use
     MockSubjectsLoader.COLUMNS_TYPES = {"ethnicity": str, "salary": float, "diagnosis": int}
-    ds = MockSubjectsLoader()
+    dataset = MockSubjectsLoader()
 
-    assert ds.n_columns == 3, "Invalid number of columns {0} not equal to 3".format(ds.n_columns)
+    assert dataset.n_columns == 3, "Invalid number of columns {0} not equal to 3".format(dataset.n_columns)
+    return dataset
 
-    return ds
 
 if __name__ == '__main__':
 
     # set the seed for random engine
     random.seed(42)
 
+    # load data set
     ds = load_dataset()
 
     # create bins for the salary generalization
@@ -132,8 +144,8 @@ if __name__ == '__main__':
 
     action_space.shuffle()
 
+    # create environment configuration
     env_config = DiscreteEnvConfig()
-
     env_config.action_space = action_space
     env_config.reward_manager = RewardManager(bounds=(MIN_DISTORTION, MAX_DISTORTION),
                                               out_of_max_bound_reward=OUT_OF_MAX_BOUND_REWARD,
@@ -157,29 +169,37 @@ if __name__ == '__main__':
     env = DiscreteStateEnvironment(env_config=env_config)
 
     # we will use a tiled environment in this example
-    tiled_env = TiledEnv()
-    env.reset()
+    tiled_env = TiledEnv(env=env, max_size=MAX_SIZE,
+                         num_tilings=NUM_TILINGS,
+                         tiling_dim=TILING_DIM)
+    tiled_env.reset()
 
     # save the data before distortion so that we can
     # later load it on ARX
-    env.save_current_dataset(episode_index=-1, save_index=False)
+    tiled_env.save_current_dataset(episode_index=-1, save_index=False)
 
     # configuration for the Q-learner
-    algo_config = QLearnConfig()
+    algo_config = SARSAnConfig()
     algo_config.n_itrs_per_episode = N_ITRS_PER_EPISODE
     algo_config.gamma = GAMMA
     algo_config.alpha = ALPHA
     #algo_config.policy = SoftMaxPolicy(n_actions=len(action_space), tau=1.2)
-    algo_config.policy = EpsilonGreedyPolicy(eps=EPS, env=env,decay_op=EPSILON_DECAY_OPTION,
+    algo_config.policy = EpsilonGreedyPolicy(eps=EPS, n_actions=tiled_env.n_actions,
+                                             decay_op=EPSILON_DECAY_OPTION,
                                              epsilon_decay_factor=EPSILON_DECAY_FACTOR)
+    # level of bootstrapping
+    algo_config.n = BOOTSTRAP_N
+    algo_config.estimator = QEstimator(env=tiled_env,
+                                       max_size=MAX_SIZE,
+                                       alpha=STEP_SIZE / NUM_TILINGS)
 
     # the learner we want to train
-    agent = QLearning(algo_config=algo_config)
+    agent = SARSAn(sarsa_config=algo_config)
 
     configuration = {"n_episodes": N_EPISODES, "output_msg_frequency": OUTPUT_MSG_FREQUENCY}
 
     # create a trainer to train the Qlearning agent
-    trainer = Trainer(env=env, agent=agent, configuration=configuration)
+    trainer = Trainer(env=tiled_env, agent=agent, configuration=configuration)
     trainer.train()
 
     # avg_rewards = trainer.avg_rewards()
@@ -195,6 +215,8 @@ if __name__ == '__main__':
                      xlabel="Episodes", ylabel="Distortion",
                      title="Running distortion average over 100 episodes")
 
+
+    '''
     print("=============================================")
     print("{0} Generating distorted dataset".format(INFO))
     # Let's play
@@ -205,3 +227,4 @@ if __name__ == '__main__':
     env.save_current_dataset(episode_index=-2, save_index=False)
     print("{0} Done....".format(INFO))
     print("=============================================")
+    '''

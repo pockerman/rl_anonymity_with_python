@@ -52,17 +52,7 @@ class SARSAn(WithMaxActionMixin):
         :param env:
         :return:
         """
-        # validate
-        is_tiled = getattr(env, "IS_TILED_ENV_CONSTRAINT", None)
-        if is_tiled is None or is_tiled is False:
-            raise ValueError("The given environment does not "
-                             "satisfy the IS_TILED_ENV_CONSTRAINT constraint")
-
-        if not isinstance(self.config.policy, WithQTableMixinBase):
-            raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
-
-        if self.config.estimator is None:
-            raise ValueError("Estimator has not been set")
+        self._validate(env)
 
         # reset the estimator
         self.config.estimator.reset(self.config.reset_estimator_z_traces)
@@ -142,10 +132,27 @@ class SARSAn(WithMaxActionMixin):
             state = next_state
             action = next_action
 
-
         episode_info = EpisodeInfo()
         episode_info.episode_score = episode_score
         episode_info.total_distortion = total_distortion
         episode_info.info["m_iterations"] = counter
         return episode_info
+
+    def _validate(self, env: Env) -> None:
+        """
+        Performs necessary checks
+        :param env:
+        :return:
+        """
+        # validate
+        is_tiled = getattr(env, "IS_TILED_ENV_CONSTRAINT", None)
+        if is_tiled is None or is_tiled is False:
+            raise ValueError("The given environment does not "
+                             "satisfy the IS_TILED_ENV_CONSTRAINT constraint")
+
+        if not isinstance(self.config.policy, WithQTableMixinBase):
+            raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
+
+        if self.config.estimator is None:
+            raise ValueError("Estimator has not been set")
 

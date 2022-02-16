@@ -161,7 +161,8 @@ if __name__ == '__main__':
     algo_config.gamma = GAMMA
     algo_config.alpha = ALPHA
     #algo_config.policy = SoftMaxPolicy(n_actions=len(action_space), tau=1.2)
-    algo_config.policy = EpsilonGreedyPolicy(eps=EPS, env=env,decay_op=EPSILON_DECAY_OPTION,
+    algo_config.policy = EpsilonGreedyPolicy(eps=EPS, n_actions=env.n_actions,
+                                             decay_op=EPSILON_DECAY_OPTION,
                                              epsilon_decay_factor=EPSILON_DECAY_FACTOR)
 
     # the learner we want to train

@@ -64,7 +64,7 @@ class QEstimator(object):
         else:
             self.weights[features] += self.alpha * delta
 
-    def reset(self, z_only: bool=False):
+    def reset(self, z_only: bool = False):
         """
         Resets the eligibility trace (must be done at
         the start of every epoch) and optionally the

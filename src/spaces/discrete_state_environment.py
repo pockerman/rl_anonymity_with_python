@@ -53,7 +53,6 @@ class DiscreteStateEnvironment(object):
         self.state_bins: List[float] = []
         self.distorted_data_set = copy.deepcopy(self.config.data_set)
         self.current_time_step: TimeStep = None
-        # self.string_distance_calculator: TextDistanceCalculator = None
 
         # dictionary that holds the distortion for every column
         # in the dataset
@@ -134,7 +133,7 @@ class DiscreteStateEnvironment(object):
         normalized distance to 0.0 meaning that no distortion is assumed initially
         :return: None
         """
-        # self.string_distance_calculator = TextDistanceCalculator(dist_type=self.config.string_column_distortion_type)
+
         col_names = self.config.data_set.get_columns_names()
         for col in col_names:
             self.column_distances[col] = 0.0

@@ -116,7 +116,6 @@ class ActionRestore(ActionBase, WithHierarchyTable):
         return ops['data']
 
 
-
 class ActionTransform(ActionBase):
     """
     Implements the transform action
