@@ -14,9 +14,7 @@ Criterion = TypeVar('Criterion')
 
 
 class QLearnConfig(object):
-    """
-    Configuration  for Q-learning
-    """
+    """Configuration  for Q-learning"""
     def __init__(self):
         self.gamma: float = 1.0
         self.alpha: float = 0.1
@@ -25,11 +23,13 @@ class QLearnConfig(object):
 
 
 class QLearning(WithMaxActionMixin):
-    """
-    Q-learning algorithm implementation
-    """
+    """Q-learning algorithm implementation"""
 
     def __init__(self, algo_config: QLearnConfig):
+        """
+        Constructor. Constructs an untrained agent
+        :param algo_config: Configuration parameters
+        """
         super(QLearning, self).__init__()
         self.q_table = {}
         self.config = algo_config
