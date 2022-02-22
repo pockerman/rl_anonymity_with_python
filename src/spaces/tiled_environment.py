@@ -2,26 +2,29 @@
 Tile environment
 """
 
+import copy
 from typing import TypeVar
+from dataclasses import dataclass
 from src.extern.tile_coding import IHT, tiles
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep
 from src.exceptions.exceptions import InvalidParamValue
+from src.spaces.state import State
+from src.spaces.time_step import copy_time_step
 
 Env = TypeVar('Env')
-State = TypeVar('State')
 
 
+@dataclass(init=True, repr=True)
 class TiledEnvConfig(object):
+    """Configuration for the TiledEnvironment
     """
-    Configuration for the TiledEnvironment
-    """
-    def __init__(self):
-        self.env: Env = None
-        self.num_tilings: int = 0
-        self.max_size = 0
-        self.tiling_dim = 0
-        self.column_scales = {}
+
+    env: Env = None
+    num_tilings: int = 0
+    max_size: int = 0
+    tiling_dim: int = 0
+    column_scales: dict = None
 
 
 class TiledEnv(object):
@@ -44,14 +47,6 @@ class TiledEnv(object):
         self._validate()
         self.iht = IHT(self.max_size)
 
-    def step(self, action: ActionBase) -> TimeStep:
-        """
-         Apply the action and return new state
-        :param action: The action to apply
-        :return:
-        """
-        return self.env.step(action)
-
     @property
     def action_space(self):
         return self.env.action_space
@@ -63,6 +58,72 @@ class TiledEnv(object):
     @property
     def n_states(self) -> int:
         return self.env.n_states
+
+    def step(self, action: ActionBase) -> TimeStep:
+        """Execute the action in the environment and return
+        a new state for observation
+
+        Parameters
+        ----------
+        action: The action to execute
+
+        Returns
+        -------
+
+         An instance of TimeStep type
+
+        """
+
+        raw_time_step = self.env.step(action)
+
+        # a state wrapper to communicate
+        state = State()
+
+        # the raw environment returns an index
+        # of the bin that the total distortion falls into
+        state.bin_idx = raw_time_step.observation
+        state.total_distortion = raw_time_step.info["total_distortion"]
+        state.column_names = self.env.column_names
+
+        time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
+        #time_step = copy.deepcopy(raw_time_step)
+        #time_step.observation = state
+
+        return time_step
+
+        return
+
+    def reset(self, **options) -> TimeStep:
+        """Reset the environment so that a new sequence
+        of episodes can be generated
+
+        Parameters
+        ----------
+        options: Client provided named options
+
+        Returns
+        -------
+
+        An instance of TimeStep type
+        """
+
+        raw_time_step = self.env.reset(**options)
+
+        # a state wrapper to communicate
+        state = State()
+
+        # the raw environment returns an index
+        # of the bin that the total distortion falls into
+        state.bin_idx = raw_time_step.observation
+        state.total_distortion = raw_time_step.info["total_distortion"]
+        state.column_names = self.env.column_names
+
+        time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
+
+        #time_step = copy.deepcopy(raw_time_step)
+        #time_step.observation = state
+
+        return time_step
 
     def get_action(self, aidx: int) -> ActionBase:
         return self.env.action_space[aidx]
@@ -129,21 +190,6 @@ class TiledEnv(object):
         :return:
         """
         return self.env.total_current_distortion()
-
-    def reset(self, **options) -> TimeStep:
-        """
-        Starts a new sequence and returns the first `TimeStep` of this sequence.
-        Returns:
-          A `TimeStep` namedtuple containing:
-            step_type: A `StepType` of `FIRST`.
-            reward: `None`, indicating the reward is undefined.
-            discount: `None`, indicating the discount is undefined.
-            observation: A NumPy array, or a nested dict, list or tuple of arrays.
-              Scalar values that can be cast to NumPy arrays (e.g. Python floats)
-              are also valid in place of a scalar array. Must conform to the
-              specification returned by `observation_spec()`.
-        """
-        return self.env.reset(**options)
 
     def get_scaled_state(self, state: State) -> list:
         """

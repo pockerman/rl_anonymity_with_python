@@ -7,10 +7,12 @@ import copy
 import numpy as np
 from pathlib import Path
 from typing import TypeVar, List
+from dataclasses import dataclass
 import multiprocessing as mp
 
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep, StepType
+
 
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
@@ -18,30 +20,28 @@ ActionSpace = TypeVar("ActionSpace")
 DistortionCalculator = TypeVar('DistortionCalculator')
 
 
+@dataclass(init=True, repr=True)
 class DiscreteEnvConfig(object):
-    """
-    Configuration for discrete environment
+    """Configuration for discrete environment
     """
 
-    def __init__(self) -> None:
-        self.data_set: DataSet = None
-        self.action_space: ActionSpace = None
-        self.reward_manager: RewardManager = None
-        self.average_distortion_constraint: float = 0.0
-        self.gamma: float = 0.99
-        self.n_states: int = 10
-        self.min_distortion: float = 0.4
-        self.max_distortion: float = 0.7
-        self.punish_factor: float = 2.0
-        self.reward_factor: float = 0.95
-        self.n_rounds_below_min_distortion: int = 10
-        self.distorted_set_path: Path = None
-        self.distortion_calculator: DistortionCalculator = None
+    data_set: DataSet = None
+    action_space: ActionSpace = None
+    reward_manager: RewardManager = None
+    average_distortion_constraint: float = 0.0
+    gamma: float = 0.99
+    n_states: int = 10
+    min_distortion: float = 0.4
+    max_distortion: float = 0.7
+    punish_factor: float = 2.0
+    reward_factor: float = 0.95
+    n_rounds_below_min_distortion: int = 10
+    distorted_set_path: Path = None
+    distortion_calculator: DistortionCalculator = None
 
 
 class DiscreteStateEnvironment(object):
-    """
-    The DiscreteStateEnvironment class. Uses state aggregation in order
+    """The DiscreteStateEnvironment class. Uses state aggregation in order
     to create bins where the average total distortion of the dataset falls in
     """
 
@@ -79,6 +79,10 @@ class DiscreteStateEnvironment(object):
     @property
     def n_states(self) -> int:
         return self.config.n_states
+
+    @property
+    def column_names(self) -> list:
+        return self.config.data_set.get_columns_names()
 
     def get_action(self, aidx: int) -> ActionBase:
         return self.config.action_space[aidx]
@@ -268,7 +272,6 @@ class DiscreteStateEnvironment(object):
 
         # TODO: these modifications will cause the agent to always
         # move close to transition points
-        # TODO: Remove the magic constants
         if next_state is not None and self.current_time_step.observation is not None:
             if next_state < min_dist_bin <= self.current_time_step.observation:
                 # the agent chose to step into the chaos again
