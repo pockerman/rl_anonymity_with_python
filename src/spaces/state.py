@@ -61,12 +61,27 @@ class State(object):
         self.idx = -1
         self.bin_idx = -1
         self.total_distortion: float = 0.0
-        self.column_names = []
+        self.column_distortions = {}
 
     def __contains__(self, item) -> bool:
-        return item in self.column_names
+        return item in self.column_distortions.keys()
 
     def __iter__(self):
-        return StateIterator(self.column_names)
+        return StateIterator(list(self.column_distortions.keys()))
+
+    def __getitem__(self, name: str) -> float:
+        """
+        Get the distortion corresponding to the name-th column
+
+        Parameters
+        ----------
+        name: The name of the column
+
+        Returns
+        -------
+
+        The column distortion
+        """
+        return self.column_distortions[name]
 
 

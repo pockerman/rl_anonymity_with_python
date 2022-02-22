@@ -4,8 +4,10 @@ Trainer
 
 import numpy as np
 from typing import TypeVar
+
 from src.utils import INFO
 from src.utils.function_wraps import time_func
+from src.utils.episode_info import EpisodeInfo
 
 Env = TypeVar("Env")
 Agent = TypeVar("Agent")
@@ -83,16 +85,18 @@ class Trainer(object):
 
             self.actions_before_episode_begins(**{"env": self.env})
             # train for a number of iterations
-            episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
+            #episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
+            episode_info: EpisodeInfo = self.agent.on_episode(self.env)
 
-            print("{0} Episode score={1}, episode total distortion {2}".format(INFO, episode_score, total_distortion / n_itrs))
+            print("{0} Episode score={1}, episode total avg distortion {2}".format(INFO, episode_info.episode_score,
+                                                                               episode_info.total_distortion / episode_info.info["n_iterations"]))
 
             #if episode % self.configuration['output_msg_frequency'] == 0:
-            print("{0} Episode finished after {1} iterations".format(INFO, n_itrs))
+            print("{0} Episode finished after {1} iterations".format(INFO, episode_info.info["n_iterations"]))
 
-            self.iterations_per_episode.append(n_itrs)
-            self.total_rewards[episode] = episode_score
-            self.total_distortions.append(total_distortion)
+            self.iterations_per_episode.append(episode_info.info["n_iterations"])
+            self.total_rewards[episode] = episode_info.episode_score
+            self.total_distortions.append(episode_info.total_distortion)
             self.actions_after_episode_ends(**{"episode_idx": episode})
 
         print("{0} Training finished for agent {1}".format(INFO, self.agent.name))

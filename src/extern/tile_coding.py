@@ -77,7 +77,8 @@ def hashcoords(coordinates, m, readonly=False):
 
 
 def tiles(ihtORsize, numtilings, floats, ints=[], readonly=False):
-    """returns num-tilings tile indices corresponding to the floats and ints"""
+    """Returns num-tilings tile indices corresponding to the floats and ints
+    """
     qfloats = [floor(f * numtilings) for f in floats]
     Tiles = []
     for tiling in range(numtilings):

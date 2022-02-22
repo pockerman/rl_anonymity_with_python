@@ -16,7 +16,7 @@ from src.utils.numeric_distance_type import NumericDistanceType
 from src.utils.string_distance_calculator import StringDistanceType
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment, DiscreteEnvConfig
-from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig
+from src.spaces.tiled_environment import TiledEnv
 from src.utils.iteration_control import IterationControl
 from src.utils.plot_utils import plot_running_avg
 from src.utils import INFO
@@ -168,12 +168,10 @@ if __name__ == '__main__':
     # create the environment
     env = DiscreteStateEnvironment(env_config=env_config)
 
-    tiled_env_config = TiledEnvConfig(env=env, num_tilings=NUM_TILINGS, max_size=MAX_SIZE, tiling_dim=TILING_DIM,
-                                      column_ranges={"ethnicity": [0.0, 1.0],
-                                                     "salary": [0.0, 1.0],
-                                                     "diagnosis": [0.0, 5.0]})
     # we will use a tiled environment in this example
-    tiled_env = TiledEnv(config=tiled_env_config)
+    tiled_env = TiledEnv(env=env, max_size=MAX_SIZE,
+                         num_tilings=NUM_TILINGS,
+                         tiling_dim=TILING_DIM)
     tiled_env.reset()
 
     # save the data before distortion so that we can
