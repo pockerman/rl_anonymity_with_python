@@ -3,7 +3,7 @@ Tile environment
 """
 
 import copy
-from typing import TypeVar
+from typing import TypeVar, List
 from dataclasses import dataclass
 from src.extern.tile_coding import IHT, tiles
 from src.spaces.actions import ActionBase, ActionType
@@ -13,6 +13,8 @@ from src.spaces.state import State
 from src.spaces.time_step import copy_time_step
 
 Env = TypeVar('Env')
+Tile = TypeVar('Tile')
+Config = TypeVar('Config')
 
 
 @dataclass(init=True, repr=True)
@@ -24,10 +26,14 @@ class TiledEnvConfig(object):
     num_tilings: int = 0
     max_size: int = 0
     tiling_dim: int = 0
-    column_scales: dict = None
+    column_ranges: dict = None
 
 
 class TiledEnv(object):
+    """The TiledEnv class. It models a tiled
+    environment
+    """
+
     IS_TILED_ENV_CONSTRAINT = True
 
     def __init__(self, config: TiledEnvConfig) -> None:
@@ -40,11 +46,13 @@ class TiledEnv(object):
         # set up the columns scaling
         # only the columns that are to be altered participate in the
         # tiling
-        self.column_scales = config.column_scales
+        self.column_ranges = config.column_ranges
+        self.column_scales = {}
 
         # Initialize index hash table (IHT) for tile coding.
         # This assigns a unique index to each tile up to max_size tiles.
         self._validate()
+        self._create_column_scales()
         self.iht = IHT(self.max_size)
 
     @property
@@ -58,6 +66,10 @@ class TiledEnv(object):
     @property
     def n_states(self) -> int:
         return self.env.n_states
+
+    @property
+    def config(self) -> Config:
+        return self.env.config
 
     def step(self, action: ActionBase) -> TimeStep:
         """Execute the action in the environment and return
@@ -83,15 +95,10 @@ class TiledEnv(object):
         # of the bin that the total distortion falls into
         state.bin_idx = raw_time_step.observation
         state.total_distortion = raw_time_step.info["total_distortion"]
-        state.column_names = self.env.column_names
+        state.column_distortions = self.env.column_distortions
 
         time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
-        #time_step = copy.deepcopy(raw_time_step)
-        #time_step.observation = state
-
         return time_step
-
-        return
 
     def reset(self, **options) -> TimeStep:
         """Reset the environment so that a new sequence
@@ -116,12 +123,9 @@ class TiledEnv(object):
         # of the bin that the total distortion falls into
         state.bin_idx = raw_time_step.observation
         state.total_distortion = raw_time_step.info["total_distortion"]
-        state.column_names = self.env.column_names
+        state.column_distortions = self.env.column_distortions
 
         time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
-
-        #time_step = copy.deepcopy(raw_time_step)
-        #time_step.observation = state
 
         return time_step
 
@@ -130,10 +134,18 @@ class TiledEnv(object):
 
     def save_current_dataset(self, episode_index: int, save_index: bool = False) -> None:
         """
-        Save the current distorted datase for the given episode index
-        :param episode_index:
-        :param save_index:
-        :return:
+        Save the current data set at the given episode index
+        Parameters
+        ----------
+
+        episode_index: Episode index corresponding to the training episode
+        save_index: if True the Pandas index is also saved
+
+        Returns
+        -------
+
+        None
+
         """
         self.env.save_current_dataset(episode_index, save_index)
 
@@ -200,22 +212,54 @@ class TiledEnv(object):
         """
         scaled_state_vals = []
         for name in state:
-            scaled_state_vals.append(state[name] * self.columns_scales[name])
+            scaled_state_vals.append(state[name] * self.column_scales[name])
 
         return scaled_state_vals
 
-    def featurize_state_action(self, state, action: ActionBase) -> None:
+    def featurize_state_action(self, state: State, action: ActionBase) -> List[Tile]:
+        """Get a list of Tiles for the given state and action
+
+        Parameters
+        ----------
+        state: The environment state observed
+        action: The action
+
+        Returns
+        -------
+
+        A list of tiles
+
         """
-        Returns the featurized representation for a state-action pair
-        :param state:
-        :param action:
-        :return:
-        """
+
         scaled_state = self.get_scaled_state(state)
         featurized = tiles(self.iht, self.num_tilings, scaled_state, [action])
         return featurized
 
+    def _create_column_scales(self) -> None:
+        """
+        Create the scales for each column
+
+        Returns
+        -------
+
+        None
+
+        """
+
+        for name in self.column_ranges:
+            range_ = self.column_ranges[name]
+            self.column_scales[name] = self.tiling_dim / (range_[1] - range_[0])
+
     def _validate(self) -> None:
+        """
+        Validate the internal data structures
+
+        Returns
+        -------
+
+        None
+
+        """
         if self.max_size <= 0:
             raise InvalidParamValue(param_name="max_size",
                                     param_value=str(self.max_size) + " should be > 0")
@@ -227,7 +271,10 @@ class TiledEnv(object):
                                     param_value=str(self.max_size) +
                                     " should be >=num_tilings * tiling_dim * tiling_dim")
 
-        if len(self.column_scales) == 0:
+        if len(self.column_ranges) == 0:
             raise InvalidParamValue(param_name="column_scales",
                                     param_value=str(len(self.column_scales)) + " should not be empty")
+
+        if len(self.column_ranges) != len(self.env.column_names):
+            raise ValueError("Column ranges is not equal to number of columns")
 

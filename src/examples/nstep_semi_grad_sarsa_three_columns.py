@@ -169,7 +169,9 @@ if __name__ == '__main__':
     env = DiscreteStateEnvironment(env_config=env_config)
 
     tiled_env_config = TiledEnvConfig(env=env, num_tilings=NUM_TILINGS, max_size=MAX_SIZE, tiling_dim=TILING_DIM,
-                                      column_scales={"ethnicity": [0.0, 1.0], "salary": [0.0, 1.0]})
+                                      column_ranges={"ethnicity": [0.0, 1.0],
+                                                     "salary": [0.0, 1.0],
+                                                     "diagnosis": [0.0, 5.0]})
     # we will use a tiled environment in this example
     tiled_env = TiledEnv(config=tiled_env_config)
     tiled_env.reset()

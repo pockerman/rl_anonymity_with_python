@@ -5,9 +5,11 @@ https://michaeloneill.github.io/RL-tutorial.html
 """
 import numpy as np
 from typing import TypeVar
+from dataclasses import dataclass
 
 from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase
 from src.utils.episode_info import EpisodeInfo
+
 from src.algorithms.q_estimator import QEstimator
 from src.exceptions.exceptions import InvalidParamValue
 
@@ -16,28 +18,28 @@ Criterion = TypeVar('Criterion')
 Policy = TypeVar('Policy')
 Estimator = TypeVar('Estimator')
 
-
+@dataclass(init=True, repr=True)
 class SARSAnConfig:
+    """Configuration class for n-step SARSA algorithm
 
-    def __init__(self) -> None:
-        self.gamma: float = 1.0
-        self.alpha = 0.1
-        self.n = 10
-        self.n_itrs_per_episode: int = 100
-        self.max_size: int = 4096
-        self.use_trace: bool = False
-        self.policy: Policy = None
-        self.estimator: Estimator = None
-        self.reset_estimator_z_traces: bool = False
+    """
+    gamma: float = 1.0
+    alpha: float = 0.1
+    n: int = 10
+    n_itrs_per_episode: int = 100
+    max_size: int = 4096
+    use_trace: bool = False
+    policy: Policy = None
+    estimator: Estimator = None
+    reset_estimator_z_traces: bool = False
 
 
 class SARSAn(WithMaxActionMixin):
-    """
-    Implementation ofn-step  semi-gradient SARSA algorithm
+    """Implementation of n-step  semi-gradient SARSA algorithm
     """
 
     def __init__(self, sarsa_config: SARSAnConfig):
-
+        super(SARSAn, self).__init__()
         self.name = "SARSAn"
         self.config = sarsa_config
         self.q_table = {}
@@ -65,6 +67,9 @@ class SARSAn(WithMaxActionMixin):
         """
         # reset the estimator
         self.config.estimator.reset(self.config.reset_estimator_z_traces)
+
+    def actions_after_episode_ends(self, **options) -> None:
+        pass
 
     def on_episode(self, env: Env) -> EpisodeInfo:
         """
@@ -95,6 +100,7 @@ class SARSAn(WithMaxActionMixin):
                 # take action A, observe R, S'
                 next_time_step = env.step(action)
                 next_state = next_time_step.observation
+                states.append(next_state)
                 reward = next_time_step.reward
 
                 total_distortion += next_time_step.info["total_distortion"]
@@ -107,7 +113,7 @@ class SARSAn(WithMaxActionMixin):
 
                     next_action_idx = self.config.policy(self.q_table, next_state)
                     next_action = env.get_action(next_action_idx)
-                    actions.append(next_action)
+                    actions.append(next_action_idx)
 
             # should we update
             update_time = itr + 1 - self.config.n
@@ -122,7 +128,14 @@ class SARSAn(WithMaxActionMixin):
                     q_values_next = self.config.estimator.predict(states[update_time + self.config.n])
                     target += q_values_next[actions[update_time + self.config.n]]
 
-                # Update step
+                # Update step. what happens if the update_time is greater than
+                # len(states) or len(actions)
+
+                if update_time >= len(states) or update_time >= len(actions):
+                    raise InvalidParamValue(param_name="update_time", param_value=str(update_time))
+
+                # update the state for the respective action
+                # with the computed target
                 self.config.estimator.update(states[update_time], actions[update_time], target)
 
             if update_time == T - 1:
@@ -135,7 +148,7 @@ class SARSAn(WithMaxActionMixin):
         episode_info = EpisodeInfo()
         episode_info.episode_score = episode_score
         episode_info.total_distortion = total_distortion
-        episode_info.info["m_iterations"] = counter
+        episode_info.info["n_iterations"] = counter
         return episode_info
 
     def _validate(self, env: Env) -> None:

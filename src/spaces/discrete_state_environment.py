@@ -84,6 +84,10 @@ class DiscreteStateEnvironment(object):
     def column_names(self) -> list:
         return self.config.data_set.get_columns_names()
 
+    @property
+    def column_distortions(self) -> dict:
+        return self.column_distances
+
     def get_action(self, aidx: int) -> ActionBase:
         return self.config.action_space[aidx]
 
