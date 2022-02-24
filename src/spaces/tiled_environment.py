@@ -130,11 +130,23 @@ class TiledEnv(object):
         return time_step
 
     def get_action(self, aidx: int) -> ActionBase:
+        """Returns the action that corresponds to the given index
+
+        Parameters
+        ----------
+        aidx: The index of the action to return
+
+        Returns
+        -------
+
+        An instance of the ActionBase class
+
+        """
         return self.env.action_space[aidx]
 
     def save_current_dataset(self, episode_index: int, save_index: bool = False) -> None:
-        """
-        Save the current data set at the given episode index
+        """Save the current data set at the given episode index
+
         Parameters
         ----------
 
@@ -150,33 +162,53 @@ class TiledEnv(object):
         self.env.save_current_dataset(episode_index, save_index)
 
     def create_bins(self) -> None:
-        """
-        Create the bins
-        :return:
+        """Create the bins
+
+        Returns
+        -------
+
+        None
+
         """
         self.env.create_bins()
 
     def get_aggregated_state(self, state_val: float) -> int:
         """
         Returns the bin index that the state_val corresponds to
-        :param state_val: The value of the state. This typically will be
-        either a column normalized distortion value or the dataset average total
-        distortion
-        :return:
+
+        Parameters
+        ----------
+
+        state_val: The bin index that the distortion corresponds to
+
+        Returns
+        -------
+
+        The bin index corresponding to the distortion
         """
         return self.env.get_aggregated_state(state_val)
 
     def initialize_column_counts(self) -> None:
         """
         Set the column visit counts to zero
-        :return:
+        Returns
+        -------
+
+        None
+
         """
         self.env.initialize_column_counts()
 
     def all_columns_visited(self) -> bool:
         """
         Returns True is all column counts are greater than zero
-        :return:
+
+        Returns
+        -------
+
+        Returns True is all column counts are greater than zero
+        otherwise False
+
         """
         return self.env.all_columns_visited()
 
@@ -184,31 +216,53 @@ class TiledEnv(object):
         """
         Initialize the text distances for features of type string. We set the
         normalized distance to 0.0 meaning that no distortion is assumed initially
-        :return: None
+
+        Returns
+        -------
+
+        None
+
         """
         self.env.initialize_distances()
 
-    def apply_action(self, action: ActionBase):
-        """
-        Apply the action on the environment
-        :param action: The action to apply on the environment
-        :return:
+    def apply_action(self, action: ActionBase) -> None:
+        """Apply the action on the environment
+
+        Parameters
+        ----------
+        action: The action to apply
+
+        Returns
+        -------
+
+        None
+
         """
         self.env.apply_action(action)
 
     def total_current_distortion(self) -> float:
-        """
-        Calculates the current total distortion of the dataset.
-        :return:
+        """Calculates the current total distortion of the dataset.
+
+        Returns
+        -------
+        The total current distortion
+
         """
         return self.env.total_current_distortion()
 
     def get_scaled_state(self, state: State) -> list:
-        """
-        Scales the state components ad returns the
+        """Scales the state components and returns the
         scaled state
-        :param state:
-        :return:
+
+        Parameters
+        ----------
+        state: The state to scale
+
+        Returns
+        -------
+
+        A list of scaled state values
+
         """
         scaled_state_vals = []
         for name in state:
