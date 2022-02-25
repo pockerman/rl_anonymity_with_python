@@ -5,6 +5,7 @@ API
    :maxdepth: 4
    
    API/actions
+   API/state
    generated/action_space
    generated/q_estimator
    generated/q_learning
@@ -12,7 +13,6 @@ API
    generated/sarsa_semi_gradient
    generated/exceptions
    generated/action_space
-   generated/actions
    generated/column_type
    generated/discrete_state_environment
    generated/observation_space

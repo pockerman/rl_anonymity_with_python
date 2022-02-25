@@ -1,5 +1,7 @@
-"""
-Discretized state space
+"""The state module. Specifies a wrapper
+to a state such that it exposes column distortions
+and the bin index of the overall distortion.
+
 """
 
 from typing import TypeVar, List, Any
@@ -54,8 +56,7 @@ class StateIterator(object):
 
 
 class State(object):
-    """
-    Helper to represent a State
+    """Helper to represent a State
     """
     def __init__(self):
         self.idx = -1
@@ -63,8 +64,22 @@ class State(object):
         self.total_distortion: float = 0.0
         self.column_distortions = {}
 
-    def __contains__(self, item) -> bool:
-        return item in self.column_distortions.keys()
+    def __contains__(self, column_name: str) -> bool:
+        """
+        Returns true if column_name is in the column_distortions
+        keys
+
+        Parameters
+        ----------
+        column_name: The column name to query
+
+        Returns
+        -------
+
+        A boolean indicating if column_name is in the column_distortions
+        keys or not.
+        """
+        return column_name in self.column_distortions.keys()
 
     def __iter__(self):
         return StateIterator(list(self.column_distortions.keys()))

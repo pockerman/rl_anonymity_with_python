@@ -1,5 +1,6 @@
-"""
-Trainer
+"""Module trainer. Specifies a utility class
+for training serial reinforcement learning algorithms
+
 """
 
 import numpy as np

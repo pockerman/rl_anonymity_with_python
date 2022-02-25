@@ -3,16 +3,8 @@
 
 .. automodule:: actions
 
-   
-   
-   
 
-   
-   
-   
-
-   
-   
+      
    .. rubric:: Classes
 
    .. autosummary::

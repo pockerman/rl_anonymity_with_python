@@ -32,7 +32,7 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
                  max_eps: float = 1.0, min_eps: float = 0.001,
                  epsilon_decay_factor: float = 0.01,
                  user_defined_decrease_method: UserDefinedDecreaseMethod = None) -> None:
-        super(WithMaxActionMixin, self).__init__()
+        super(WithMaxActionMixin, self).__init__(table={})
         self._eps = eps
         self._n_actions = n_actions
         self._decay_op = decay_op
