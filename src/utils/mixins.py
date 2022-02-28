@@ -104,3 +104,7 @@ class WithMaxActionMixin(WithQTableMixin):
         values = np.array(values)
         action = np.argmax(values)
         return int(action)
+
+
+class WithEstimatorMixin(object):
+    pass

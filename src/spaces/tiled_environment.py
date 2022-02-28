@@ -5,6 +5,9 @@ Tile environment
 import copy
 from typing import TypeVar, List
 from dataclasses import dataclass
+
+import numpy as np
+
 from src.extern.tile_coding import IHT, tiles
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep
@@ -26,6 +29,7 @@ class TiledEnvConfig(object):
     num_tilings: int = 0
     max_size: int = 0
     tiling_dim: int = 0
+    n_bins: int = 1
     column_ranges: dict = None
 
 
@@ -36,12 +40,19 @@ class TiledEnv(object):
 
     IS_TILED_ENV_CONSTRAINT = True
 
+    @classmethod
+    def from_options(cls, *, env: Env, max_size: int, num_tilings: int,
+                     tiling_dim: int, n_bins: int, column_ranges: dict):
+        return cls(TiledEnvConfig(env=env, max_size=max_size, num_tilings=num_tilings,
+                                  tiling_dim=tiling_dim, n_bins=n_bins, column_ranges=column_ranges))
+
     def __init__(self, config: TiledEnvConfig) -> None:
 
         self.env = config.env
         self.max_size = config.max_size
         self.num_tilings = config.num_tilings
         self.tiling_dim = config.tiling_dim
+        self.n_bins = config.n_bins
 
         # set up the columns scaling
         # only the columns that are to be altered participate in the
@@ -54,6 +65,8 @@ class TiledEnv(object):
         self._validate()
         self._create_column_scales()
         self.iht = IHT(self.max_size)
+
+        self.column_bins = {}
 
     @property
     def action_space(self):
@@ -170,7 +183,20 @@ class TiledEnv(object):
         None
 
         """
-        self.env.create_bins()
+
+        # calculate the tile width for each column in the
+        # data set
+
+        tile_widhs = {}
+        for column in self.column_ranges:
+            range_ = self.column_ranges[column]
+            tile_width = (range_[1] + range_[0]) / self.n_bins
+            self.column_bins[column] = np.zeros((self.num_tilings, self.n_bins))
+
+            # for each layer create an offset
+            # bin
+            for i in range(self.num_tilings):
+                self.column_bins[column][i] = np.linspace(range_[0] + i * tile_width, range_[1] + i * tile_width, self.n_bins)
 
     def get_aggregated_state(self, state_val: float) -> int:
         """
@@ -325,9 +351,17 @@ class TiledEnv(object):
                                     param_value=str(self.max_size) +
                                     " should be >=num_tilings * tiling_dim * tiling_dim")
 
+        if self.column_ranges is None:
+            raise InvalidParamValue(param_name="column_ranges",
+                                    param_value="None")
+
         if len(self.column_ranges) == 0:
             raise InvalidParamValue(param_name="column_scales",
                                     param_value=str(len(self.column_scales)) + " should not be empty")
+
+        if self.env is None:
+            raise InvalidParamValue(param_name="env",
+                                    param_value="None")
 
         if len(self.column_ranges) != len(self.env.column_names):
             raise ValueError("Column ranges is not equal to number of columns")

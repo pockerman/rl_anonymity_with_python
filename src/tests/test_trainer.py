@@ -5,7 +5,7 @@ import unittest
 import pytest
 
 from src.algorithms.trainer import Trainer
-from src.algorithms.sarsa_semi_gradient import SARSAnConfig, SARSAn
+from src.algorithms.n_step_semi_gradient_sarsa import SARSAnConfig, SARSAn
 from src.spaces.tiled_environment import TiledEnv
 
 

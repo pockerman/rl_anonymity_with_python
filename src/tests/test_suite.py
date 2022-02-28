@@ -4,7 +4,8 @@ from .test_trainer import TestTrainer
 from .test_serial_hierarchy import TestSerialHierarchy
 from .test_preprocessor import TestPreprocessor
 from .test_actions import TestActions
-from .test_sarsa_semi_gradient import TestSARSAn
+from .test_n_step_sarsa_semi_gradient import TestSARSAn
+from .test_semi_gradient_sarsa import TestSemiGradSARSA
 from .test_tiled_environment import TestTiledEnv
 
 
@@ -15,6 +16,7 @@ def suite():
     suite.addTest(TestPreprocessor)
     suite.addTest(TestActions)
     suite.addTest(TestSARSAn)
+    suite.addTest(TestSemiGradSARSA)
     suite.addTest(TestTiledEnv)
     return suite
 

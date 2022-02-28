@@ -47,21 +47,30 @@ class Trainer(object):
             avg[i] = self.total_distortions[i] / self.iterations_per_episode[i]
         return avg
 
-    def actions_before_training(self):
+    def actions_before_training(self) -> None:
+        """Any actions to perform before training begins
+
+        Returns
+        -------
+
+        None
         """
-        Any actions to perform before training begins
-        :return:
-        """
+
         self.total_rewards: np.array = np.zeros(self.configuration['n_episodes'])
         self.iterations_per_episode = []
-
         self.agent.actions_before_training(self.env)
 
     def actions_before_episode_begins(self, **options) -> None:
-        """
-        Perform any actions necessary before the training begins
-        :param options:
-        :return:
+        """Perform any actions necessary before the training begins
+
+        Parameters
+        ----------
+        options: Any options passed by the client code
+
+        Returns
+        -------
+
+        None
         """
         self.agent.actions_before_episode_begins(**options)
 

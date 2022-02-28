@@ -2,7 +2,7 @@ import random
 import numpy as np
 from pathlib import Path
 
-from src.algorithms.sarsa_semi_gradient import SARSAnConfig, SARSAn
+from src.algorithms.n_step_semi_gradient_sarsa import SARSAnConfig, SARSAn
 from src.algorithms.q_estimator import QEstimator
 from src.algorithms.trainer import Trainer
 from src.datasets.datasets_loaders import MockSubjectsLoader

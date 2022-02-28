@@ -21,7 +21,6 @@ Estimator = TypeVar('Estimator')
 @dataclass(init=True, repr=True)
 class SARSAnConfig:
     """Configuration class for n-step SARSA algorithm
-
     """
     gamma: float = 1.0
     alpha: float = 0.1
