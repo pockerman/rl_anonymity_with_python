@@ -6,6 +6,7 @@ API
    
    API/actions
    API/state
+   API/epsilon_greedy_q_estimator
    generated/action_space
    generated/q_estimator
    generated/q_learning
