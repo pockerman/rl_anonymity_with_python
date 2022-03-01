@@ -5,6 +5,7 @@ import random
 import numpy as np
 from enum import Enum
 from typing import Any, TypeVar
+from dataclasses import dataclass
 
 from src.utils.mixins import WithMaxActionMixin
 
@@ -25,7 +26,30 @@ class EpsilonDecayOption(Enum):
     USER_DEFINED = 4
 
 
+@dataclass(init=True, repr=True)
+class EpsilonGreedyConfig(object):
+    """Configuration class for EpsilonGreedyPolicy
+
+    """
+    eps: float = 1.0
+    n_actions: int = 1
+    decay_op: EpsilonDecayOption = EpsilonDecayOption.NONE
+    max_eps: float = 1.0
+    min_eps: float = 0.001
+    epsilon_decay_factor: float = 0.01
+    user_defined_decrease_method: UserDefinedDecreaseMethod = None
+
+
 class EpsilonGreedyPolicy(WithMaxActionMixin):
+    """Epsilon-greedy policy implementation
+    """
+
+    @classmethod
+    def from_config(cls, config: EpsilonGreedyConfig):
+        return cls(eps=config.eps, n_actions=config.n_actions,
+                   decay_op=config.decay_op, min_eps=config.min_eps,
+                   max_eps=config.max_eps, epsilon_decay_factor=config.epsilon_decay_factor,
+                   user_defined_decrease_method=config.user_defined_decrease_method)
 
     def __init__(self, eps: float, n_actions: int,
                  decay_op: EpsilonDecayOption,

@@ -7,6 +7,7 @@ from .test_actions import TestActions
 from .test_n_step_sarsa_semi_gradient import TestSARSAn
 from .test_semi_gradient_sarsa import TestSemiGradSARSA
 from .test_tiled_environment import TestTiledEnv
+from .test_epsilon_greedy_q_estimator import TestEpsilonGreedyQEstimator
 
 
 def suite():
@@ -18,6 +19,7 @@ def suite():
     suite.addTest(TestSARSAn)
     suite.addTest(TestSemiGradSARSA)
     suite.addTest(TestTiledEnv)
+    suite.addTest(TestEpsilonGreedyQEstimator)
     return suite
 
 

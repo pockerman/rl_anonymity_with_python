@@ -65,16 +65,19 @@ class SemiGradSARSA(object):
         episode_reward = 0.0
         episode_n_itrs = 0
 
+        # reset the environment
+        time_step = env.reset()
+
         # select a state
-        state: State = None
+        state: State = time_step.observation
 
         #choose an action using the policy
-        action: Action = None
+        action: Action = self.config.policy(state)
 
         for itr in range(self.config.n_itrs_per_episode):
 
             # take action and observe reward and next_state
-
+            time_step = env.step(action)
             reward: float = 0.0
             episode_reward += reward
             next_state: State = None
