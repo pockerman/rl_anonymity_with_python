@@ -11,7 +11,6 @@ API
    generated/q_estimator
    generated/q_learning
    generated/trainer
-   generated/sarsa_semi_gradient
    generated/exceptions
    generated/action_space
    generated/column_type

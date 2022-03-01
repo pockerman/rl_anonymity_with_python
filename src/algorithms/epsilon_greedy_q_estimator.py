@@ -1,4 +1,5 @@
-"""Module epsilon_greedy_q_estimator
+"""Module epsilon_greedy_q_estimator. Implements
+a q-estimator by assuming linear function approximation
 
 """
 from typing import TypeVar
@@ -31,6 +32,7 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
 
         Parameters
         ----------
+
         config: The instance configuration
 
         """
@@ -46,9 +48,11 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         :math: \hat{q}
 
         approximate value for the given state-action vector
+
         Parameters
         ----------
-        state_action_vec
+
+        state_action_vec: The state-action tiled vector
 
         Returns
         -------
@@ -62,8 +66,10 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
                        state_action_: Action, t: float) -> None:
         """
         Update the weights
+
         Parameters
         ----------
+
         total_reward: The reward observed
         state_action: The action that led to the reward
         state_action_:
@@ -81,13 +87,16 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
 
     def on_state(self, state: State) -> Action:
         """Returns the action on the given state
+
         Parameters
         ----------
-        state
+
+        state: The state observed
 
         Returns
         -------
 
+        An environment specific Action type
         """
 
         # compute the state values related to
