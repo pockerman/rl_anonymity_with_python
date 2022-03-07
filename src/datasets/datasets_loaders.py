@@ -5,46 +5,65 @@ on it
 """
 
 from pathlib import Path
+from typing import List
+from dataclasses import dataclass, field
+
 from src.datasets.dataset_wrapper import PandasDSWrapper
 
 
-class MockSubjectsLoader(PandasDSWrapper):
-    """
-    The class MockSubjectsLoader. Loads the  mocksubjects.csv
-    """
+@dataclass(init=True, repr=True)
+class MockSubjectsData(object):
 
     # Path to the dataset file
-    FILENAME = Path("../../data/mocksubjects.csv")
+    FILENAME: Path = Path("/home/alex/qi3/drl_anonymity/data/mocksubjects.csv") #("../../data/mocksubjects.csv")
 
     # the assumed column types. We use this map to cast
     # the types of the columns
-    COLUMNS_TYPES = {"gender": str, "ethnicity": str, "education": int,
-                       "salary": int, "diagnosis": int, "preventative_treatment": str,
-                       "mutation_status": int, }
+    COLUMNS_TYPES: dict = field(default_factory=lambda: {"gender": str, "ethnicity": str, "education": int,
+                     "salary": int, "diagnosis": int, "preventative_treatment": str,
+                     "mutation_status": int,})
 
     # features to drop
-    FEATURES_DROP_NAMES = ["NHSno", "given_name", "surname", "dob"]
+    FEATURES_DROP_NAMES: List[str] = field(default_factory=lambda: ["NHSno", "given_name", "surname", "dob"])
 
     # Names of the columns in the dataset
-    NAMES = ["NHSno", "given_name", "surname", "gender",
-             "dob", "ethnicity", "education", "salary",
-             "mutation_status", "preventative_treatment", "diagnosis"]
+    NAMES: List[str] = field(default_factory=lambda: ["NHSno", "given_name", "surname", "gender",
+                                              "dob", "ethnicity", "education", "salary",
+                                              "mutation_status", "preventative_treatment", "diagnosis"])
 
     # option to drop NaN
-    DROP_NA = True
+    DROP_NA: bool = True
 
     # Map that holds for each column the transformations
     # we want to apply for each value
-    CHANGE_COLS_VALS = {"diagnosis": [('N', 0)]}
+    CHANGE_COLS_VALS: dict = field(default_factory=lambda: {"diagnosis": [('N', 0)]})
 
     # list of columns to be normalized
-    NORMALIZED_COLUMNS = []
+    NORMALIZED_COLUMNS: List[str] = field(default_factory=list)
 
-    def __init__(self):
-        super(MockSubjectsLoader, self).__init__(columns=MockSubjectsLoader.COLUMNS_TYPES)
-        self.read(filename=MockSubjectsLoader.FILENAME,
-                  **{"features_drop_names": MockSubjectsLoader.FEATURES_DROP_NAMES,
-                     "names": MockSubjectsLoader.NAMES,
-                     "drop_na": MockSubjectsLoader.DROP_NA,
-                     "change_col_vals": MockSubjectsLoader.CHANGE_COLS_VALS,
-                     "column_normalization": MockSubjectsLoader.NORMALIZED_COLUMNS})
+
+class MockSubjectsLoader(PandasDSWrapper):
+    """The class MockSubjectsLoader. Loads the  mocksubjects.csv
+    """
+
+    @classmethod
+    def from_options(cls, *, filename: Path,
+                     column_types: dir, features_drop_names: List[str],
+                     names: List[str], drop_na: bool, change_col_vals: dict, column_normalization: List[str]):
+
+        data = MockSubjectsData(FILENAME=filename, COLUMNS_TYPES=column_types,
+                                FEATURES_DROP_NAMES=features_drop_names, NAMES=names,
+                                DROP_NA=drop_na, CHANGE_COLS_VALS=change_col_vals,
+                                NORMALIZED_COLUMNS=column_normalization)
+        return cls(data=data)
+
+    def __init__(self, data: MockSubjectsData, do_read: bool = True):
+        super(MockSubjectsLoader, self).__init__(columns=data.COLUMNS_TYPES)
+
+        if do_read:
+            self.read(filename=data.FILENAME,
+                      **{"features_drop_names": data.FEATURES_DROP_NAMES,
+                         "names": data.NAMES,
+                         "drop_na": data.DROP_NA,
+                         "change_col_vals": data.CHANGE_COLS_VALS,
+                         "column_normalization": data.NORMALIZED_COLUMNS})

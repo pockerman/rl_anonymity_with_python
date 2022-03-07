@@ -2,7 +2,7 @@ import random
 import numpy as np
 from pathlib import Path
 
-from src.algorithms.sarsa_semi_gradient import SARSAnConfig, SARSAn
+from src.algorithms.n_step_semi_gradient_sarsa import SARSAnConfig, SARSAn
 from src.algorithms.q_estimator import QEstimator
 from src.algorithms.trainer import Trainer
 from src.datasets.datasets_loaders import MockSubjectsLoader
@@ -218,7 +218,7 @@ if __name__ == '__main__':
                      title="Running distortion average over 100 episodes")
 
 
-    '''
+
     print("=============================================")
     print("{0} Generating distorted dataset".format(INFO))
     # Let's play
@@ -229,4 +229,3 @@ if __name__ == '__main__':
     env.save_current_dataset(episode_index=-2, save_index=False)
     print("{0} Done....".format(INFO))
     print("=============================================")
-    '''

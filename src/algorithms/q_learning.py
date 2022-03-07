@@ -77,9 +77,6 @@ class QLearning(WithMaxActionMixin):
         total_dist = env.total_current_distortion()
         while stop_criterion.continue_itr(total_dist):
 
-            if stop_criterion.iteration_counter == 12:
-                print("Break...")
-
             # use the policy to select an action
             state_idx = env.get_aggregated_state(total_dist)
             action_idx = self.config.policy.on_state(state_idx)

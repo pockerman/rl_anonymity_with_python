@@ -1,6 +1,6 @@
 import unittest
 import pytest
-from src.algorithms.sarsa_semi_gradient import SARSAnConfig, SARSAn
+from src.algorithms.n_step_semi_gradient_sarsa import SARSAnConfig, SARSAn
 from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.exceptions.exceptions import InvalidParamValue

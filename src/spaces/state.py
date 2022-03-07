@@ -1,7 +1,10 @@
-"""
-Discretized state space
+"""The state module. Specifies a wrapper
+to a state such that it exposes column distortions
+and the bin index of the overall distortion.
+
 """
 
+import numpy as np
 from typing import TypeVar, List, Any
 from src.exceptions.exceptions import Error
 
@@ -54,8 +57,7 @@ class StateIterator(object):
 
 
 class State(object):
-    """
-    Helper to represent a State
+    """Helper to represent a State
     """
     def __init__(self):
         self.idx = -1
@@ -63,18 +65,32 @@ class State(object):
         self.total_distortion: float = 0.0
         self.column_distortions = {}
 
-    def __contains__(self, item) -> bool:
-        return item in self.column_distortions.keys()
+    def __contains__(self, column_name: str) -> bool:
+        """Returns true if column_name is in the column_distortions
+        keys
+
+        Parameters
+        ----------
+
+        column_name: The column name to query
+
+        Returns
+        -------
+
+        A boolean indicating if column_name is in the column_distortions
+        keys or not.
+        """
+        return column_name in self.column_distortions.keys()
 
     def __iter__(self):
         return StateIterator(list(self.column_distortions.keys()))
 
     def __getitem__(self, name: str) -> float:
-        """
-        Get the distortion corresponding to the name-th column
+        """Get the distortion corresponding to the name-th column
 
         Parameters
         ----------
+
         name: The name of the column
 
         Returns
@@ -84,4 +100,15 @@ class State(object):
         """
         return self.column_distortions[name]
 
+    def to_numpy(self) -> np.array:
+        """Returns the self.column_distortions values as numpy array
+
+        Returns
+        -------
+            np.array
+
+        """
+
+        vals = self.column_distortions.values()
+        return np.array(vals)
 

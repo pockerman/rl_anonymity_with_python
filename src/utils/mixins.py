@@ -52,24 +52,29 @@ class WithHierarchyTable(object):
 
 
 class WithQTableMixinBase(metaclass=abc.ABCMeta):
-    """
-    Base class to impose the concept of Q-table
+    """Base class to impose the concept of Q-table
     """
 
-    def __init__(self):
+    def __init__(self, table: QTable = None):
         # the table representing the q function
         # client code should choose the type of
         # the table
-        self.q_table: QTable = None
+        self.q_table: QTable = table
 
 
 class WithQTableMixin(WithQTableMixinBase):
+    """Helper class to associate a q_table with an algorithm
     """
-    Helper class to associate a q_table with an algorithm
-     if this is needed.
-    """
-    def __init__(self):
-        super(WithQTableMixin, self).__init__()
+    def __init__(self, table: QTable = None):
+        """
+        Constructor
+
+        Parameters
+        ----------
+        table: The Q-table representing the Q-function
+
+        """
+        super(WithQTableMixin, self).__init__(table)
 
     def state_action_values(self, state: Any, n_actions: int):
 
@@ -81,12 +86,11 @@ class WithQTableMixin(WithQTableMixinBase):
 
 
 class WithMaxActionMixin(WithQTableMixin):
-    """
-    The class WithMaxActionMixin.
+    """The class WithMaxActionMixin.
     """
 
-    def __init__(self):
-        super(WithMaxActionMixin, self).__init__()
+    def __init__(self, table: QTable = None):
+        super(WithMaxActionMixin, self).__init__(table)
 
     def max_action(self, state: Any, n_actions: int) -> int:
         """
@@ -100,3 +104,7 @@ class WithMaxActionMixin(WithQTableMixin):
         values = np.array(values)
         action = np.argmax(values)
         return int(action)
+
+
+class WithEstimatorMixin(object):
+    pass

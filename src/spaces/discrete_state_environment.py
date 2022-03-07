@@ -13,7 +13,6 @@ import multiprocessing as mp
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep, StepType
 
-
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
 ActionSpace = TypeVar("ActionSpace")
@@ -46,6 +45,33 @@ class DiscreteStateEnvironment(object):
     """
 
     IS_TILED_ENV_CONSTRAINT = False
+
+    @classmethod
+    def from_options(cls, *, data_set: DataSet, action_space: ActionSpace,
+                     reward_manager: RewardManager, distortion_calculator: DistortionCalculator,
+                     average_distortion_constraint: float = 0.0,
+                     gamma: float = 0.99, n_states: int = 10, min_distortion: float = 0.4,
+                     max_distortion: float = 0.7, punish_factor: float = 2.0, reward_factor: float = 0.95,
+                     n_rounds_below_min_distortion: int = 10,
+                     distorted_set_path: Path = None):
+
+        config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
+                                   distortion_calculator=distortion_calculator, distorted_set_path=distorted_set_path,
+                                   reward_factor=reward_factor,
+                                   n_rounds_below_min_distortion=n_rounds_below_min_distortion,
+                                   punish_factor=punish_factor, max_distortion=max_distortion, gamma=gamma,
+                                   n_states=n_states, min_distortion=min_distortion,
+                                   average_distortion_constraint=average_distortion_constraint)
+
+        return cls(env_config=config)
+
+    @classmethod
+    def from_dataset(cls, data_set: DataSet, *,  action_space: ActionSpace=None,
+                     reward_manager: RewardManager = None, distortion_calculator: DistortionCalculator = None):
+
+        config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
+                                   distortion_calculator=distortion_calculator)
+        return cls(env_config=config)
 
     def __init__(self, env_config: DiscreteEnvConfig) -> None:
         self.config = env_config

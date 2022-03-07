@@ -21,7 +21,6 @@ Estimator = TypeVar('Estimator')
 @dataclass(init=True, repr=True)
 class SARSAnConfig:
     """Configuration class for n-step SARSA algorithm
-
     """
     gamma: float = 1.0
     alpha: float = 0.1
@@ -39,13 +38,45 @@ class SARSAn(WithMaxActionMixin):
     """
 
     def __init__(self, sarsa_config: SARSAnConfig):
-        super(SARSAn, self).__init__()
+        super(SARSAn, self).__init__(table={})
         self.name = "SARSAn"
         self.config = sarsa_config
-        self.q_table = {}
 
     def play(self, env: Env, stop_criterion: Criterion) -> None:
-        pass
+        """
+        Apply the trained agent on the given environment.
+
+        Parameters
+        ----------
+        env: The environment to apply the agent
+        stop_criterion: Criteria that specify when play should stop
+
+        Returns
+        -------
+
+        None
+
+        """
+        # loop over the columns and for the
+        # column get the action that corresponds to
+        # the max payout.
+        # TODO: This will no work as the distortion is calculated
+        # by summing over the columns.
+
+        # set the q_table for the policy
+        # this is the table we should be using to
+        # make decisions
+        self.config.policy.q_table = self.q_table
+        total_dist = env.total_current_distortion()
+        while stop_criterion.continue_itr(total_dist):
+            # use the policy to select an action
+            state_idx = env.get_aggregated_state(total_dist)
+            action_idx = self.config.policy.on_state(state_idx)
+            action = env.get_action(action_idx)
+            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state_idx, total_dist,
+                                                                                  action.column_name + "-" + action.action_type.name))
+            env.step(action=action)
+            total_dist = env.total_current_distortion()
 
     def actions_before_training(self, env: Env) -> None:
         """
