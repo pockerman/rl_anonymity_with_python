@@ -2,6 +2,7 @@
 """
 import unittest
 import pytest
+from pathlib import Path
 from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment
 from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
@@ -21,7 +22,9 @@ class DummyEnv(object):
 class TestTiledEnv(unittest.TestCase):
 
     def load_mock_subjects(self) -> MockSubjectsLoader:
-        mock_data = MockSubjectsData(COLUMNS_TYPES={"ethnicity": str, "salary": float, "diagnosis": int},
+
+        mock_data = MockSubjectsData(FILENAME=Path("./test_data/mocksubjects.csv"),
+                                     COLUMNS_TYPES={"ethnicity": str, "salary": float, "diagnosis": int},
                                      FEATURES_DROP_NAMES=["NHSno", "given_name", "surname", "dob"] + ["preventative_treatment", "gender",
                                                              "education", "mutation_status"], NORMALIZED_COLUMNS = ["salary"])
 

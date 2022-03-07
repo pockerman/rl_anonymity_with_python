@@ -16,7 +16,6 @@ def suite():
     suite.addTest(TestSerialHierarchy)
     suite.addTest(TestPreprocessor)
     suite.addTest(TestActions)
-
     suite.addTest(TestSemiGradSARSA)
     suite.addTest(TestTiledEnv)
     suite.addTest(TestEpsilonGreedyQEstimator)
