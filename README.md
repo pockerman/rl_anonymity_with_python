@@ -1,3 +1,6 @@
+
+[![Data-Anonymity-RL](https://github.com/pockerman/rl_anonymity_with_python/actions/workflows/python-app.yml/badge.svg)](https://github.com/pockerman/rl_anonymity_with_python/actions/workflows/python-app.yml)
+
 # RL anonymity (with Python)
 
 An experimental effort to use reinforcement learning techniques for data anonymization. 
