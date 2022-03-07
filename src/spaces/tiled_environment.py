@@ -3,7 +3,7 @@ Tile environment
 """
 
 import copy
-from typing import TypeVar, List
+from typing import TypeVar, List, Any
 from dataclasses import dataclass
 
 import numpy as np
@@ -16,8 +16,12 @@ from src.spaces.state import State
 from src.spaces.time_step import copy_time_step
 
 Env = TypeVar('Env')
-Tile = TypeVar('Tile')
 Config = TypeVar('Config')
+RawState = TypeVar('RawState')
+TiledState = TypeVar('TiledState')
+Action = TypeVar('Action')
+
+INVALID_ID = -1
 
 
 @dataclass(init=True, repr=True)
@@ -26,11 +30,264 @@ class TiledEnvConfig(object):
     """
 
     env: Env = None
-    num_tilings: int = 0
-    max_size: int = 0
-    tiling_dim: int = 0
+    n_layers: int = 1
     n_bins: int = 1
     column_ranges: dict = None
+
+
+class Tile(object):
+    """Helper class that models a tile
+
+    """
+    def __init__(self, global_id: int):
+        self.global_idx: int = global_id
+        self.columns_bins = {}
+
+    def build(self, bin_indices: dir, n_bins: int):
+
+        touched = False
+        # how many bins
+        for column in bin_indices:
+
+            if bin_indices[column] < n_bins:
+                self.columns_bins[column] = bin_indices[column]
+
+                # increase the index
+                bin_indices[column] += 1
+
+                # the rest of the columns remain the same
+                for column2 in bin_indices:
+
+                    if column2 != column:
+                        self.columns_bins[column2] = bin_indices[column2]
+
+                break
+            else:
+
+                if bin_indices[column] != n_bins:
+                    raise ValueError("Invalid number of bins={0} "
+                                     "should be equal to {1}".format(bin_indices[column], n_bins))
+
+                self.columns_bins[column] = bin_indices[column]
+
+    def search(self, bin_indices):
+        """
+        Returns true if the given bin indices are represented
+        by the tile
+
+        Parameters
+        ----------
+        bin_indices: The list of bin indices
+
+        Returns
+        -------
+        boolean
+
+
+        """
+
+        if len(self.columns_bins) == 0:
+            raise InvalidParamValue(param_name="column_bins", param_value="0. Column bins is empty")
+
+        if len(bin_indices) != len(self.columns_bins):
+            raise ValueError("len(bin_indices) = {0} != len( self.columns_bins) = {1}".format(len(bin_indices),
+                                                                                              len(self.columns_bins)))
+
+        col_indices = []
+        for col in self.columns_bins:
+            col_indices.append((col, self.columns_bins[col]))
+
+        if col_indices == bin_indices:
+            return True
+
+        return False
+
+
+class Layer(object):
+    """Helper class to represent a layer of tiling
+
+    """
+    def __init__(self, column_bins, n_bins: int,
+                 n_actions: int, start_index: int, end_index: int):
+        self.column_bins = column_bins
+        self.n_bins = n_bins
+        self.n_actions = n_actions
+        self.start_index = start_index
+        self.end_index = end_index
+        self.tiles = {}
+
+    def __len__(self):
+        return len(self.tiles)
+
+    def build_tiles(self, next_tile_global_idx: int) -> int:
+        """Build the tiles for the layer. For each action creates
+        self.n_bins ** len(self.column_bins) tiles.
+
+        Parameters
+        ----------
+
+        next_tile_global_idx: The starting point of global tile ids for the layer
+
+        Returns
+        -------
+
+        The next tile global id
+
+        """
+
+        # number of total tiles we have in th
+        # the layer
+        n_total_tiles = self.n_bins ** len(self.column_bins)
+        for action in range(self.n_actions):
+            bin_indices = {key: 0 for key in self.column_bins}
+            next_local_tile_idx = 0
+            next_local_tile_idx, next_tile_global_idx = self._do_build_tile(action=action, next_local_tile_idx=next_local_tile_idx,
+                                next_tile_global_idx=next_tile_global_idx)
+
+            """
+            key_list = list(bin_indices.keys())
+            for t in range(n_total_tiles):
+                self.tiles[(action, t)] = Tile(global_id=next_tile_global_idx)
+                self.tiles[(action, t)].build(bin_indices, self.n_bins)
+
+                # check if we have reached the number of bins
+                # if yes zero everything and increment the
+                # next index
+
+                #next_tile_global_idx += 1
+            """
+        return next_tile_global_idx
+
+
+    def _do_build_tile(self, action: int, next_local_tile_idx: int,
+                                next_tile_global_idx: int) -> tuple:
+
+        if len(self.column_bins) != 3:
+            raise NotImplementedError("This function is not implemented for more than three columns")
+
+        if len(self.column_bins) == 3:
+            return self._do_build_three_columns(action=action, next_local_tile_idx=next_local_tile_idx,
+                                                next_tile_global_idx=next_tile_global_idx)
+
+    def _do_build_three_columns(self, action: int, next_local_tile_idx: int,
+                                next_tile_global_idx: int) -> tuple:
+
+        key_list = list(self.column_bins.keys())
+
+        # bin indices in np.digitize start at one
+        for bi in range(1, self.n_bins + 1):
+            for bj in range(1, self.n_bins + 1):
+                for bk in range(1, self.n_bins + 1):
+                    self.tiles[(action, next_local_tile_idx)] = Tile(global_id=next_tile_global_idx)
+                    self.tiles[(action, next_local_tile_idx)].columns_bins = {key_list[0]: bi, key_list[1]: bj, key_list[2]: bk}
+                    next_local_tile_idx += 1
+                    next_tile_global_idx += 1
+
+        return next_local_tile_idx, next_tile_global_idx
+
+    def get_global_tile_index(self, raw_state: RawState, action: Action) -> int:
+        """Returns the global tile index for the raw state and the given action
+        If the bin indices corresponding to the raw state after digitization
+        cannot be found in any tile then it returns -1
+
+        Parameters
+        ----------
+        raw_state: The raw state to digitize
+        action: The action taken
+
+        Returns
+        -------
+
+        The global tile index
+        """
+
+        # get the bin indices in the layer for the
+        # raw_state
+        bin_indices = [(name, np.digitize(raw_state.column_distortions[name],
+                                          self.column_bins[name])) for name in raw_state.column_distortions]
+
+        global_tile_idx = INVALID_ID
+
+        for _, t in self.tiles:
+            tile = self.tiles[(action, t)]
+
+            # check if the bin indices
+            # that correspond to the raw state tiling
+            # are in the given tile. If yes return the
+            # tile global index
+            if tile.search(bin_indices):
+                global_tile_idx = tile.global_idx
+                break
+
+        return global_tile_idx
+
+
+class Tiles(object):
+    """Helper class for tile manipulation. It holds a list
+    of layers. For every layer creates
+
+    """
+
+    def __init__(self, n_layers: int, n_bins: int, n_actions: int, column_ranges: dict):
+        """Constructor. Initialize by passing the number of layers, number of bins,
+        number of actions and the column ranges
+
+        Parameters
+
+        ----------
+
+        n_layers: number of layers to use
+        n_bins: Number of bins to use per column
+        n_actions: Number of actions allowed in the environment
+        column_ranges: The range of values that each column can take
+
+        """
+        self.layers = {}
+        self.n_layers = n_layers
+        self.n_bins = n_bins
+        self.n_actions = n_actions
+        self.column_ranges = column_ranges
+
+    def __getitem__(self, layer) -> Layer:
+        return self.layers[layer]
+
+    def __len__(self):
+        return len(self.layers)
+
+    def build(self) -> None:
+        """Build the tiles layers
+
+        Returns
+        -------
+        None
+
+        """
+
+        start_layer_idx = 0
+        next_tile_global_idx = 0
+        for layer in range(self.n_layers):
+
+            # for each layer we compute the column bins
+            column_bins = {}
+            for column in self.column_ranges:
+                range_ = self.column_ranges[column]
+                tile_width = (range_[1] + range_[0]) / self.n_bins
+                column_bins[column] = np.linspace(range_[0] + layer * tile_width,
+                                                  range_[1] + layer * tile_width,
+                                                  self.n_bins)
+
+            end_layer_idx = (layer + 1)*(self.n_bins ** len(self.column_ranges)) * self.n_actions
+            # now create the layer
+            new_layer = Layer(column_bins=column_bins, n_bins=self.n_bins,
+                              n_actions=self.n_actions,
+                              start_index=start_layer_idx,
+                              end_index=end_layer_idx)
+
+            # build the tiles for the new layer
+            next_tile_global_idx = new_layer.build_tiles(next_tile_global_idx)
+            self.layers[layer] = new_layer
+
+            start_layer_idx = end_layer_idx
 
 
 class TiledEnv(object):
@@ -41,17 +298,16 @@ class TiledEnv(object):
     IS_TILED_ENV_CONSTRAINT = True
 
     @classmethod
-    def from_options(cls, *, env: Env, max_size: int, num_tilings: int,
-                     tiling_dim: int, n_bins: int, column_ranges: dict):
-        return cls(TiledEnvConfig(env=env, max_size=max_size, num_tilings=num_tilings,
-                                  tiling_dim=tiling_dim, n_bins=n_bins, column_ranges=column_ranges))
+    def from_options(cls, *, env: Env,  n_layers: int,
+                    n_bins: int, column_ranges: dict):
+        return cls(TiledEnvConfig(env=env,
+                                  n_layers=n_layers,
+                                  n_bins=n_bins, column_ranges=column_ranges))
 
     def __init__(self, config: TiledEnvConfig) -> None:
 
         self.env = config.env
-        self.max_size = config.max_size
-        self.num_tilings = config.num_tilings
-        self.tiling_dim = config.tiling_dim
+        self.n_layers = config.n_layers
         self.n_bins = config.n_bins
 
         # set up the columns scaling
@@ -59,14 +315,13 @@ class TiledEnv(object):
         # tiling
         self.column_ranges = config.column_ranges
         self.column_scales = {}
+        self.tiles: Tiles = None
 
         # Initialize index hash table (IHT) for tile coding.
         # This assigns a unique index to each tile up to max_size tiles.
         self._validate()
         self._create_column_scales()
-        self.iht = IHT(self.max_size)
-
-        self.column_bins = {}
+        #self.column_bins = {}
 
     @property
     def action_space(self):
@@ -127,6 +382,10 @@ class TiledEnv(object):
         An instance of TimeStep type
         """
 
+        if self.tiles is None or len(self.tiles) == 0:
+            raise InvalidParamValue(param_name="tiles", param_value="{}. Have you called create_tiles?")
+
+        # reset the raw environment
         raw_time_step = self.env.reset(**options)
 
         # a state wrapper to communicate
@@ -140,6 +399,9 @@ class TiledEnv(object):
 
         time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
 
+        # we want to put the state into the tiles
+        tiled_state = self._featurize_raw_state(state)
+        time_step = copy_time_step(time_step=time_step, **{"observation": tiled_state})
         return time_step
 
     def get_action(self, aidx: int) -> ActionBase:
@@ -174,7 +436,7 @@ class TiledEnv(object):
         """
         self.env.save_current_dataset(episode_index, save_index)
 
-    def create_bins(self) -> None:
+    def create_tiles(self) -> None:
         """Create the bins
 
         Returns
@@ -186,17 +448,9 @@ class TiledEnv(object):
 
         # calculate the tile width for each column in the
         # data set
-
-        tile_widhs = {}
-        for column in self.column_ranges:
-            range_ = self.column_ranges[column]
-            tile_width = (range_[1] + range_[0]) / self.n_bins
-            self.column_bins[column] = np.zeros((self.num_tilings, self.n_bins))
-
-            # for each layer create an offset
-            # bin
-            for i in range(self.num_tilings):
-                self.column_bins[column][i] = np.linspace(range_[0] + i * tile_width, range_[1] + i * tile_width, self.n_bins)
+        self.tiles = Tiles(n_bins=self.n_bins, n_layers=self.n_layers,
+                           n_actions=self.n_actions, column_ranges=self.column_ranges)
+        self.tiles.build()
 
     def get_aggregated_state(self, state_val: float) -> int:
         """
@@ -312,8 +566,21 @@ class TiledEnv(object):
         """
 
         scaled_state = self.get_scaled_state(state)
-        featurized = tiles(self.iht, self.num_tilings, scaled_state, [action])
+        featurized = tiles(self.iht, self.n_layers, scaled_state, [action])
         return featurized
+
+    def _featurize_raw_state(self, state: RawState) -> TiledState:
+
+        tiled_state = np.zeros(self.n_layers * self.n_actions * self.n_bins ** (len(self.column_ranges)))
+
+        for layer in range(self.n_layers):
+            for action in range(self.n_actions):
+                global_idx = self.tiles[layer].get_global_tile_index(raw_state=state, action=action)
+                if global_idx != INVALID_ID:
+                    tiled_state[global_idx] = 1.0
+                    break
+
+        return tiled_state
 
     def _create_column_scales(self) -> None:
         """
@@ -328,7 +595,7 @@ class TiledEnv(object):
 
         for name in self.column_ranges:
             range_ = self.column_ranges[name]
-            self.column_scales[name] = self.tiling_dim / (range_[1] - range_[0])
+            self.column_scales[name] = self.n_bins / (range_[1] - range_[0])
 
     def _validate(self) -> None:
         """
@@ -340,16 +607,19 @@ class TiledEnv(object):
         None
 
         """
+
+        """
         if self.max_size <= 0:
             raise InvalidParamValue(param_name="max_size",
                                     param_value=str(self.max_size) + " should be > 0")
 
         # Ensure max_size >= total number of tiles (num_tilings x tiling_dim x tiling_dim)
         # to ensure no duplicates.
-        if self.max_size < self.num_tilings * self.tiling_dim * self.tiling_dim:
+        if self.max_size < self.n_layers * self.tiling_dim * self.tiling_dim:
             raise InvalidParamValue(param_name="max_size",
                                     param_value=str(self.max_size) +
-                                    " should be >=num_tilings * tiling_dim * tiling_dim")
+                                                " should be >=num_tilings * tiling_dim * tiling_dim")
+        """
 
         if self.column_ranges is None:
             raise InvalidParamValue(param_name="column_ranges",
@@ -365,4 +635,8 @@ class TiledEnv(object):
 
         if len(self.column_ranges) != len(self.env.column_names):
             raise ValueError("Column ranges is not equal to number of columns")
+
+        if self.n_layers == 0:
+            raise InvalidParamValue(param_name="n_layers",
+                                    param_value=str(len(self.column_scales)) + " n_layers cannot be zero")
 

@@ -62,6 +62,15 @@ class DiscreteStateEnvironment(object):
                                    punish_factor=punish_factor, max_distortion=max_distortion, gamma=gamma,
                                    n_states=n_states, min_distortion=min_distortion,
                                    average_distortion_constraint=average_distortion_constraint)
+
+        return cls(env_config=config)
+
+    @classmethod
+    def from_dataset(cls, data_set: DataSet, *,  action_space: ActionSpace=None,
+                     reward_manager: RewardManager = None, distortion_calculator: DistortionCalculator = None):
+
+        config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
+                                   distortion_calculator=distortion_calculator)
         return cls(env_config=config)
 
     def __init__(self, env_config: DiscreteEnvConfig) -> None:

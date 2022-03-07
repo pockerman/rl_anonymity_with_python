@@ -10,9 +10,15 @@ from src.spaces.actions import ActionBase, ActionType
 
 
 class ActionSpace(Discrete):
+    """ActionSpace class models a discrete action space of size n
     """
-    ActionSpace class models a discrete action space of size n
-    """
+
+    @classmethod
+    def from_actions(cls, *actions: ActionBase):
+
+        space = cls(n=len(actions))
+        space.add_many(*actions)
+        return space
 
     def __init__(self, n: int) -> None:
 

@@ -12,7 +12,11 @@ class TestEpsilonGreedyQEstimator(unittest.TestCase):
         self.assertIsNotNone(eps_q_estimator)
 
     def test_on_state(self):
-        pass
+        eps_q_estimator_config = EpsilonGreedyQEstimatorConfig()
+        eps_q_estimator = EpsilonGreedyQEstimator(eps_q_estimator_config)
+
+
+
 
 
 

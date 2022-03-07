@@ -15,7 +15,7 @@ from src.datasets.dataset_wrapper import PandasDSWrapper
 class MockSubjectsData(object):
 
     # Path to the dataset file
-    FILENAME: Path = Path("../../data/mocksubjects.csv")
+    FILENAME: Path = Path("/home/alex/qi3/drl_anonymity/data/mocksubjects.csv") #("../../data/mocksubjects.csv")
 
     # the assumed column types. We use this map to cast
     # the types of the columns
@@ -57,7 +57,7 @@ class MockSubjectsLoader(PandasDSWrapper):
                                 NORMALIZED_COLUMNS=column_normalization)
         return cls(data=data)
 
-    def __init__(self, data: MockSubjectsData, do_read: bool=True):
+    def __init__(self, data: MockSubjectsData, do_read: bool = True):
         super(MockSubjectsLoader, self).__init__(columns=data.COLUMNS_TYPES)
 
         if do_read:

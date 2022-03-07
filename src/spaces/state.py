@@ -4,6 +4,7 @@ and the bin index of the overall distortion.
 
 """
 
+import numpy as np
 from typing import TypeVar, List, Any
 from src.exceptions.exceptions import Error
 
@@ -65,12 +66,12 @@ class State(object):
         self.column_distortions = {}
 
     def __contains__(self, column_name: str) -> bool:
-        """
-        Returns true if column_name is in the column_distortions
+        """Returns true if column_name is in the column_distortions
         keys
 
         Parameters
         ----------
+
         column_name: The column name to query
 
         Returns
@@ -85,11 +86,11 @@ class State(object):
         return StateIterator(list(self.column_distortions.keys()))
 
     def __getitem__(self, name: str) -> float:
-        """
-        Get the distortion corresponding to the name-th column
+        """Get the distortion corresponding to the name-th column
 
         Parameters
         ----------
+
         name: The name of the column
 
         Returns
@@ -99,4 +100,15 @@ class State(object):
         """
         return self.column_distortions[name]
 
+    def to_numpy(self) -> np.array:
+        """Returns the self.column_distortions values as numpy array
+
+        Returns
+        -------
+            np.array
+
+        """
+
+        vals = self.column_distortions.values()
+        return np.array(vals)
 
