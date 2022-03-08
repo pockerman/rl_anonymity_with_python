@@ -66,7 +66,7 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
         self.user_defined_decrease_method: UserDefinedDecreaseMethod = user_defined_decrease_method
 
     def __str__(self) -> str:
-        return self.__name__
+        return "EpsilonGreedyPolicy"
 
     def __call__(self, q_table: QTable, state: Any) -> int:
         """

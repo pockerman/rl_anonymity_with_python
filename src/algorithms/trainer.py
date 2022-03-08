@@ -60,11 +60,31 @@ class Trainer(object):
         self.iterations_per_episode = []
         self.agent.actions_before_training(self.env)
 
-    def actions_before_episode_begins(self, **options) -> None:
+    def actions_before_episode_begins(self, env: Env, episode_idx: int,  **options) -> None:
         """Perform any actions necessary before the training begins
 
         Parameters
         ----------
+        env: The environment to train on
+        episode_idx: The training episode index
+        options: Any options passed by the client code
+
+        Returns
+        -------
+
+        None
+
+        """
+        self.agent.actions_before_episode_begins(env, episode_idx, **options)
+
+    def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
+        """Any actions after the training episode ends
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx:  The training episode index
         options: Any options passed by the client code
 
         Returns
@@ -72,12 +92,9 @@ class Trainer(object):
 
         None
         """
-        self.agent.actions_before_episode_begins(**options)
+        self.agent.actions_after_episode_ends(env, episode_idx, **options)
 
-    def actions_after_episode_ends(self, **options):
-        self.agent.actions_after_episode_ends(**options)
-
-        if options["episode_idx"] % self.configuration['output_msg_frequency'] == 0:
+        if episode_idx % self.configuration['output_msg_frequency'] == 0:
             if self.env.config.distorted_set_path is not None:
                 self.env.save_current_dataset(options["episode_idx"])
 
@@ -93,10 +110,10 @@ class Trainer(object):
             # reset the environment
             #ignore = self.env.reset()
 
-            self.actions_before_episode_begins(**{"env": self.env})
+            self.actions_before_episode_begins(self.env, episode,)
             # train for a number of iterations
             #episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
-            episode_info: EpisodeInfo = self.agent.on_episode(self.env)
+            episode_info: EpisodeInfo = self.agent.on_episode(self.env, episode)
 
             print("{0} Episode score={1}, episode total avg distortion {2}".format(INFO, episode_info.episode_score,
                                                                                episode_info.total_distortion / episode_info.info["n_iterations"]))
@@ -107,6 +124,6 @@ class Trainer(object):
             self.iterations_per_episode.append(episode_info.info["n_iterations"])
             self.total_rewards[episode] = episode_info.episode_score
             self.total_distortions.append(episode_info.total_distortion)
-            self.actions_after_episode_ends(**{"episode_idx": episode})
+            self.actions_after_episode_ends(self.env, episode, **{})
 
         print("{0} Training finished for agent {1}".format(INFO, self.agent.name))
