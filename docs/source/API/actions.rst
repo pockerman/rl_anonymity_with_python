@@ -3,28 +3,32 @@
 
 .. automodule:: actions
 
+.. autoclass:: ActionType
 
-      
-   .. rubric:: Classes
-
-   .. autosummary::
-   
 .. autoclass:: ActionBase
    :members: __init__, act
-   
+
 .. autoclass:: ActionIdentity
    :members: __init__, act
    
-      ActionNumericBinGeneralize
-      ActionNumericStepGeneralize
-      ActionRestore
+.. autoclass:: ActionNumericBinGeneralize
+   :members: __init__, act
+      
+.. autoclass:: ActionNumericStepGeneralize
+   :members: __init__, act
+   
+.. autoclass:: ActionRestore
+   :members:: __init__, act
 
 .. autoclass:: ActionStringGeneralize
    :members: __init__, act, add
    
-      ActionSuppress
-      ActionTransform
-      ActionType
+.. autoclass:: ActionSuppress
+   :memebrs: __init__, act
+   
+.. autoclass:: ActionTransform
+   :members: __init__, act
+
    
    
 
