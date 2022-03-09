@@ -14,4 +14,5 @@ class EpisodeInfo(object):
     episode_itrs: int = 0
     episode_score: float = 0.0
     total_distortion: float = 0.0
+    total_execution_time: float = 0.0
     info: dict = field(default_factory=dict)

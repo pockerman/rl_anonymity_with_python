@@ -7,6 +7,8 @@ from typing import TypeVar
 
 from src.exceptions.exceptions import InvalidParamValue
 from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase
+from src.utils.episode_info import EpisodeInfo
+from src.utils.function_wraps import time_func_wrapper
 
 Env = TypeVar('Env')
 Policy = TypeVar('Policy')
@@ -86,7 +88,42 @@ class QLearning(WithMaxActionMixin):
             env.step(action=action)
             total_dist = env.total_current_distortion()
 
-    def on_episode(self, env: Env, **options) -> tuple:
+    def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
+        """Train the algorithm on the episode
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
+
+        episode_info, total_time = self._do_train(env, episode_idx, **options)
+        episode_info.total_execution_time = total_time
+        return episode_info
+
+    @time_func_wrapper(show_time=False)
+    def _do_train(self, env: Env, episode_idx: int, **option) -> EpisodeInfo:
+        """Train the algorithm on the episode
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
 
         # episode score
         episode_score = 0
@@ -119,7 +156,10 @@ class QLearning(WithMaxActionMixin):
             if next_time_step.last():
                 break
 
-        return episode_score, total_distortion, counter
+        episode_info = EpisodeInfo(episode_score=episode_score, total_distortion=total_distortion, episode_itrs=counter)
+        return episode_info
+
+
 
     def _update_Q_table(self, state: int, action: int, n_actions: int,
                         reward: float, next_state: int = None) -> None:

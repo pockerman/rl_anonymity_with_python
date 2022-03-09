@@ -79,9 +79,10 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
 
         return self.weights.dot(state_action_vec)
 
+    """
     def update_weights(self, total_reward: float, state_action: Action,
                        state_action_: Action, t: float) -> None:
-        """
+        
         Update the weights
 
         Parameters
@@ -97,7 +98,7 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
 
         None
 
-        """
+        
 
         if self.weights is None:
             raise InvalidParamValue(param_name="weights", param_value="None. Have you called initialize?")
@@ -105,6 +106,7 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         v1 = self.q_hat_value(state_action_vec=state_action)
         v2 = self.q_hat_value(state_action_vec=state_action_)
         self.weights += self.alpha / t * (total_reward + self.gamma * v2 - v1) * state_action
+    """
 
     def on_state(self, state: State) -> Action:
         """Returns the action on the given state

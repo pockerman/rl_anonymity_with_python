@@ -6,14 +6,14 @@ second edition 2020
 
 """
 
-from dataclasses import  dataclass
+from dataclasses import dataclass
 from typing import TypeVar
 
-from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase, WithEstimatorMixin
+from src.utils.mixins import WithEstimatorMixin
 from src.utils.episode_info import EpisodeInfo
 from src.spaces.time_step import TimeStep
+from src.utils.function_wraps import time_func_wrapper
 from src.exceptions.exceptions import InvalidParamValue
-
 
 Policy = TypeVar('Policy')
 Env = TypeVar('Env')
@@ -61,11 +61,6 @@ class SemiGradSARSA(object):
 
         self._validate()
         self._init()
-        """
-        for state in range(1, env.n_states):
-            for action in range(env.n_actions):
-                self.q_table[state, action] = 0.0
-        """
 
     def actions_before_episode_begins(self, env: Env, episode_idx: int, **options) -> None:
         """Any actions to perform before the episode begins
@@ -107,6 +102,7 @@ class SemiGradSARSA(object):
         ----------
 
         env: The environment to train on
+        episode_idx: The index of the training episode
         options: Any keyword based options passed by the client code
 
         Returns
@@ -115,76 +111,168 @@ class SemiGradSARSA(object):
         An instance of EpisodeInfo
         """
 
-        episode_reward = 0.0
-        episode_n_itrs = 0
+        episode_info_, total_execution_time = self._do_train(env=env, episode_idx=episode_idx, **options)
+
+        episode_info = EpisodeInfo()
+        episode_info.episode_score = episode_info_.episode_score
+        episode_info.episode_itrs = episode_info_.episode_itrs
+        episode_info.total_distortion = episode_info_.total_distortion
+        episode_info.total_execution_time = total_execution_time
+        return episode_info
+
+    @time_func_wrapper(show_time=False)
+    def _do_train(self, env: Env, episode_idx: int, **options) -> EpisodeInfo:
+        """Train the algorithm on the episode
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
+
+        episode_reward: float = 0.0
+        episode_n_itrs: int = 0
+        total_episode_distortion: float = 0.0
 
         # reset the environment
         time_step = env.reset(**{"tiled_state": False})
 
-        # select a state
+        # obtain the initial state S
         state: State = time_step.observation
 
-        #choose an action using the policy
+        # initial action A
         action: Action = self.config.policy.on_state(state)
 
         for itr in range(self.config.n_itrs_per_episode):
 
-            # take action and observe reward and next_state
+            # take action A
             time_step: TimeStep = env.step(action, **{"tiled_state": False})
 
+            # ... observe reward R
             reward: float = time_step.reward
             episode_reward += reward
+            total_episode_distortion += time_step.info["total_distortion"]
+
+            # ... observe the S prime
             next_state: State = time_step.observation
 
             # if next_state is terminal i.e. the done flag
             # is set. then update the weights
+            if time_step.done:
+                self._weights_update_episode_done(env=env, state=state, action=action, reward=reward)
+                break
 
-            # otherwise chose next action as a function of q_hat
-            next_action: Action = None
-            # update the weights
+            # choose action A prime as a function  of q_hat(S prime, *,  w)
+            next_action: Action = self.config.policy.on_state(next_state)
+
+            # update the weights. This expects tiled vector states
+            self._weights_update(env=env, state=state, action=action,
+                                 next_state=next_state, next_action=next_action, reward=reward)
 
             # update state
-            state = next_state
+            state: State = next_state
 
             # update action
-            action = next_action
+            action: Action = next_action
 
             episode_n_itrs += 1
 
         episode_info = EpisodeInfo()
         episode_info.episode_score = episode_reward
         episode_info.episode_itrs = episode_n_itrs
+        episode_info.total_distortion = total_episode_distortion
         return episode_info
 
-    def _weights_update_episode_done(self, state: State, reward: float,
-                                     action: Action, next_state: State) -> None:
+    def _weights_update_episode_done(self, env: Env, state: State, action: Action,
+                                     reward: float, t: float = 1.0) -> None:
+        """Update the weights of the underlying Q-estimator
+
+        Parameters
+        ----------
+
+        state: The current state it is assumed to be a raw state
+        reward: The reward observed when taking the given action when at the given state
+        action: The action we took at the state
+
+
+        Returns
+        -------
+
+        None
+        """
+        action_id = action
+        if not isinstance(action, int):
+            action_id = action.idx
+
+        # get a copy of the weights
+        weights = self.config.policy.weights
+
+        tiled_state = env.featurize_state_action(action=action_id, state=state)
+        v1 = self.config.policy.q_hat_value(state_action_vec=tiled_state)
+
+        weights += self.config.alpha / t * (reward - v1) * tiled_state
+        self.config.policy.weights = weights
+
+    def _weights_update(self, env: Env, state: State, action: Action, reward: float,
+                        next_state: State, next_action: Action, t: float = 1.0) -> None:
         """Update the weights due to the fact that
         the episode is finished
 
         Parameters
         ----------
 
+        env: The environment instance that the training takes place
         state: The current state
-        reward: The reward to use
         action: The action we took at state
-        next_state: The observed state
+        reward: The reward observed when taking the given action when at the given state
+        next_state: The observed new state
+        next_action: The action to be executed in next_state
 
         Returns
         -------
 
         None
         """
-        pass
+
+        action_id_1 = action
+        if not isinstance(action, int):
+            action_id_1 = action.idx
+
+        action_id_2 = next_action
+        if not isinstance(action, int):
+            action_id_2 = next_action.idx
+
+        # get a copy of the weights
+        weights = self.config.policy.weights
+
+        tiled_state1 = env.featurize_state_action(action=action_id_1, state=state)
+        tiled_state2 = env.featurize_state_action(action=action_id_2, state=next_state)
+
+        v1 = self.config.policy.q_hat_value(state_action_vec=tiled_state1)
+        v2 = self.config.policy.q_hat_value(state_action_vec=tiled_state2)
+        weights += self.config.alpha / t * (reward + self.config.gamma * v2 - v1) * tiled_state1
+        self.config.policy.weights = weights
 
     def _init(self) -> None:
-        """
-        Any initializations needed before starting the training
+        """Any initializations needed before starting the training
 
         Returns
         -------
+
         None
+
         """
-        pass
+
+        if self.config.policy.weights is None or \
+                len(self.config.policy.weights) == 0:
+            self.config.policy.initialize()
 
     def _validate(self) -> None:
         """
@@ -205,4 +293,3 @@ class SemiGradSARSA(object):
 
         if not isinstance(self.config.policy, WithEstimatorMixin):
             raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
-
