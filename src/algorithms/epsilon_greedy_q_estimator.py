@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from src.utils.mixins import WithEstimatorMixin
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonGreedyConfig
+from src.exceptions.exceptions import InvalidParamValue
 
 StateActionVec = TypeVar('StateActionVec')
 State = TypeVar('State')
@@ -42,6 +43,18 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         self.gamma: float = config.gamma
         self.env: Env = config.env
         self.weights: np.array = None
+        self.initialize()
+
+    def initialize(self) -> None:
+        """Initialize the underlying weights
+
+        Returns
+        -------
+
+        None
+
+        """
+        self.weights: np.array = np.zeros((self.env.n_states * self.env.n_actions))
 
     def q_hat_value(self, state_action_vec: StateActionVec) -> float:
         """Returns the
@@ -60,6 +73,10 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
 
 
         """
+
+        if self.weights is None:
+            raise InvalidParamValue(param_name="weights", param_value="None. Have you called initialize?")
+
         return self.weights.dot(state_action_vec)
 
     def update_weights(self, total_reward: float, state_action: Action,
@@ -81,6 +98,10 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         None
 
         """
+
+        if self.weights is None:
+            raise InvalidParamValue(param_name="weights", param_value="None. Have you called initialize?")
+
         v1 = self.q_hat_value(state_action_vec=state_action)
         v2 = self.q_hat_value(state_action_vec=state_action_)
         self.weights += self.alpha / t * (total_reward + self.gamma * v2 - v1) * state_action
@@ -99,14 +120,18 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         An environment specific Action type
         """
 
-        # compute the state values related to
-        # the given state
+        # get the approximation of the  q-values
+        # given the state
+
         q_values = []
 
-        for action in range(self.env.n_actions):
-            state_action_vector = self.env.get_state_action_tile(action=action, state=state)
-            q_values.append(state_action_vector)
+        for a in range(self.env.n_actions):
+            tiled_vector = self.env.featurize_state_action(action=a, state=state)
+            q_values.append(self.q_hat_value(tiled_vector))
 
         # choose an action at the current state
         action = self.eps_policy(q_values, state)
+
+        # this is an integer get the ActionBase instead
+        action = self.env.get_action(action)
         return action

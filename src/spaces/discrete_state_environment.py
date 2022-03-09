@@ -66,7 +66,7 @@ class DiscreteStateEnvironment(object):
         return cls(env_config=config)
 
     @classmethod
-    def from_dataset(cls, data_set: DataSet, *,  action_space: ActionSpace=None,
+    def from_dataset(cls, data_set: DataSet, *,  action_space: ActionSpace = None,
                      reward_manager: RewardManager = None, distortion_calculator: DistortionCalculator = None):
 
         config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
@@ -115,6 +115,19 @@ class DiscreteStateEnvironment(object):
         return self.column_distances
 
     def get_action(self, aidx: int) -> ActionBase:
+        """Returns the action if the global aidx index
+
+        Parameters
+        ----------
+
+        aidx: The index of the action to return
+
+        Returns
+        -------
+
+        An instance of ActionBase
+
+        """
         return self.config.action_space[aidx]
 
     def save_current_dataset(self, episode_index: int, save_index: bool = False) -> None:
@@ -257,6 +270,7 @@ class DiscreteStateEnvironment(object):
         """
         # apply the action and update distoration
         # and column count
+
         self.apply_action(action=action)
 
         # calculate the distortion of the dataset

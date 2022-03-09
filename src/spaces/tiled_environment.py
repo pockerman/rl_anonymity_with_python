@@ -107,6 +107,11 @@ class Layer(object):
     """Helper class to represent a layer of tiling
 
     """
+
+    @staticmethod
+    def n_tiles_per_action(n_bins: int, n_columns: int) -> int:
+        return n_bins ** n_columns
+
     def __init__(self, column_bins, n_bins: int,
                  n_actions: int, start_index: int, end_index: int):
         self.column_bins = column_bins
@@ -321,7 +326,6 @@ class TiledEnv(object):
         # This assigns a unique index to each tile up to max_size tiles.
         self._validate()
         self._create_column_scales()
-        #self.column_bins = {}
 
     @property
     def action_space(self):
@@ -333,13 +337,21 @@ class TiledEnv(object):
 
     @property
     def n_states(self) -> int:
-        return self.env.n_states
+        """Returns the total number of states in the environment
+
+        Returns
+        -------
+
+        The total number of states in the environment
+
+        """
+        return self.n_layers * Layer.n_tiles_per_action(self.n_bins, len(self.column_ranges))
 
     @property
     def config(self) -> Config:
         return self.env.config
 
-    def step(self, action: ActionBase) -> TimeStep:
+    def step(self, action: ActionBase, **options) -> TimeStep:
         """Execute the action in the environment and return
         a new state for observation
 
@@ -366,6 +378,13 @@ class TiledEnv(object):
         state.column_distortions = self.env.column_distortions
 
         time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
+
+        if "tiled_state" in options and options['tiled_state'] is True:
+
+            # we want to put the state into the tiles
+            tiled_state = self.featurize_raw_state(state)
+            time_step = copy_time_step(time_step=time_step, **{"observation": tiled_state})
+
         return time_step
 
     def reset(self, **options) -> TimeStep:
@@ -399,16 +418,37 @@ class TiledEnv(object):
 
         time_step = copy_time_step(time_step=raw_time_step, **{"observation": state})
 
-        # we want to put the state into the tiles
-        tiled_state = self._featurize_raw_state(state)
-        time_step = copy_time_step(time_step=time_step, **{"observation": tiled_state})
+        if "tiled_state" in options and options['tiled_state'] is True:
+
+            # we want to put the state into the tiles
+            tiled_state = self.featurize_raw_state(state)
+            time_step = copy_time_step(time_step=time_step, **{"observation": tiled_state})
+
         return time_step
+
+    def get_state_action_tile_matrix(self, state: TiledState) -> np.array:
+        """ Transform the TiledState vector to a numpy 2D array
+
+        Parameters
+        ----------
+
+        state: The tiled state-action vector
+
+        Returns
+        -------
+
+        A 2d numpy array
+        """
+
+        return state.reshape(self.n_layers, self.n_actions, Layer.n_tiles_per_action(n_bins=self.n_bins,
+                                                                                     n_columns=len(self.column_ranges)))
 
     def get_action(self, aidx: int) -> ActionBase:
         """Returns the action that corresponds to the given index
 
         Parameters
         ----------
+
         aidx: The index of the action to return
 
         Returns
@@ -510,6 +550,7 @@ class TiledEnv(object):
 
         Parameters
         ----------
+
         action: The action to apply
 
         Returns
@@ -530,27 +571,7 @@ class TiledEnv(object):
         """
         return self.env.total_current_distortion()
 
-    def get_scaled_state(self, state: State) -> list:
-        """Scales the state components and returns the
-        scaled state
-
-        Parameters
-        ----------
-        state: The state to scale
-
-        Returns
-        -------
-
-        A list of scaled state values
-
-        """
-        scaled_state_vals = []
-        for name in state:
-            scaled_state_vals.append(state[name] * self.column_scales[name])
-
-        return scaled_state_vals
-
-    def featurize_state_action(self, state: State, action: ActionBase) -> List[Tile]:
+    def featurize_state_action(self, state: RawState, action: ActionBase) -> TiledState:
         """Get a list of Tiles for the given state and action
 
         Parameters
@@ -565,20 +586,43 @@ class TiledEnv(object):
 
         """
 
-        scaled_state = self.get_scaled_state(state)
-        featurized = tiles(self.iht, self.n_layers, scaled_state, [action])
-        return featurized
+        tiled_state = np.zeros(self.n_layers * self.n_actions * self.n_bins ** (len(self.column_ranges)))
 
-    def _featurize_raw_state(self, state: RawState) -> TiledState:
+        found = False
+        for layer in range(self.n_layers):
+            global_idx = self.tiles[layer].get_global_tile_index(raw_state=state, action=action)
+            if global_idx != INVALID_ID:
+                tiled_state[global_idx] = 1.0
+
+        return tiled_state
+
+    def featurize_raw_state(self, state: RawState) -> TiledState:
+        """Returns the tiled state vector given  the vector
+        of column distortions
+
+        Parameters
+        ----------
+        state
+
+        Returns
+        -------
+
+        """
 
         tiled_state = np.zeros(self.n_layers * self.n_actions * self.n_bins ** (len(self.column_ranges)))
 
+        found = False
         for layer in range(self.n_layers):
+
+            #if found:
+             #   break
+
             for action in range(self.n_actions):
                 global_idx = self.tiles[layer].get_global_tile_index(raw_state=state, action=action)
                 if global_idx != INVALID_ID:
                     tiled_state[global_idx] = 1.0
-                    break
+                    #found = True
+                    #break
 
         return tiled_state
 

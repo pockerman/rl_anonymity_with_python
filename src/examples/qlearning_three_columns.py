@@ -88,6 +88,8 @@ if __name__ == '__main__':
     OUTPUT_MSG_FREQUENCY = 100
     N_ROUNDS_BELOW_MIN_DISTORTION = 10
     SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/q_learn_distorted_sets/distorted_set"
+    REWARD_FACTOR = 0.95
+    PUNISH_FACTOR = 2.0
 
     # specify the columns to drop
     drop_columns = MockSubjectsLoader.FEATURES_DROP_NAMES + ["preventative_treatment", "gender",
@@ -144,8 +146,8 @@ if __name__ == '__main__':
         numeric_column_distortion_metric_type=NumericDistanceType.L2_AVG,
         string_column_distortion_metric_type=StringDistanceType.COSINE_NORMALIZE,
         dataset_distortion_type=DistortionCalculationType.SUM)
-    env_config.reward_factor = 0.95
-    env_config.punish_factor = 2.0
+    env_config.reward_factor = REWARD_FACTOR #0.95
+    env_config.punish_factor = PUNISH_FACTOR #2.0
 
     # create the environment
     env = DiscreteStateEnvironment(env_config=env_config)
