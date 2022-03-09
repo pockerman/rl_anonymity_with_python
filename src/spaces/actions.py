@@ -15,7 +15,7 @@ Hierarchy = TypeVar("Hierarchy")
 
 
 class ActionType(enum.IntEnum):
-    """Defines the status of an Action
+    """Defines the type of an Action
     """
 
     INVALID_TYPE = -1
