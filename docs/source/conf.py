@@ -39,14 +39,11 @@ extensions = [
    'sphinx.ext.doctest',
    'sphinx.ext.autodoc',
    'sphinx.ext.autosummary',
-   "numpydoc",
+   #"numpydoc",
    'sphinx.ext.napoleon'
 ]
 
 #extensions = ['sphinx.ext.napoleon']
-
-numpydoc_show_class_members = True
-
 # generate autosummary even if no references
 autosummary_generate = True
 autosummary_imported_members = False

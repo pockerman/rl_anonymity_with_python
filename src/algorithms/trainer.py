@@ -7,7 +7,7 @@ import numpy as np
 from typing import TypeVar
 
 from src.utils import INFO
-from src.utils.function_wraps import time_func
+from src.utils.function_wraps import time_func, time_func_wrapper
 from src.utils.episode_info import EpisodeInfo
 
 Env = TypeVar("Env")
@@ -17,6 +17,17 @@ Agent = TypeVar("Agent")
 class Trainer(object):
 
     def __init__(self, env: Env,  agent: Agent, configuration: dir) -> None:
+        """Constructor. Initialize a trainer by passing the training environment
+        instance the agen to train and configuration dictionary
+
+        Parameters
+        ----------
+
+        env: The environment to train the agent
+        agent: The agent to train
+        configuration: Configuration parameters for the trainer
+
+        """
         self.env = env
         self.agent = agent
         self.configuration = configuration
@@ -96,9 +107,9 @@ class Trainer(object):
 
         if episode_idx % self.configuration['output_msg_frequency'] == 0:
             if self.env.config.distorted_set_path is not None:
-                self.env.save_current_dataset(options["episode_idx"])
+                self.env.save_current_dataset(episode_idx)
 
-    @time_func
+    @time_func_wrapper(show_time=True)
     def train(self):
 
         print("{0} Training agent {1}".format(INFO, self.agent.name))
@@ -115,13 +126,14 @@ class Trainer(object):
             #episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
             episode_info: EpisodeInfo = self.agent.on_episode(self.env, episode)
 
+            print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
             print("{0} Episode score={1}, episode total avg distortion {2}".format(INFO, episode_info.episode_score,
-                                                                               episode_info.total_distortion / episode_info.info["n_iterations"]))
+                                                                               episode_info.total_distortion / episode_info.episode_itrs))
 
             #if episode % self.configuration['output_msg_frequency'] == 0:
-            print("{0} Episode finished after {1} iterations".format(INFO, episode_info.info["n_iterations"]))
+            print("{0} Episode finished after {1} iterations".format(INFO, episode_info.episode_itrs))
 
-            self.iterations_per_episode.append(episode_info.info["n_iterations"])
+            self.iterations_per_episode.append(episode_info.episode_itrs)
             self.total_rewards[episode] = episode_info.episode_score
             self.total_distortions.append(episode_info.total_distortion)
             self.actions_after_episode_ends(self.env, episode, **{})

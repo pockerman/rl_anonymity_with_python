@@ -54,6 +54,11 @@ class ActionSpace(Discrete):
         """
         random.shuffle(self.actions)
 
+        # fix the ids of the actions to
+        # correspond to the shuffling
+        for i in range(len(self.actions)):
+            self.actions[i].idx = i
+
     def get_action_by_name_and_type(self, column_name: str, action_type: ActionType) -> ActionBase:
         """
         Get the action that corresponds to the column with
