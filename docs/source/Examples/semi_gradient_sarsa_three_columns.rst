@@ -2,19 +2,41 @@ Semi-gradient SARSA algorithm
 =============================
 
 In this example, we continue using a three-column data set as in the `Q-learning on a three columns dataset <qlearning_three_columns.html>`_.
-In that example, we used a state aggregation approach to model the overall distortion of the data set in the range :math:`\[0, 1]`. 
-In this example, we take an alternative approach. We will use bins to discretize the deformation range for each column in the data set.
-The state vector will contain these deformations. Hence, for the three column data set, the state vector will have three entries,
-each indicating the distortion of the respective column.
+In that example, we used a state aggregation approach to model the overall distortion of the data set in the range :math:`[0, 1]`. 
+Herein, we take an alternative approach. We will assume that the column distortion is in the range :math:`\[0, 1]` where the edge points mean no distortion
+and full distortion of the column respectively.  For each column, we will use the same approach to discretize the continuous :math:`[0, 1]` range
+into a given number of disjoint bins.
 
+Contrary to representing the state-action function :math:`q_{\pi}` using a table as we did in `Q-learning on a three columns dataset <qlearning_three_columns.html>`_, we will assume  a functional form for 
+it. Specifically, we assume that the state-action function can be approximated by :math:`\hat{q} \approx q_{\pi}` given by 
 
- 
+.. math::
+	\hat{q}(s, \alpha) = \mathbf{w}^T\mathbf{x}(s, \alpha) = \sum_{i}^{d} w_i, x_i(s, \alpha)
+
+where :math:`\mathbf{w}` is the weights vector and :math:`\mathbf{x}(s, \alpha)` is called the feature vector representing state :math:`s` when taking action :math:`\alpha` [1]. For our case the components of the feature vector will be distortions of the three columns when applying action :math:`\alpha` on the data set. Our goal now is to find the components of the weight vector. We can the stochastic gradient descent (or SGD )
+for this [1]. In this case, the update rule is [1]
+
+.. math::
+   \mathbf{w}_{t + 1} = \mathbf{w}_t + \eta\left[U_t - \gamma \hat{q}(s_t, \alpha_t, \mathbf{w}_t)\right] \nabla_{\mathbf{w}} \hat{q}(s_t, \alpha_t, \mathbf{w}_t)
+   
+where :math:`U_t` for one-step SARSA is given by [1]:
+
+.. math::
+   U_t = R_t + \gamma \hat{q}(s_{t + 1}, \alpha_{t + 1}, \mathbf{w}_t)
+
+Since, :math:`\hat{q}(s, \alpha)` is a linear function with respect to the weights, its gradient is given by
+
+.. math::
+   \nabla_{\mathbf{w}} \hat{q}(s, \alpha) = \mathbf{x}(s, \alpha)
+
+We will use bins to discretize the deformation range for each column in the data set.
+The state vector will contain these deformations. Hence, for the three column data set, the state vector will have three entries, each indicating the distortion of the respective column.
 
 The semi-gradient SARSA algorithm is shown below
 
 .. figure:: images/semi_gradient_sarsa.png 
 
-   Episodic semi-gradient SARSA algorithm. Image from [1]
+   Episodic semi-gradient SARSA algorithm. Image from [1].
  
  
   
@@ -24,8 +46,11 @@ Tiling
 
 We will use a linear function approximation for :math:`\hat{q}`:
 
-.. math::
-	\hat{q} = \mathbf{w}^T\mathbf{x}
+
+.. figure:: images/tiling_example.png
+
+   Multiple, overlapping grid-tilings on a limited two-dimensional space. 
+   These tilings are offset from one another by a uniform amount in each dimension. Image from [1].
 
 
 Code
@@ -210,4 +235,4 @@ Code
 References
 ----------
 
-1. Sutton and Barto, Reinforcement Learning
+1. Richard S. Sutton and Andrw G. Barto, Reinforcement Learning. An Introduction 2nd Edition, MIT Press
