@@ -7,6 +7,8 @@ API
    API/actions
    API/state
    API/epsilon_greedy_q_estimator
+   API/epsilon_greedy_policy
+   API/time_step
    generated/action_space
    generated/q_estimator
    generated/q_learning
@@ -17,6 +19,5 @@ API
    generated/discrete_state_environment
    generated/observation_space
    generated/state
-   generated/time_step
    generated/tiled_environment
 

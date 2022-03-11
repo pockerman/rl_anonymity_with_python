@@ -18,6 +18,9 @@ Env = TypeVar('Env')
 
 @dataclass(init=True, repr=True)
 class EpsilonGreedyQEstimatorConfig(EpsilonGreedyConfig):
+    """Configuration class for EpsilonGreedyQEstimator
+
+    """
     gamma: float = 1.0
     alpha: float = 1.0
     env: Env = None
@@ -29,7 +32,7 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
     """
 
     def __init__(self, config: EpsilonGreedyQEstimatorConfig):
-        """Constructor
+        """Constructor. Initialize the estimator with a given configuration
 
         Parameters
         ----------
@@ -71,42 +74,12 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         -------
         float
 
-
         """
 
         if self.weights is None:
             raise InvalidParamValue(param_name="weights", param_value="None. Have you called initialize?")
 
         return self.weights.dot(state_action_vec)
-
-    """
-    def update_weights(self, total_reward: float, state_action: Action,
-                       state_action_: Action, t: float) -> None:
-        
-        Update the weights
-
-        Parameters
-        ----------
-
-        total_reward: The reward observed
-        state_action: The action that led to the reward
-        state_action_:
-        t: The decay factor for alpha
-
-        Returns
-        -------
-
-        None
-
-        
-
-        if self.weights is None:
-            raise InvalidParamValue(param_name="weights", param_value="None. Have you called initialize?")
-
-        v1 = self.q_hat_value(state_action_vec=state_action)
-        v2 = self.q_hat_value(state_action_vec=state_action_)
-        self.weights += self.alpha / t * (total_reward + self.gamma * v2 - v1) * state_action
-    """
 
     def on_state(self, state: State) -> Action:
         """Returns the action on the given state

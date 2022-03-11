@@ -16,6 +16,8 @@ from src.utils.distortion_calculator import DistortionCalculationType, Distortio
 from src.utils.numeric_distance_type import NumericDistanceType
 from src.utils.string_distance_calculator import StringDistanceType
 from src.utils.reward_manager import RewardManager
+from src.utils.plot_utils import plot_running_avg
+from src.utils import INFO
 
 
 N_LAYERS = 5
@@ -144,24 +146,60 @@ if __name__ == '__main__':
     # set the seed for random engine
     random.seed(42)
 
+    # load the discrete environment
     discrete_env = load_discrete_env()
+
+    # establish the configuration for the Tiled environment
     tiled_env_config = TiledEnvConfig(n_layers=N_LAYERS, n_bins=N_BINS,
                                       env=discrete_env,
                                       column_ranges={"ethnicity": [0.0, 1.0],
                                                      "salary": [0.0, 1.0],
                                                      "diagnosis": [0.0, 1.0]})
+    # create the Tiled environment
     tiled_env = TiledEnv(tiled_env_config)
     tiled_env.create_tiles()
 
-    configuration = {"n_episodes": N_EPISODES, "output_msg_frequency": OUTPUT_MSG_FREQUENCY}
-
+    # agent configuration
     agent_config = SemiGradSARSAConfig(gamma=GAMMA, alpha=ALPHA, n_itrs_per_episode=N_ITRS_PER_EPISODE,
                                        policy=EpsilonGreedyQEstimator(EpsilonGreedyQEstimatorConfig(eps=EPS, n_actions=tiled_env.n_actions,
                                                                                                     decay_op=EPSILON_DECAY_OPTION,
                                                                                                     epsilon_decay_factor=EPSILON_DECAY_FACTOR,
-                                                                                                    env=tiled_env, gamma=GAMMA, alpha=ALPHA)))
+                                                                                                    env=tiled_env,
+                                                                                                    gamma=GAMMA,
+                                                                                                    alpha=ALPHA)))
+    # create the agent
     agent = SemiGradSARSA(agent_config)
 
     # create a trainer to train the Qlearning agent
+    configuration = {"n_episodes": N_EPISODES, "output_msg_frequency": OUTPUT_MSG_FREQUENCY}
     trainer = Trainer(env=tiled_env, agent=agent, configuration=configuration)
+
+    # train the agent
     trainer.train()
+
+    # avg_rewards = trainer.avg_rewards()
+    avg_rewards = trainer.total_rewards
+    plot_running_avg(avg_rewards, steps=100,
+                     xlabel="Episodes", ylabel="Reward",
+                     title="Running reward average over 100 episodes")
+
+    avg_episode_dist = np.array(trainer.total_distortions)
+    print("{0} Max/Min distortion {1}/{2}".format(INFO, np.max(avg_episode_dist), np.min(avg_episode_dist)))
+
+    plot_running_avg(avg_episode_dist, steps=100,
+                     xlabel="Episodes", ylabel="Distortion",
+                     title="Running distortion average over 100 episodes")
+
+    print("=============================================")
+    print("{0} Generating distorted dataset".format(INFO))
+
+    """
+    # Let's play
+    env.reset()
+
+    stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
+    agent.play(env=env, stop_criterion=stop_criterion)
+    env.save_current_dataset(episode_index=-2, save_index=False)
+    """
+    print("{0} Done....".format(INFO))
+    print("=============================================")

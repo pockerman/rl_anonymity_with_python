@@ -1,8 +1,19 @@
 Q-learning on a three columns dataset
 =====================================
 
+Overview
+--------
+
+In this example, we use a tabular Q-learning algorithm to anonymize a data set with three columns.
+
+
+
+
 In this simple example we show how to apply QLearning on a dataset with three columns.
 
+
+Code
+----
 
 .. code-block::
 

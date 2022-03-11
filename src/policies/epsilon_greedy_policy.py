@@ -1,5 +1,6 @@
-"""
-Epsilon greedy policy implementation
+"""Module epsilon_greedy_policy. Implements epsilon-greedy
+policy with various decay options
+
 """
 import random
 import numpy as np
@@ -12,11 +13,11 @@ from src.utils.mixins import WithMaxActionMixin
 UserDefinedDecreaseMethod = TypeVar('UserDefinedDecreaseMethod')
 Env = TypeVar("Env")
 QTable = TypeVar("QTable")
+State = TypeVar('State')
 
 
 class EpsilonDecayOption(Enum):
-    """
-    Options for reducing epsilon
+    """Options for reducing epsilon
     """
 
     NONE = 0
@@ -46,6 +47,17 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
 
     @classmethod
     def from_config(cls, config: EpsilonGreedyConfig):
+        """Construct a policy from the given configuration
+
+        Parameters
+        ----------
+        config: The configuration to use
+
+        Returns
+        -------
+
+        An instance of EpsilonGreedyPolicy class
+        """
         return cls(eps=config.eps, n_actions=config.n_actions,
                    decay_op=config.decay_op, min_eps=config.min_eps,
                    max_eps=config.max_eps, epsilon_decay_factor=config.epsilon_decay_factor,
@@ -55,7 +67,21 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
                  decay_op: EpsilonDecayOption,
                  max_eps: float = 1.0, min_eps: float = 0.001,
                  epsilon_decay_factor: float = 0.01,
-                 user_defined_decrease_method: UserDefinedDecreaseMethod = None) -> None:
+                 user_defined_decrease_method: UserDefinedDecreaseMethod = None):
+        """Constructor. Initialize a policy with the given options
+
+        Parameters
+        ----------
+
+        eps: The initial epsilon
+        n_actions: How many actions the environment assumes
+        decay_op: How to decay epsilon
+        max_eps: The maximum epsilon
+        min_eps: The minimum epsilon
+        epsilon_decay_factor: A decay factor used when decay_op = CONSTANT_RATE
+        user_defined_decrease_method: A user defined callable to decay epsilon
+
+        """
         super(WithMaxActionMixin, self).__init__(table={})
         self._eps = eps
         self._n_actions = n_actions
@@ -66,14 +92,28 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
         self.user_defined_decrease_method: UserDefinedDecreaseMethod = user_defined_decrease_method
 
     def __str__(self) -> str:
+        """Returns the name of the policy
+
+        Returns
+        -------
+
+        A string representing the name of the policy
+        """
         return "EpsilonGreedyPolicy"
 
-    def __call__(self, q_table: QTable, state: Any) -> int:
-        """
-        Execute the policy
-        :param q_func:
-        :param state:
-        :return:
+    def __call__(self, q_table: QTable, state: State) -> int:
+        """Execute the policy
+
+        Parameters
+        ----------
+
+        q_table: The q-table to use
+        state: The state observed
+
+        Returns
+        -------
+
+        An integer representing the action index
         """
 
         # update the store q_table
@@ -89,20 +129,33 @@ class EpsilonGreedyPolicy(WithMaxActionMixin):
             # has exhausted it's transforms?
             return random.choice(np.arange(self._n_actions))
 
-    def on_state(self, state: Any) -> int:
+    def on_state(self, state: State) -> int:
+        """ Returns the optimal action on the current state
+
+        Parameters
+        ----------
+        state: The state observed
+
+        Returns
+        -------
+
+        An integer representing the action index
         """
-        Returns the optimal action on the current state
-        :param state:
-        :return:
-        """
+
         return self.max_action(state=state, n_actions=self._n_actions)
 
     def actions_after_episode(self, episode_idx: int, **options) -> None:
-        """
-        Apply actions on the policy after the end of the episode
-        :param episode_idx: The episode index
-        :param options:
-        :return: None
+        """Any actions the policy should execute after the episode ends
+
+        Parameters
+        ----------
+        episode_idx: The episode index
+        options: Any options passed by the client code
+
+        Returns
+        -------
+
+        None
         """
 
         if self._decay_op == EpsilonDecayOption.NONE:
