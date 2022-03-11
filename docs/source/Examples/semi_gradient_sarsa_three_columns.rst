@@ -1,11 +1,19 @@
 Semi-gradient SARSA algorithm 
 =============================
 
+Overview
+--------
+
+In this example, we use the episodic semi-gradient SARSA algorithm to anonymize a data set with three columns.
+
+
+Semi-gradient SARSA algorithm 
+-----------------------------
+
 In this example, we continue using a three-column data set as in the `Q-learning on a three columns dataset <qlearning_three_columns.html>`_.
-In that example, we used a state aggregation approach to model the overall distortion of the data set in the range :math:`[0, 1]`. 
-Herein, we take an alternative approach. We will assume that the column distortion is in the range :math:`\[0, 1]` where the edge points mean no distortion
-and full distortion of the column respectively.  For each column, we will use the same approach to discretize the continuous :math:`[0, 1]` range
-into a given number of disjoint bins.
+In that example, we used state aggregation to model the overall distortion of the data set in the range :math:`[0, 1]`. 
+Herein, we take an alternative approach. We will assume that the column distortion is in the range :math:`[0, 1]` where the edge points mean no distortion
+and full distortion of the column respectively.  For each column, we will use the same methodology as in `Q-learning on a three columns dataset <qlearning_three_columns.html>`_ to discretize the continuous :math:`[0, 1]` range into a given number of disjoint bins.
 
 Contrary to representing the state-action function :math:`q_{\pi}` using a table as we did in `Q-learning on a three columns dataset <qlearning_three_columns.html>`_, we will assume  a functional form for 
 it. Specifically, we assume that the state-action function can be approximated by :math:`\hat{q} \approx q_{\pi}` given by 
@@ -13,13 +21,13 @@ it. Specifically, we assume that the state-action function can be approximated b
 .. math::
 	\hat{q}(s, \alpha) = \mathbf{w}^T\mathbf{x}(s, \alpha) = \sum_{i}^{d} w_i, x_i(s, \alpha)
 
-where :math:`\mathbf{w}` is the weights vector and :math:`\mathbf{x}(s, \alpha)` is called the feature vector representing state :math:`s` when taking action :math:`\alpha` [1]. For our case the components of the feature vector will be distortions of the three columns when applying action :math:`\alpha` on the data set. Our goal now is to find the components of the weight vector. We can the stochastic gradient descent (or SGD )
-for this [1]. In this case, the update rule is [1]
+where :math:`\mathbf{w}` is the weights vector and :math:`\mathbf{x}(s, \alpha)` is called the feature vector representing state :math:`s` when taking action :math:`\alpha` [1]. We will use `Tile coding`_ to construct :math:`\mathbf{x}(s, \alpha)`.  Our goal now is to find the components of the weight vector. 
+We can use stochastic gradient descent (or SGD ) for this [1]. In this case, the update rule is [1]
 
 .. math::
    \mathbf{w}_{t + 1} = \mathbf{w}_t + \eta\left[U_t - \gamma \hat{q}(s_t, \alpha_t, \mathbf{w}_t)\right] \nabla_{\mathbf{w}} \hat{q}(s_t, \alpha_t, \mathbf{w}_t)
    
-where :math:`U_t` for one-step SARSA is given by [1]:
+where :math:`\eta` is the learning rate and :math:`U_t`, for one-step SARSA, is given by [1]:
 
 .. math::
    U_t = R_t + \gamma \hat{q}(s_{t + 1}, \alpha_{t + 1}, \mathbf{w}_t)
@@ -29,9 +37,6 @@ Since, :math:`\hat{q}(s, \alpha)` is a linear function with respect to the weigh
 .. math::
    \nabla_{\mathbf{w}} \hat{q}(s, \alpha) = \mathbf{x}(s, \alpha)
 
-We will use bins to discretize the deformation range for each column in the data set.
-The state vector will contain these deformations. Hence, for the three column data set, the state vector will have three entries, each indicating the distortion of the respective column.
-
 The semi-gradient SARSA algorithm is shown below
 
 .. figure:: images/semi_gradient_sarsa.png 
@@ -39,10 +44,20 @@ The semi-gradient SARSA algorithm is shown below
    Episodic semi-gradient SARSA algorithm. Image from [1].
  
  
-  
- 
-Tiling
-------
+Tile coding
+-------------
+
+Since we consider all the columns distortions in the data set, means that we deal with a multi-dimensional continuous spaces. In this case,
+we can use tile coding to construct :math:`\mathbf{x}(s, \alpha)` [1].
+
+Tile coding is a form of coarse coding for multi-dimensional continuous spaces [1]. In this method, the features are grouped into partitions of the state
+space. Each partition is called a tiling, and each element of the partition is called a
+tile [1]. The following figure shows the a 2D state space partitioned in a uniform grid (left).
+If we only use this tiling,  we would not have coarse coding but just a case of state aggregation.
+
+In order to apply coarse coding, we use overlapping tiling partitions. In this case, each tiling is offset by a fraction of a tile width [1].
+A simple case with four tilings is shown on the right side of following figure. 
+
 
 We will use a linear function approximation for :math:`\hat{q}`:
 
@@ -53,8 +68,21 @@ We will use a linear function approximation for :math:`\hat{q}`:
    These tilings are offset from one another by a uniform amount in each dimension. Image from [1].
 
 
+One practical advantage of tile coding is that the overall number of features that are active 
+at a given instance is the same for any state [1]. Exactly one feature is present in each tiling, so the total number of features present is
+always the same as the number of tilings [1]. This allows the learning parameter :math:`\eta`, to be set according to
+
+.. math::
+   \eta = \frac{1}{n}
+   
+   
+where :math:`n` is the number of tilings. 
+
+
 Code
 ----
+
+The necessary imports
 
 .. code-block::
 
@@ -77,6 +105,8 @@ Code
 	from src.utils.string_distance_calculator import StringDistanceType
 	from src.utils.reward_manager import RewardManager
 
+Next we set some constants
+
 .. code-block::
 
 	N_LAYERS = 5
@@ -98,6 +128,8 @@ Code
 	SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/semi_grad_sarsa/distorted_set"
 	REWARD_FACTOR = 0.95
 	PUNISH_FACTOR = 2.0
+
+We continue by establishing some helper functions
 
 .. code-block::
 
@@ -140,7 +172,6 @@ Code
 	    ethnicity_hierarchy["White"] = "White"
 	    return ethnicity_hierarchy
 
-.. code-block::
 
 	def load_mock_subjects() -> MockSubjectsLoader:
 
@@ -201,6 +232,8 @@ Code
 
 		return env
 
+The driver code brings all elements together
+
 .. code-block::
 
 	if __name__ == '__main__':
@@ -231,6 +264,10 @@ Code
 	    trainer.train()
 
   
+.. figure:: images/semi_gradient_sarsa_3_columns_reward.png
+
+
+.. figure:: images/semi_gradient_sarsa_3_columns_distortion.png
    
 References
 ----------

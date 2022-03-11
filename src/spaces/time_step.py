@@ -1,4 +1,5 @@
-"""
+"""Module time_step. Specifies a wrapper
+for representing a step in the environment
 
 """
 
@@ -12,9 +13,9 @@ _Observation = TypeVar('_Observation')
 
 
 class StepType(enum.IntEnum):
+    """Defines the status of a `TimeStep` within a sequence.
+
     """
-      Defines the status of a `TimeStep` within a sequence.
-      """
 
     # Denotes the first `TimeStep` in a sequence.
     FIRST = 0
