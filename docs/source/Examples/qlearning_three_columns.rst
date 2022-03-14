@@ -5,8 +5,22 @@ Overview
 --------
 
 In this example, we use a tabular Q-learning algorithm to anonymize a data set with three columns.
+Q-learning is one of the early breakthroughs in the field of reinforcement learning [1]. It was first introduced in [2].
+Q-learning is an off-policy algorithm where the learned state-action value function :math:`Q(s, \alpha)` directly approximates
+the optimal state-action value function :math:`Q^*`. This is done independently of the policy :math:`\pi`  being followed [1].
 
 
+The update equation is shown below:
+
+.. math::
+   Q(s_t, \alpha_t) = Q(s_t, \alpha_t)  + \eta + \left[r_{t+1} + \gamma max_{\alpha} Q(s_{t+1}, \alpha) - Q(s_t, \alpha_t)
+
+
+The overall algorithm is shown in the box below.
+
+.. figure:: images/q_learning.png
+
+   Q-learning algorithm. Image from [1].
 
 
 In this simple example we show how to apply QLearning on a dataset with three columns.
@@ -213,5 +227,8 @@ Code
 	    env.save_current_dataset(episode_index=-2, save_index=False)
 	    print("{0} Done....".format(INFO))
 	    print("=============================================")
-
+	    
+References
+----------	   
+1. Richard S. Sutton and Andrw G. Barto, Reinforcement Learning. An Introduction 2nd Edition, MIT Press.
 
