@@ -24,7 +24,7 @@
    :members: __init__, act, add
    
 .. autoclass:: ActionSuppress
-   :memebrs: __init__, act
+   :members: __init__, act
    
 .. autoclass:: ActionTransform
    :members: __init__, act

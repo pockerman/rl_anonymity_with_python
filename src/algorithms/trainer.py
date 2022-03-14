@@ -121,7 +121,7 @@ class Trainer(object):
             # reset the environment
             #ignore = self.env.reset()
 
-            self.actions_before_episode_begins(self.env, episode,)
+            self.actions_before_episode_begins(self.env, episode)
             # train for a number of iterations
             #episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
             episode_info: EpisodeInfo = self.agent.on_episode(self.env, episode)

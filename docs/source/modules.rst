@@ -6,9 +6,10 @@ API
    
    API/actions
    API/state
-   API/epsilon_greedy_q_estimator
-   API/epsilon_greedy_policy
    API/time_step
+   API/epsilon_greedy_policy
+   API/epsilon_greedy_q_estimator
+   API/q_learning
    generated/action_space
    generated/q_estimator
    generated/q_learning

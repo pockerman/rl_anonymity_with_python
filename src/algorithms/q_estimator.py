@@ -15,6 +15,15 @@ Env = TypeVar('Env')
 
 class QEstimator(object):
     def __init__(self, env: Env, max_size: int, alpha: float, use_trace: bool = False) -> None:
+        """Constructor
+
+        Parameters
+        ----------
+        env: The environment the estimator is applied ine
+        max_size
+        alpha
+        use_trace
+        """
         self.env = env
         self.max_size = max_size
         self.alpha = alpha

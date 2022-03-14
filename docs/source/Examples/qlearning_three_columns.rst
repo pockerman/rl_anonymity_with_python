@@ -5,6 +5,10 @@ Overview
 --------
 
 In this example, we use a tabular Q-learning algorithm to anonymize a data set with three columns.
+
+Q-learning
+----------
+
 Q-learning is one of the early breakthroughs in the field of reinforcement learning [1]. It was first introduced in [2].
 Q-learning is an off-policy algorithm where the learned state-action value function :math:`Q(s, \alpha)` directly approximates
 the optimal state-action value function :math:`Q^*`. This is done independently of the policy :math:`\pi`  being followed [1].
@@ -13,10 +17,13 @@ the optimal state-action value function :math:`Q^*`. This is done independently 
 The update equation is shown below:
 
 .. math::
-   Q(s_t, \alpha_t) = Q(s_t, \alpha_t)  + \eta + \left[r_{t+1} + \gamma max_{\alpha} Q(s_{t+1}, \alpha) - Q(s_t, \alpha_t)
+   Q(s_t, \alpha_t) = Q(s_t, \alpha_t)  + \eta  \left[r_{t+1} + \gamma max_{\alpha} Q(s_{t+1}, \alpha) - Q(s_t, \alpha_t)\right]
+   
+where :math:`\eta` is a user-defined learning factor and :math:`\gamma` is the user-defined discount factor.
 
-
-The overall algorithm is shown in the box below.
+Although with Q-learning :math:`Q(s, \alpha)` directly approximates :math:`Q^*` independently of the policy :math:`\pi`  being followed,
+the policy still has an effect in that it determines which state-action pairs and visited updated. 
+However, for correct convergence all that is required is that all pairs continue to be updated [1]. In fact, any method guaranteed to find optimal behavior in the general case must require it [1]. The overall algorithm is shown in the box below.
 
 .. figure:: images/q_learning.png
 
@@ -28,6 +35,8 @@ In this simple example we show how to apply QLearning on a dataset with three co
 
 Code
 ----
+
+The necessary imports
 
 .. code-block::
 
@@ -51,6 +60,9 @@ Code
 	from src.utils.iteration_control import IterationControl
 	from src.utils.plot_utils import plot_running_avg
 	from src.utils import INFO
+
+Next establish a helper function that creates the transoformations
+for the `ethnicity` column.
 
 .. code-block::
 
@@ -93,6 +105,9 @@ Code
 	    ethnicity_hierarchy["White"] = "White"
 	    return ethnicity_hierarchy
 
+The dirver code creates brings all the elements together
+
+.. code-block::
 
 	if __name__ == '__main__':
 

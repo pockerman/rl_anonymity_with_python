@@ -4,6 +4,7 @@ Simple Q-learning algorithm
 
 import numpy as np
 from typing import TypeVar
+from dataclasses import dataclass
 
 from src.exceptions.exceptions import InvalidParamValue
 from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase
@@ -15,32 +16,51 @@ Policy = TypeVar('Policy')
 Criterion = TypeVar('Criterion')
 
 
+@dataclass(init=True, repr=True)
 class QLearnConfig(object):
     """Configuration  for Q-learning"""
-    def __init__(self):
-        self.gamma: float = 1.0
-        self.alpha: float = 0.1
-        self.n_itrs_per_episode: int = 100
-        self.policy: Policy = None
+
+    gamma: float = 1.0
+    alpha: float = 0.1
+    n_itrs_per_episode: int = 100
+    policy: Policy = None
 
 
 class QLearning(WithMaxActionMixin):
-    """Q-learning algorithm implementation"""
+    """Q-learning algorithm implementation
+
+    """
 
     def __init__(self, algo_config: QLearnConfig):
+        """Constructor. Construct an instance of the algorithm
+        by passing the configuration parameters
+
+        Parameters
+        ----------
+        algo_config: The configuration parameters
+
         """
-        Constructor. Constructs an untrained agent
-        :param algo_config: Configuration parameters
-        """
+
         super(QLearning, self).__init__()
         self.q_table = {}
         self.config = algo_config
 
     @property
     def name(self) -> str:
-        return "QLearn"
+        return "QLearning"
 
-    def actions_before_training(self, env: Env, **options):
+    def actions_before_training(self, env: Env, **options) -> None:
+        """Any actions before training begins
+
+        Parameters
+        ----------
+        env: The environment that training occurs
+        options: Any options passed by the client code
+
+        Returns
+        -------
+        None
+        """
 
         if not isinstance(self.config.policy, WithQTableMixinBase):
             raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
@@ -49,25 +69,36 @@ class QLearning(WithMaxActionMixin):
             for action in range(env.n_actions):
                 self.q_table[state, action] = 0.0
 
-    def actions_after_episode_ends(self, **options):
-        """
-        Execute any actions the algorithm needs before
-        starting the episode
-        :param options:
-        :return:
-        """
+    def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
+        """Execute any actions the algorithm needs after
+        the episode ends
 
-        self.config.policy.actions_after_episode(options['episode_idx'])
+        Parameters
+        ----------
+        env: The environment that training occurs
+        episode_idx: The episode index
+        options: Any options passed by the client code
+
+        Returns
+        -------
+        None
+        """
+        self.config.policy.actions_after_episode(episode_idx)
 
     def play(self, env: Env, stop_criterion: Criterion) -> None:
-        """
-        Play the game on the environment. This should produce
+        """Play the agent on the environment. This should produce
         a distorted dataset
-        :param stop_criterion:
-        :param env:
-        :return:
-        """
 
+        Parameters
+        ----------
+        env: The environment to
+        stop_criterion: The criteria to use to stop
+
+        Returns
+        -------
+        None
+
+        """
         # loop over the columns and for the
         # column get the action that corresponds to
         # the max payout.
@@ -147,7 +178,7 @@ class QLearning(WithMaxActionMixin):
 
             # add reward to agent's score
             episode_score += reward
-            self._update_Q_table(state=state, action=action_idx, reward=reward,
+            self._update_q_table(state=state, action=action_idx, reward=reward,
                                  next_state=next_state, n_actions=env.n_actions)
             state = next_state  # S <- S'
             counter += 1
@@ -159,12 +190,22 @@ class QLearning(WithMaxActionMixin):
         episode_info = EpisodeInfo(episode_score=episode_score, total_distortion=total_distortion, episode_itrs=counter)
         return episode_info
 
-
-
-    def _update_Q_table(self, state: int, action: int, n_actions: int,
+    def _update_q_table(self, state: int, action: int, n_actions: int,
                         reward: float, next_state: int = None) -> None:
-        """
-        Update the Q-value for the state
+        """ Update the tabular state-action function
+
+        Parameters
+        ----------
+        state: State observed
+        action: The action taken
+        n_actions: Number of actions in the data set
+        reward: The reward observed
+        next_state: The next state observed
+
+        Returns
+        -------
+        None
+
         """
 
         # estimate in Q-table (for current state, action pair)
