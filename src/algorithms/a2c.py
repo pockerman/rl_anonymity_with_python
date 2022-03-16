@@ -1,5 +1,5 @@
 import numpy as np
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -78,6 +78,20 @@ class A2C(Generic[Optimizer]):
         self.rewards = []
         self.memory = []
         self.name = "A2C"
+
+    def share_memory(self) -> None:
+        """Instruct the underlying network to
+        set up what is needed to share memory
+
+        Returns
+        -------
+
+        None
+        """
+        self.a2c_net.share_memory()
+
+    def parameters(self) -> Any:
+        return self.a2c_net.parameters()
 
     def select_action(self, env: Env, observation: State) -> Action:
         """
