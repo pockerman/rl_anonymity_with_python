@@ -69,12 +69,30 @@ class QLearning(WithMaxActionMixin):
             for action in range(env.n_actions):
                 self.q_table[state, action] = 0.0
 
+    def actions_before_episode_begins(self, env: Env, episode_idx, **options) -> None:
+        """Execute any actions the algorithm needs before
+        the episode ends
+
+        Parameters
+        ----------
+
+        env: The environment that training occurs
+        episode_idx: The episode index
+        options: Any options passed by the client code
+
+        Returns
+        -------
+
+        None
+        """
+
     def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
         """Execute any actions the algorithm needs after
         the episode ends
 
         Parameters
         ----------
+
         env: The environment that training occurs
         episode_idx: The episode index
         options: Any options passed by the client code
