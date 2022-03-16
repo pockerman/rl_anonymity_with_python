@@ -8,3 +8,4 @@ src/algorithms/__pycache__/
 src/policies/__pycache__/
 src/apps/__pycache__/
 src/.coverage
+src/maths/__pycache__/
