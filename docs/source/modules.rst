@@ -14,7 +14,6 @@ API
    API/trainer
    API/optimizer_type
    API/pytorch_optimizer_builder
-   generated/q_estimator
    generated/exceptions
    generated/column_type
    generated/discrete_state_environment
