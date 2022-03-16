@@ -118,19 +118,15 @@ class Trainer(object):
         for episode in range(0, self.configuration["n_episodes"]):
             print("{0} On episode {1}/{2}".format(INFO, episode, self.configuration["n_episodes"]))
 
-            # reset the environment
-            #ignore = self.env.reset()
-
             self.actions_before_episode_begins(self.env, episode)
+
             # train for a number of iterations
-            #episode_score, total_distortion, n_itrs = self.agent.on_episode(self.env)
             episode_info: EpisodeInfo = self.agent.on_episode(self.env, episode)
 
             print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
             print("{0} Episode score={1}, episode total avg distortion {2}".format(INFO, episode_info.episode_score,
                                                                                episode_info.total_distortion / episode_info.episode_itrs))
 
-            #if episode % self.configuration['output_msg_frequency'] == 0:
             print("{0} Episode finished after {1} iterations".format(INFO, episode_info.episode_itrs))
 
             self.iterations_per_episode.append(episode_info.episode_itrs)

@@ -3,8 +3,11 @@ from typing import TypeVar, Generic
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from dataclasses import dataclass
 
 from src.utils.experience_buffer import unpack_batch
+from src.utils.episode_info import EpisodeInfo
+from src.utils.function_wraps import time_func_wrapper
 
 Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
@@ -43,20 +46,20 @@ class A2CNet(nn.Module):
         return pol_out, val_out
 
 
+@dataclass(init=True, repr=True)
 class A2CConfig(object):
-    """
-    Configuration for A2C algorithm
+    """Configuration for A2C algorithm
+
     """
 
-    def __init__(self):
-        self.gamma: float = 0.99
-        self.tau: float = 1.2
-        self.n_workers: int = 1
-        self.n_iterations_per_episode: int = 100
-        self.optimizer: Optimizer = None
-        self.loss_function: LossFunction = None
-        self.batch_size: int = 0
-        self.device: str = 'cpu'
+    gamma: float = 0.99
+    tau: float = 1.2
+    n_workers: int = 1
+    n_iterations_per_episode: int = 100
+    optimizer: Optimizer = None
+    loss_function: LossFunction = None
+    batch_size: int = 0
+    device: str = 'cpu'
 
 
 class A2C(Generic[Optimizer]):
@@ -106,12 +109,13 @@ class A2C(Generic[Optimizer]):
         """
         pass
 
+    """
     def train(self, env: Env) -> None:
-        """
+        
         Train the agent on the given environment
         :param env:
         :return:
-        """
+        
 
         # reset the environment and obtain the
         # the time step
@@ -155,4 +159,107 @@ class A2C(Generic[Optimizer]):
             loss = self.calculate_loss()
             loss.backward()
             self.optimizer.step()
+    """
+
+    def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
+        """Train the algorithm on the episode
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
+
+        episode_info, total_time = self._do_train(env, episode_idx, **options)
+        episode_info.total_execution_time = total_time
+        return episode_info
+
+    @time_func_wrapper(show_time=False)
+    def _do_train(self, env: Env, episode_idx: int, **option) -> EpisodeInfo:
+        """Train the algorithm on the episode
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
+
+        # episode score
+        episode_score = 0
+        episode_iterations = 0
+        total_distortion = 0
+
+        episode_info = EpisodeInfo(episode_score=episode_score, total_distortion=total_distortion, episode_itrs=episode_iterations)
+        return episode_info
+
+    def actions_before_training(self, env: Env, **options) -> None:
+        """Any actions before training begins
+
+        Parameters
+        ----------
+
+        env: The environment that training occurs
+        options: Any options passed by the client code
+
+        Returns
+        -------
+        None
+        """
+
+        """
+        if not isinstance(self.config.policy, WithQTableMixinBase):
+            raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
+
+        for state in range(1, env.n_states):
+            for action in range(env.n_actions):
+                self.q_table[state, action] = 0.0
+        """
+
+    def actions_before_episode_begins(self, env: Env, episode_idx, **options) -> None:
+        """Execute any actions the algorithm needs before
+        the episode ends
+
+        Parameters
+        ----------
+
+        env: The environment that training occurs
+        episode_idx: The episode index
+        options: Any options passed by the client code
+
+        Returns
+        -------
+
+        None
+        """
+
+    def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
+        """Execute any actions the algorithm needs after
+        the episode ends
+
+        Parameters
+        ----------
+        env: The environment that training occurs
+        episode_idx: The episode index
+        options: Any options passed by the client code
+
+        Returns
+        -------
+        None
+
+        """
+        #self.config.policy.actions_after_episode(episode_idx)
 

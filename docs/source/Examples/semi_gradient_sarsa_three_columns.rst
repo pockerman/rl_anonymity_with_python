@@ -1,5 +1,5 @@
-Semi-gradient SARSA algorithm 
-=============================
+Semi-gradient SARSA algorithm on a three columns data set
+=========================================================
 
 Overview
 --------
