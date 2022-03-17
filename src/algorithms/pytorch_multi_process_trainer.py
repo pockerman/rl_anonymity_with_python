@@ -21,14 +21,41 @@ Agent = TypeVar("Agent")
 
 
 @dataclass(init=True, repr=True)
+class OptimizerConfig(object):
+    """Configuration class for the optimizer
+
+    """
+    optimizer_type: OptimizerType = OptimizerType.ADAM
+    optimizer_learning_rate: float = 0.01
+    optimizer_eps = 1.0e-5
+    optimizer_betas: tuple = (0.9, 0.999)
+    optimizer_weight_decay: float = 0
+    optimizer_amsgrad: bool = False
+    optimizer_maximize = False
+
+    def as_dict(self) -> dict:
+        return {"optimizer_type": self.optimizer_type,
+                "learning_rate": self.optimizer_learning_rate,
+                "eps": self.optimizer_eps,
+                "betas": self.optimizer_betas,
+                "weight_decay": self.optimizer_weight_decay,
+                "amsgrad": self.optimizer_amsgrad,
+                "maximize": self.optimizer_maximize}
+
+
+@dataclass(init=True, repr=True)
 class PyTorchMultiProcessTrainerConfig(object):
     """Configuration for PyTorchMultiProcessTrainer
 
     """
     n_procs = 1
     n_episodes: 100
-    optimizer_type: OptimizerType = OptimizerType.ADAM
-    learning_rate: float = 0.01
+    optimizer_config: OptimizerConfig = OptimizerConfig()
+
+
+@dataclass(init=True, repr=True)
+class WorkerResult(object):
+    worker_idx: int
 
 
 class TorchProcsHandler(object):
@@ -73,18 +100,37 @@ class TorchProcsHandler(object):
 
 
 def worker(worker_idx: int, worker_model: nn.Module, params: dir):
+    """Executes the process work
 
-        # load the environment. Every worker has a distinct
-        # copy of the environment
-        env = None
+    Parameters
+    ----------
 
-        # create the optimizer
-        optimizer = pytorch_optimizer_builder(opt_type=params["optimizer_type"],
-                                              model_params=worker_model.parameters(),
-                                              **{"learning_rate": params["learning_rate"]})
+    worker_idx: The id of the worker
+    worker_model: The model the worker is using
+    params: Parameters needed
 
-        # run the training for the worker
-        pass
+    Returns
+    -------
+
+    """
+
+    # load the environment. Every worker has a distinct
+    # copy of the environment
+    env = None
+
+    # create the optimizer
+    optimizer = pytorch_optimizer_builder(opt_type=params["optimizer_config"]["optimizer_type"],
+                                          model_params=worker_model.parameters(),
+                                          **params["optimizer_config"])
+
+    for episode in range(params["n_episodes"]):
+        optimizer.zero_grad()
+
+        # run the episode
+        episode_info = worker_model.on_episode(env=env, episode_idx=episode)
+
+        # update the parameters
+        params["update_params_functor"](optimizer, episode_info)
 
 
 class PyTorchMultiProcessTrainer(object):
@@ -95,7 +141,7 @@ class PyTorchMultiProcessTrainer(object):
 
     def __init__(self, agent: Agent, config: PyTorchMultiProcessTrainerConfig) -> None:
         """Constructor. Initialize a trainer by passing the training environment
-        instance the agen to train and configuration dictionary
+        instance the agent to train and configuration dictionary
 
         Parameters
         ----------
@@ -201,8 +247,9 @@ class PyTorchMultiProcessTrainer(object):
             # worker_idx: int, worker_model: nn.Module, params: dir
             process_handler.create_process_and_start(target=worker,
                                                      args=(p, self.agent,
-                                                           {"optimizer_type": self.configuration.optimizer_type,
-                                                            "learning_rate": self.configuration.optimizer_type}))
+                                                           {"optimizer_config": self.configuration.optimizer_config.as_dict(),
+                                                            "n_episodes": self.configuration.n_episodes,
+                                                            "update_params_functor": self.agent.update_parameters}))
 
         process_handler.join_and_terminate()
 

@@ -5,9 +5,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dataclasses import dataclass
 
+
 from src.utils.experience_buffer import unpack_batch
 from src.utils.episode_info import EpisodeInfo
 from src.utils.function_wraps import time_func_wrapper
+from src.utils.replay_buffer import ReplayBuffer
 
 Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
@@ -17,9 +19,11 @@ Action = TypeVar("Action")
 TimeStep = TypeVar("TimeStep")
 
 
+
+
 class A2CNetBase(nn.Module):
-    """
-    Base class for A2C networks
+    """Base class for A2C networks
+
     """
 
     def __init__(self, architecture):
@@ -62,21 +66,48 @@ class A2CConfig(object):
     device: str = 'cpu'
 
 
+
 class A2C(Generic[Optimizer]):
+
+    @staticmethod
+    def update_parameters(optimizer: Optimizer, episode_info: EpisodeInfo, *, gamma: float):
+        """Update the parameters
+
+        Parameters
+        ----------
+        optimizer
+        episode_info
+        gamma
+
+        Returns
+        -------
+
+        """
+
+        # unroll the batch
+        rewards = episode_info.info["replay_buffer"]["reward"]
+        returns = []
+
+        for r in range(rewards.shape[0]):  # B
+            ret_ = rewards[r] + gamma * ret_
+            returns.append(ret_)
+
+        returns = torch.stack(returns).view(-1)
+        returns = F.normalize(returns, dim=0)
+
+        actor_loss = -1 * logprobs * (returns - values.detach())  # C
+        critic_loss = torch.pow(values - returns, 2)  # D
+        loss = actor_loss.sum() + clc * critic_loss.sum()  # E
+        loss.backward()
+        optimizer.step()
 
     def __init__(self, config: A2CConfig, a2c_net: A2CNet):
 
-        self.gamma = config.gamma
+        self.config: A2CConfig = config
+
         self.tau = config.tau
-        self.n_workers = config.n_workers
-        self.n_iterations_per_episode = config.n_iterations_per_episode
-        self.batch_size = config.batch_size
-        self.optimizer = config.optimizer
-        self.device = config.device
-        self.loss_function = config.loss_function
+
         self.a2c_net = a2c_net
-        self.rewards = []
-        self.memory = []
         self.name = "A2C"
 
     def share_memory(self) -> None:
@@ -102,79 +133,6 @@ class A2C(Generic[Optimizer]):
         """
         return env.sample_action()
 
-    def update_policy_network(self):
-        """
-        Update the policy network
-        :return:
-        """
-        pass
-
-    def calculate_loss(self):
-        """
-        Calculate the loss
-        :return:
-        """
-        pass
-
-    def accummulate_batch(self):
-        """
-        Accumulate the memory items
-        :return:
-        """
-        pass
-
-    """
-    def train(self, env: Env) -> None:
-        
-        Train the agent on the given environment
-        :param env:
-        :return:
-        
-
-        # reset the environment and obtain the
-        # the time step
-        time_step: TimeStep = env.reset()
-
-        observation = time_step.observation
-
-        # the batch to process
-        batch = []
-
-        # learn over the episode
-        for iteration in range(1, self.n_iterations_per_episode + 1):
-
-            # select an action
-            action = self.select_action(env=env, observation=observation)
-
-            # step in the environment according
-            # to the selected action
-            next_time_step = env.step(action=action)
-
-            batch.append(next_time_step.observation)
-
-            if len(batch) < self.batch_size:
-                continue
-
-            # unpack the batch in order to process it
-            states_v, actions_t, vals_ref = unpack_batch(batch=batch, net=self.a2c_net, device=self.device)
-            batch.clear()
-
-            self.optimizer.zero_grad()
-            # we reached the end of the episode
-            #if next_time_step.last():
-            #    break
-
-            #next_state = next_time_step.observation
-            policy_val, v_val = self.a2c_net.forward(x=states_v)
-
-            self.optimizer.zero_grad()
-
-            # claculate loss
-            loss = self.calculate_loss()
-            loss.backward()
-            self.optimizer.step()
-    """
-
     def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
         """Train the algorithm on the episode
 
@@ -197,7 +155,8 @@ class A2C(Generic[Optimizer]):
 
     @time_func_wrapper(show_time=False)
     def _do_train(self, env: Env, episode_idx: int, **option) -> EpisodeInfo:
-        """Train the algorithm on the episode
+        """Train the algorithm on the episode. In fact this method simply
+        plays the environment to collect batches
 
         Parameters
         ----------
@@ -216,6 +175,26 @@ class A2C(Generic[Optimizer]):
         episode_score = 0
         episode_iterations = 0
         total_distortion = 0
+
+        time_step = env.reset()
+        state = torch.from_numpy(time_step.observation()).float()
+
+        values = []
+        for itr in range(self.config.n_iterations_per_episode):
+
+            # policy and critic values
+            policy, value = self.a2c_net(state)
+
+            values.append(value)
+
+            # choose the action
+            action_dist = torch.distributions.Categorical(logits=logits)
+            action = action_dist.sample()
+
+            time_step = env.step(action)
+
+            if time_step.done:
+                break
 
         episode_info = EpisodeInfo(episode_score=episode_score, total_distortion=total_distortion, episode_itrs=episode_iterations)
         return episode_info

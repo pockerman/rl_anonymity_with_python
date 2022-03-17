@@ -29,4 +29,6 @@ def pytorch_optimizer_builder(opt_type: OptimizerType, model_params: Any, **opti
         raise ValueError("Invalid PyTorch optimizer type. Type {0} not in {1}".format(opt_type.name,
                                                                                       TORCH_OPTIMIZER_TYPES))
     if opt_type == OptimizerType.ADAM:
-        return optim.Adam(params=model_params, lr=options["learning_rate"])
+        return optim.Adam(params=model_params, lr=options["learning_rate"],
+                          eps=options["eps"], betas=options["betas"], weight_decay=options["weight_decay"],
+                          amsgrad=options["amsgrad"])

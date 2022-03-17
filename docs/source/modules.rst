@@ -14,6 +14,7 @@ API
    API/trainer
    API/optimizer_type
    API/pytorch_optimizer_builder
+   API/replay_buffer
    generated/exceptions
    generated/column_type
    generated/discrete_state_environment
