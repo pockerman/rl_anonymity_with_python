@@ -10,7 +10,6 @@ from src.spaces.discrete_state_environment import DiscreteStateEnvironment
 from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
-from src.algorithms.trainer import Trainer
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
 from src.algorithms.epsilon_greedy_q_estimator import EpsilonGreedyQEstimatorConfig, EpsilonGreedyQEstimator
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
@@ -18,11 +17,11 @@ from src.utils.numeric_distance_type import NumericDistanceType
 from src.utils.string_distance_calculator import StringDistanceType
 from src.utils.reward_manager import RewardManager
 from src.utils.plot_utils import plot_running_avg
-from src.algorithms.pytorch_multi_process_trainer import PyTorchMultiProcessTrainer, PyTorchMultiProcessTrainerConfig
+from src.algorithms.pytorch_multi_process_trainer import PyTorchMultiProcessTrainer, PyTorchMultiProcessTrainerConfig, OptimizerConfig
 from src.utils import INFO
 
 
-N_LAYERS = 5
+N_LAYERS = 1
 N_BINS = 10
 N_EPISODES = 1000
 OUTPUT_MSG_FREQUENCY = 100
@@ -121,7 +120,7 @@ def load_discrete_env() -> DiscreteStateEnvironment:
 
         action_space.shuffle()
 
-        env = DiscreteStateEnvironment.from_options(data_set=mock_ds,
+        discrete_env = DiscreteStateEnvironment.from_options(data_set=mock_ds,
                                                     action_space=action_space,
                                                     distortion_calculator=DistortionCalculator(
                                                         numeric_column_distortion_metric_type=NumericDistanceType.L2_AVG,
@@ -140,7 +139,17 @@ def load_discrete_env() -> DiscreteStateEnvironment:
                                                     n_states=N_LAYERS * Layer.n_tiles_per_action(N_BINS,
                                                                                                  mock_ds.n_columns))
 
-        return env
+        # establish the configuration for the Tiled environment
+        tiled_env_config = TiledEnvConfig(n_layers=N_LAYERS, n_bins=N_BINS,
+                                          env=discrete_env,
+                                          column_ranges={"ethnicity": [0.0, 1.0],
+                                                         "salary": [0.0, 1.0],
+                                                         "diagnosis": [0.0, 1.0]})
+        # create the Tiled environment
+        tiled_env = TiledEnv(tiled_env_config)
+        tiled_env.create_tiles()
+
+        return tiled_env
 
 
 if __name__ == '__main__':
@@ -148,33 +157,24 @@ if __name__ == '__main__':
     # set the seed for random engine
     random.seed(42)
 
-    # load the discrete environment
-    discrete_env = load_discrete_env()
-
-    # establish the configuration for the Tiled environment
-    tiled_env_config = TiledEnvConfig(n_layers=N_LAYERS, n_bins=N_BINS,
-                                      env=discrete_env,
-                                      column_ranges={"ethnicity": [0.0, 1.0],
-                                                     "salary": [0.0, 1.0],
-                                                     "diagnosis": [0.0, 1.0]})
-    # create the Tiled environment
-    tiled_env = TiledEnv(tiled_env_config)
-    tiled_env.create_tiles()
-
     # agent configuration
     a2c_config = A2CConfig()
 
-    common_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(4, 25),
-                                                       nn.Linear(25, 50)))
-    policy_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(50, 2)))
-    value_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(50, 2)))
+    common_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(3, 2),
+                                                       nn.Linear(2, 2)))
+
+    policy_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(2, 2)))
+    value_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(2, 2)))
     net = A2CNet(common_net, policy_net, value_net)
 
     # create the agent
     agent = A2C(a2c_config, net)
 
     # create a trainer to train the Qlearning agent
-    configuration = PyTorchMultiProcessTrainerConfig(n_episodes=N_EPISODES)
+    configuration = PyTorchMultiProcessTrainerConfig(n_episodes=N_EPISODES,
+                                                     env_loader=load_discrete_env,
+                                                     optimizer_config=OptimizerConfig())
+
     trainer = PyTorchMultiProcessTrainer(agent=agent, config=configuration)
 
     # train the agent

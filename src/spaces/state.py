@@ -109,6 +109,6 @@ class State(object):
 
         """
 
-        vals = self.column_distortions.values()
+        vals = list(self.column_distortions.values())
         return np.array(vals)
 

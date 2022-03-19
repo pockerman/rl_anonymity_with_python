@@ -18,6 +18,7 @@ from src.maths.pytorch_optimizer_builder import pytorch_optimizer_builder
 
 Env = TypeVar("Env")
 Agent = TypeVar("Agent")
+EnvLoader = TypeVar('EnvLoader')
 
 
 @dataclass(init=True, repr=True)
@@ -48,9 +49,11 @@ class PyTorchMultiProcessTrainerConfig(object):
     """Configuration for PyTorchMultiProcessTrainer
 
     """
-    n_procs = 1
-    n_episodes: 100
+    n_procs: int = 1
+    n_episodes: int = 100
     optimizer_config: OptimizerConfig = OptimizerConfig()
+    env_loader: EnvLoader = None
+    buffer_size: int = 1000
 
 
 @dataclass(init=True, repr=True)
@@ -116,7 +119,7 @@ def worker(worker_idx: int, worker_model: nn.Module, params: dir):
 
     # load the environment. Every worker has a distinct
     # copy of the environment
-    env = None
+    env = params["env_loader"]()
 
     # create the optimizer
     optimizer = pytorch_optimizer_builder(opt_type=params["optimizer_config"]["optimizer_type"],
@@ -127,7 +130,7 @@ def worker(worker_idx: int, worker_model: nn.Module, params: dir):
         optimizer.zero_grad()
 
         # run the episode
-        episode_info = worker_model.on_episode(env=env, episode_idx=episode)
+        episode_info = worker_model.on_episode(env=env, episode_idx=episode, buffer_size=params["buffer_size"])
 
         # update the parameters
         params["update_params_functor"](optimizer, episode_info)
@@ -249,7 +252,9 @@ class PyTorchMultiProcessTrainer(object):
                                                      args=(p, self.agent,
                                                            {"optimizer_config": self.configuration.optimizer_config.as_dict(),
                                                             "n_episodes": self.configuration.n_episodes,
-                                                            "update_params_functor": self.agent.update_parameters}))
+                                                            "update_params_functor": self.agent.update_parameters,
+                                                            "env_loader": self.configuration.env_loader,
+                                                            "buffer_size": self.configuration.buffer_size}))
 
         process_handler.join_and_terminate()
 

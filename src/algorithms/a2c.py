@@ -19,8 +19,6 @@ Action = TypeVar("Action")
 TimeStep = TypeVar("TimeStep")
 
 
-
-
 class A2CNetBase(nn.Module):
     """Base class for A2C networks
 
@@ -64,7 +62,6 @@ class A2CConfig(object):
     loss_function: LossFunction = None
     batch_size: int = 0
     device: str = 'cpu'
-
 
 
 class A2C(Generic[Optimizer]):
@@ -154,7 +151,7 @@ class A2C(Generic[Optimizer]):
         return episode_info
 
     @time_func_wrapper(show_time=False)
-    def _do_train(self, env: Env, episode_idx: int, **option) -> EpisodeInfo:
+    def _do_train(self, env: Env, episode_idx: int, **options) -> EpisodeInfo:
         """Train the algorithm on the episode. In fact this method simply
         plays the environment to collect batches
 
@@ -176,27 +173,40 @@ class A2C(Generic[Optimizer]):
         episode_iterations = 0
         total_distortion = 0
 
+        buffer = ReplayBuffer(options["buffer_size"])
         time_step = env.reset()
-        state = torch.from_numpy(time_step.observation()).float()
+        state = torch.from_numpy(time_step.observation.to_numpy()).float()
 
         values = []
+        logprobs = []
         for itr in range(self.config.n_iterations_per_episode):
 
             # policy and critic values
             policy, value = self.a2c_net(state)
+            logits = policy.view(-1)
 
             values.append(value)
 
-            # choose the action
+            # choose the action this should be
+            # application defined
             action_dist = torch.distributions.Categorical(logits=logits)
             action = action_dist.sample()
+            logprob_ = policy.view(-1)[action]
+            logprobs.append(logprob_)
 
             time_step = env.step(action)
+            state = time_step.observation
+
+            buffer.add(state=state, action=action, reward=time_step.reward, next_state=time_step.observation,
+                       done=time_step.done)
 
             if time_step.done:
                 break
 
-        episode_info = EpisodeInfo(episode_score=episode_score, total_distortion=total_distortion, episode_itrs=episode_iterations)
+        episode_info = EpisodeInfo(episode_score=episode_score,
+                                   total_distortion=total_distortion, episode_itrs=episode_iterations,
+                                   info={"replay_buffer": buffer,
+                                         "logprobs": logprobs})
         return episode_info
 
     def actions_before_training(self, env: Env, **options) -> None:
