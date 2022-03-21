@@ -12,11 +12,12 @@ API
    API/epsilon_greedy_q_estimator
    API/q_learning
    API/trainer
-   generated/q_estimator
-   generated/exceptions
-   generated/action_space
-   generated/column_type
-   generated/discrete_state_environment
-   generated/observation_space
-   generated/tiled_environment
+   API/optimizer_type
+   API/pytorch_optimizer_builder
+   API/replay_buffer
+   API/a2c
+   API/exceptions
+   API/column_type
+   API/discrete_state_environment
+   API/tiled_environment
 

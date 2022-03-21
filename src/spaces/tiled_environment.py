@@ -163,7 +163,6 @@ class Layer(object):
             """
         return next_tile_global_idx
 
-
     def _do_build_tile(self, action: int, next_local_tile_idx: int,
                                 next_tile_global_idx: int) -> tuple:
 
@@ -611,12 +610,7 @@ class TiledEnv(object):
 
         tiled_state = np.zeros(self.n_layers * self.n_actions * self.n_bins ** (len(self.column_ranges)))
 
-        found = False
         for layer in range(self.n_layers):
-
-            #if found:
-             #   break
-
             for action in range(self.n_actions):
                 global_idx = self.tiles[layer].get_global_tile_index(raw_state=state, action=action)
                 if global_idx != INVALID_ID:

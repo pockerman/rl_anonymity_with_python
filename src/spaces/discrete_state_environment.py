@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 from typing import TypeVar, List
 from dataclasses import dataclass
-import multiprocessing as mp
+import torch
 
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep, StepType
@@ -131,12 +131,20 @@ class DiscreteStateEnvironment(object):
         return self.config.action_space[aidx]
 
     def save_current_dataset(self, episode_index: int, save_index: bool = False) -> None:
+        """Save the current distorted dataset for the given episode index
+
+        Parameters
+        ----------
+
+        episode_index: The epsidoe index
+        save_index: Flad indicating if the row index should be output as well
+
+        Returns
+        -------
+
+        None
         """
-        Save the current distorted datase for the given episode index
-        :param episode_index:
-        :param save_index:
-        :return:
-        """
+
         self.distorted_data_set.save_to_csv(
             filename=Path(str(self.config.distorted_set_path) + "_" + str(episode_index)),
             save_index=save_index)
@@ -351,49 +359,3 @@ class DiscreteStateEnvironment(object):
 
         return self.current_time_step
 
-
-class MultiprocessEnv(object):
-
-    def __init__(self, make_env_fn, make_env_kargs, seed, n_workers):
-        self.make_env_fn = make_env_fn
-        self.make_env_kargs = make_env_kargs
-        self.seed = seed
-        self.n_workers = n_workers
-        self.pipes = [mp.Pipe() for rank in range(self.n_workers)]
-        self.workers = [
-            mp.Process(target=self.work,
-                       args=(rank, self.pipes[rank][1])) for rank in range(self.n_workers)]
-        [w.start() for w in self.workers]
-
-    def work(self, rank, worker_end):
-        env = self.make_env_fn(**self.make_env_kargs, seed=self.seed + rank)
-        while True:
-            cmd, kwargs = worker_end.recv()
-            if cmd == 'reset':
-                worker_end.send(env.reset(**kwargs))
-            elif cmd == 'step':
-                worker_end.send(env.step(**kwargs))
-            elif cmd == '_past_limit':
-                # Another way to check time limit truncation
-                worker_end.send(env._elapsed_steps >= env._max_episode_steps)
-            else:
-                env.close(**kwargs)
-                del env
-                worker_end.close()
-                break
-
-    def step(self, actions):
-        assert len(actions) == self.n_workers
-        [self.send_msg(('step', {'action': actions[rank]}), rank) \
-         for rank in range(self.n_workers)]
-        results = []
-        for rank in range(self.n_workers):
-            parent_end, _ = self.pipes[rank]
-            o, r, d, _ = parent_end.recv()
-            if d:
-                self.send_msg(('reset', {}), rank)
-                o = parent_end.recv()
-            results.append((o,
-                            np.array(r, dtype=np.float),
-                            np.array(d, dtype=np.float), _))
-        return [np.vstack(block) for block in np.array(results).T]
