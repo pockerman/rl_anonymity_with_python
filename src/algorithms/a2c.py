@@ -1,5 +1,5 @@
 import numpy as np
-from typing import TypeVar, Generic, Any
+from typing import TypeVar, Generic, Any, Callable
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -56,9 +56,8 @@ class A2CConfig(object):
 
     gamma: float = 0.99
     tau: float = 1.2
-    n_workers: int = 1
     n_iterations_per_episode: int = 100
-    optimizer: Optimizer = None
+    action_sampler: Callable = None
     loss_function: LossFunction = None
     batch_size: int = 0
     device: str = 'cpu'
@@ -67,43 +66,51 @@ class A2CConfig(object):
 class A2C(Generic[Optimizer]):
 
     @staticmethod
-    def update_parameters(optimizer: Optimizer, episode_info: EpisodeInfo, *, gamma: float):
+    def update_parameters(optimizer: Optimizer, episode_info: EpisodeInfo, *, config: A2CConfig):
         """Update the parameters
 
         Parameters
         ----------
-        optimizer
-        episode_info
-        gamma
+
+        optimizer: The optimizer instance used in training
+        episode_info: The episode info
+        config: The training configuration
 
         Returns
         -------
 
         """
 
-        # unroll the batch
-        rewards = episode_info.info["replay_buffer"]["reward"]
-        returns = []
+        # unroll the batch notice the flip we go in reverse
+        rewards = rewards = torch.Tensor(episode_info.info["replay_buffer"].to_numpy("reward")).flip(dims=(0,)).view(-1)
+        logprobs = torch.stack(episode_info.info["logprobs"]).flip(dims=(0,)).view(-1)
+        values = torch.stack(episode_info.info["values"]).flip(dims=(0,)).view(-1)
 
+        returns = []
+        ret_ = torch.Tensor([0])
+
+        # Loop through the rewards in reverse order to generate
+        # R = r i + γ * R
         for r in range(rewards.shape[0]):  # B
-            ret_ = rewards[r] + gamma * ret_
+            ret_ = rewards[r] + config.gamma * ret_
             returns.append(ret_)
 
         returns = torch.stack(returns).view(-1)
         returns = F.normalize(returns, dim=0)
 
+        # compute the actor loss.
+        # Minimize the actor loss: –1 * γ t * (R – v(s t )) * π (a ⏐ s)
         actor_loss = -1 * logprobs * (returns - values.detach())  # C
+
+        # compute the critic loss. Minimize the critic loss: (R – v) 2 .
         critic_loss = torch.pow(values - returns, 2)  # D
-        loss = actor_loss.sum() + clc * critic_loss.sum()  # E
+        loss = actor_loss.sum() + config.tau * critic_loss.sum()  # E
         loss.backward()
         optimizer.step()
 
     def __init__(self, config: A2CConfig, a2c_net: A2CNet):
 
         self.config: A2CConfig = config
-
-        self.tau = config.tau
-
         self.a2c_net = a2c_net
         self.name = "A2C"
 
@@ -120,15 +127,6 @@ class A2C(Generic[Optimizer]):
 
     def parameters(self) -> Any:
         return self.a2c_net.parameters()
-
-    def select_action(self, env: Env, observation: State) -> Action:
-        """
-        Select an action
-        :param env: The environment over which the agent is trained
-        :param observation: The current observation of the environment
-        :return: Returns an Action type
-        """
-        return env.sample_action()
 
     def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
         """Train the algorithm on the episode
@@ -174,28 +172,44 @@ class A2C(Generic[Optimizer]):
         total_distortion = 0
 
         buffer = ReplayBuffer(options["buffer_size"])
+
         time_step = env.reset()
         state = torch.from_numpy(time_step.observation.to_numpy()).float()
 
+        # represent the state function values
         values = []
+
+        # represent the probabilities under the
+        # policy
         logprobs = []
+
         for itr in range(self.config.n_iterations_per_episode):
 
             # policy and critic values
             policy, value = self.a2c_net(state)
+
+            #
             logits = policy.view(-1)
 
             values.append(value)
 
             # choose the action this should be
-            # application defined
-            action_dist = torch.distributions.Categorical(logits=logits)
-            action = action_dist.sample()
+            action = self.config.action_sampler(logits)
+
+            action_applied = action
+            if isinstance(action, torch.Tensor):
+                action_applied = env.get_action(action.item())
+
+            # the log probabilities of the policy
             logprob_ = policy.view(-1)[action]
             logprobs.append(logprob_)
 
-            time_step = env.step(action)
-            state = time_step.observation
+            time_step = env.step(action_applied)
+
+            episode_score += time_step.reward
+            total_distortion += time_step.info["total_distortion"]
+
+            state = torch.from_numpy(time_step.observation.to_numpy()).float()
 
             buffer.add(state=state, action=action, reward=time_step.reward, next_state=time_step.observation,
                        done=time_step.done)
@@ -203,66 +217,13 @@ class A2C(Generic[Optimizer]):
             if time_step.done:
                 break
 
+            episode_iterations += 1
+
         episode_info = EpisodeInfo(episode_score=episode_score,
                                    total_distortion=total_distortion, episode_itrs=episode_iterations,
                                    info={"replay_buffer": buffer,
-                                         "logprobs": logprobs})
+                                         "logprobs": logprobs,
+                                         "values": values})
         return episode_info
 
-    def actions_before_training(self, env: Env, **options) -> None:
-        """Any actions before training begins
-
-        Parameters
-        ----------
-
-        env: The environment that training occurs
-        options: Any options passed by the client code
-
-        Returns
-        -------
-        None
-        """
-
-        """
-        if not isinstance(self.config.policy, WithQTableMixinBase):
-            raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
-
-        for state in range(1, env.n_states):
-            for action in range(env.n_actions):
-                self.q_table[state, action] = 0.0
-        """
-
-    def actions_before_episode_begins(self, env: Env, episode_idx, **options) -> None:
-        """Execute any actions the algorithm needs before
-        the episode ends
-
-        Parameters
-        ----------
-
-        env: The environment that training occurs
-        episode_idx: The episode index
-        options: Any options passed by the client code
-
-        Returns
-        -------
-
-        None
-        """
-
-    def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
-        """Execute any actions the algorithm needs after
-        the episode ends
-
-        Parameters
-        ----------
-        env: The environment that training occurs
-        episode_idx: The episode index
-        options: Any options passed by the client code
-
-        Returns
-        -------
-        None
-
-        """
-        #self.config.policy.actions_after_episode(episode_idx)
 

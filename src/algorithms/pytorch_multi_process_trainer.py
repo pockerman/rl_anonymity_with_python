@@ -15,6 +15,7 @@ from src.utils.function_wraps import time_func, time_func_wrapper
 from src.utils.episode_info import EpisodeInfo
 from src.maths.optimizer_type import OptimizerType
 from src.maths.pytorch_optimizer_builder import pytorch_optimizer_builder
+from src.utils import INFO
 
 Env = TypeVar("Env")
 Agent = TypeVar("Agent")
@@ -54,6 +55,7 @@ class PyTorchMultiProcessTrainerConfig(object):
     optimizer_config: OptimizerConfig = OptimizerConfig()
     env_loader: EnvLoader = None
     buffer_size: int = 1000
+    master_process: int = 0
 
 
 @dataclass(init=True, repr=True)
@@ -127,13 +129,25 @@ def worker(worker_idx: int, worker_model: nn.Module, params: dir):
                                           **params["optimizer_config"])
 
     for episode in range(params["n_episodes"]):
+
+        if worker_idx == params["master_process"]:
+            print("{0} On episode {1}/{2}".format(INFO, episode, params["n_episodes"]))
+
         optimizer.zero_grad()
 
         # run the episode
         episode_info = worker_model.on_episode(env=env, episode_idx=episode, buffer_size=params["buffer_size"])
 
-        # update the parameters
-        params["update_params_functor"](optimizer, episode_info)
+        if worker_idx == params["master_process"]:
+            print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
+            print("{0} Episode score={1}, episode total avg distortion {2}".format(INFO, episode_info.episode_score,
+                                                                                   episode_info.total_distortion / episode_info.episode_itrs))
+
+            print("{0} Episode finished after {1} iterations".format(INFO, episode_info.episode_itrs))
+
+        # update the parameters this function is moel dependent
+        # so should be more generic
+        params["update_params_functor"](optimizer, episode_info, config=worker_model.config) #**params)
 
 
 class PyTorchMultiProcessTrainer(object):
@@ -254,7 +268,8 @@ class PyTorchMultiProcessTrainer(object):
                                                             "n_episodes": self.configuration.n_episodes,
                                                             "update_params_functor": self.agent.update_parameters,
                                                             "env_loader": self.configuration.env_loader,
-                                                            "buffer_size": self.configuration.buffer_size}))
+                                                            "buffer_size": self.configuration.buffer_size,
+                                                            "master_process": self.configuration.master_process}))
 
         process_handler.join_and_terminate()
 

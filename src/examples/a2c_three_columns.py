@@ -1,6 +1,7 @@
 import random
 from pathlib import Path
 import numpy as np
+import torch
 import torch.nn as nn
 
 from src.algorithms.a2c import A2C, A2CConfig, A2CNet, A2CNetBase
@@ -40,6 +41,7 @@ N_ROUNDS_BELOW_MIN_DISTORTION = 10
 SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/semi_grad_sarsa/distorted_set"
 REWARD_FACTOR = 0.95
 PUNISH_FACTOR = 2.0
+ACTION_SPACE_SIZE = 5
 
 
 def get_ethinicity_hierarchy():
@@ -110,7 +112,7 @@ def load_discrete_env() -> DiscreteStateEnvironment:
         # we get out of bounds for the maximum salary
         bins = np.linspace(unique_salary[0], unique_salary[-1] + 1, N_BINS)
 
-        action_space = ActionSpace(n=5)
+        action_space = ActionSpace(n=ACTION_SPACE_SIZE)
         action_space.add_many(ActionIdentity(column_name="ethnicity"),
                               ActionStringGeneralize(column_name="ethnicity",
                                                      generalization_table=get_ethinicity_hierarchy()),
@@ -151,21 +153,33 @@ def load_discrete_env() -> DiscreteStateEnvironment:
 
         return tiled_env
 
+def action_sampler(logits) -> torch.Tensor:
+
+    action_dist = torch.distributions.Categorical(logits=logits)
+    action = action_dist.sample()
+    return action
+
 
 if __name__ == '__main__':
 
     # set the seed for random engine
     random.seed(42)
 
-    # agent configuration
-    a2c_config = A2CConfig()
+    # in_features is the number of columns in the data set
+    # out_features is the number of actions in the environment
+    common_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(in_features=3, out_features=ACTION_SPACE_SIZE)))
 
-    common_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(3, 2),
-                                                       nn.Linear(2, 2)))
+    # dim is the dimension along which Softmax will be computed (so every slice along dim will sum to 1)
+    # this model simply outputs a discrete probability distribution
+    # over the ACTION_SPACE_SIZE possible actions
+    policy_net = A2CNetBase(architecture=nn.Softmax(dim=0))
 
-    policy_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(2, 2)))
-    value_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(2, 2)))
+    # The critic or value network outputs a single number representing the state value
+    value_net = A2CNetBase(architecture=nn.Linear(ACTION_SPACE_SIZE, 1))
     net = A2CNet(common_net, policy_net, value_net)
+
+    # agent configuration
+    a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=1000)
 
     # create the agent
     agent = A2C(a2c_config, net)
