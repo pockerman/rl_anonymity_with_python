@@ -3,7 +3,7 @@ A2C algorithm on three columns data set
 
 
 A2C algorithm
-==============
+-------------
 
 Both the Q-learning algorithm we used in `Q-learning on a three columns dataset <qlearning_three_columns.html>`_ and the SARSA algorithm in 
 `Semi-gradient SARSA on a three columns data set`_ are value-based methods; that is they estimate value functions. Specifically the state-action function
