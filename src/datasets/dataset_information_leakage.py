@@ -6,7 +6,7 @@ import numpy as np
 from typing import TypeVar
 from src.exceptions.exceptions import InvalidSchemaException, Error
 from src.datasets.dataset_distances import lp_distance
-from src.utils import numeric_distance_type
+from src.maths import numeric_distance_type
 
 DataSet = TypeVar("DataSet")
 State = TypeVar("State")

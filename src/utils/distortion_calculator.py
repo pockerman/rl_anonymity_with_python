@@ -3,9 +3,9 @@ Utilities for dataset distortion calculation
 """
 import enum
 from typing import TypeVar
-from src.utils.numeric_distance_type import NumericDistanceType
-from src.utils.numeric_distance_calculator import NumericDistanceCalculator
-from src.utils.string_distance_calculator import StringDistanceType, TextDistanceCalculator
+from src.maths.numeric_distance_type import NumericDistanceType
+from src.maths.numeric_distance_calculator import NumericDistanceCalculator
+from src.maths.string_distance_calculator import StringDistanceType, TextDistanceCalculator
 from src.exceptions.exceptions import InvalidParamValue
 
 Vector = TypeVar('Vector')

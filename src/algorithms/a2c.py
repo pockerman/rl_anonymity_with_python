@@ -1,5 +1,6 @@
 import numpy as np
 from typing import TypeVar, Generic, Any, Callable
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,6 +18,7 @@ LossFunction = TypeVar("LossFunction")
 State = TypeVar("State")
 Action = TypeVar("Action")
 TimeStep = TypeVar("TimeStep")
+Criteria = TypeVar('Criteria')
 
 
 class A2CNetBase(nn.Module):
@@ -61,6 +63,8 @@ class A2CConfig(object):
     loss_function: LossFunction = None
     batch_size: int = 0
     device: str = 'cpu'
+    a2cnet: nn.Module = None
+    save_model_path: Path = None
 
 
 class A2C(Generic[Optimizer]):
@@ -108,11 +112,36 @@ class A2C(Generic[Optimizer]):
         loss.backward()
         optimizer.step()
 
-    def __init__(self, config: A2CConfig, a2c_net: A2CNet):
+    @classmethod
+    def from_path(cls, config: A2CConfig, path: Path):
+        """Load the A2C model parameters from the given path
+
+        Parameters
+        ----------
+        config: The configuration of the algorithm
+        path: The path to load the parameters
+
+        Returns
+        -------
+
+        An instance of A2C class
+        """
+        a2c = A2C(config)
+        a2c.config.a2cnet.load_state_dict(torch.load(path))
+        a2c.set_test_mode()
+        return a2c
+
+    def __init__(self, config: A2CConfig):
 
         self.config: A2CConfig = config
-        self.a2c_net = a2c_net
         self.name = "A2C"
+
+    @property
+    def a2c_net(self) -> nn.Module:
+        return self.config.a2cnet
+
+    def __call__(self, x: torch.Tensor):
+        return self.a2c_net(x)
 
     def share_memory(self) -> None:
         """Instruct the underlying network to
@@ -126,7 +155,83 @@ class A2C(Generic[Optimizer]):
         self.a2c_net.share_memory()
 
     def parameters(self) -> Any:
+        """The parameters of the underlying model
+
+        Returns
+        -------
+
+        """
         return self.a2c_net.parameters()
+
+    def set_train_mode(self) -> None:
+        """Set the model to a training mode
+
+        Returns
+        -------
+        None
+        """
+        self.a2c_net.train()
+
+    def set_test_mode(self) -> None:
+        """Set the model to a testing mode
+
+        Returns
+        -------
+        None
+        """
+        self.a2c_net.eval()
+
+    def save_model(self, path: Path) -> None:
+        """Save the model on a file at the given path
+
+        Parameters
+        ----------
+        path: The path to save the model
+
+        Returns
+        -------
+
+        None
+        """
+        torch.save(self.a2c_net.state_dict(), Path(str(path) + "/" + self.name + ".pt"))
+
+    def play(self, env: Env, criteria: Criteria):
+        """Play the agent on the environment
+
+        Parameters
+        ----------
+        env: The environment to test/play the agent
+        criteria: The criteria to stop the game
+
+        Returns
+        -------
+
+        """
+
+        time_step = env.reset()
+
+        while criteria.continue_itrs():
+            state = time_step.observation.to_numpy()
+            state = torch.from_numpy(state).float()
+            logits, values = self(state)
+
+            # select action
+            action = None
+            time_step = env.step(action)
+
+            if time_step.done:
+                time_step = env.reset()
+
+    def actions_after_training(self) -> None:
+        """Any actions the agent needs to perform after training
+
+        Returns
+        -------
+
+        """
+
+        if self.config.save_model_path is not None:
+            self.save_model(path=self.config.save_model_path)
 
     def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
         """Train the algorithm on the episode

@@ -13,8 +13,8 @@ from src.algorithms.trainer import Trainer
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
 from src.algorithms.epsilon_greedy_q_estimator import EpsilonGreedyQEstimatorConfig, EpsilonGreedyQEstimator
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
-from src.utils.numeric_distance_type import NumericDistanceType
-from src.utils.string_distance_calculator import StringDistanceType
+from src.maths.numeric_distance_type import NumericDistanceType
+from src.maths.string_distance_calculator import StringDistanceType
 from src.utils.reward_manager import RewardManager
 from src.utils.plot_utils import plot_running_avg
 from src.utils import INFO
