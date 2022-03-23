@@ -9,3 +9,4 @@ src/policies/__pycache__/
 src/apps/__pycache__/
 src/.coverage
 src/maths/__pycache__/
+src/networks/__pycache__/
