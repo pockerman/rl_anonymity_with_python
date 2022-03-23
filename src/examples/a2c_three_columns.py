@@ -4,7 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from src.algorithms.a2c import A2C, A2CConfig, A2CNet, A2CNetBase
+from src.algorithms.a2c import A2C, A2CConfig
+from src.networks.a2c_networks import A2CNetSimple
 from src.utils.serial_hierarchy import SerialHierarchy
 from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig, Layer
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment
@@ -24,7 +25,7 @@ from src.utils import INFO
 
 N_LAYERS = 1
 N_BINS = 10
-N_EPISODES = 1000
+N_EPISODES = 10
 OUTPUT_MSG_FREQUENCY = 100
 GAMMA = 0.99
 ALPHA = 0.1
@@ -153,6 +154,7 @@ def load_discrete_env() -> DiscreteStateEnvironment:
 
         return tiled_env
 
+
 def action_sampler(logits) -> torch.Tensor:
 
     action_dist = torch.distributions.Categorical(logits=logits)
@@ -165,24 +167,14 @@ if __name__ == '__main__':
     # set the seed for random engine
     random.seed(42)
 
-    # in_features is the number of columns in the data set
-    # out_features is the number of actions in the environment
-    common_net = A2CNetBase(architecture=nn.Sequential(nn.Linear(in_features=3, out_features=ACTION_SPACE_SIZE)))
-
-    # dim is the dimension along which Softmax will be computed (so every slice along dim will sum to 1)
-    # this model simply outputs a discrete probability distribution
-    # over the ACTION_SPACE_SIZE possible actions
-    policy_net = A2CNetBase(architecture=nn.Softmax(dim=0))
-
-    # The critic or value network outputs a single number representing the state value
-    value_net = A2CNetBase(architecture=nn.Linear(ACTION_SPACE_SIZE, 1))
-    net = A2CNet(common_net, policy_net, value_net)
+    net = A2CNetSimple(n_columns=3,  n_actions=ACTION_SPACE_SIZE)
 
     # agent configuration
-    a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=1000)
+    a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=N_ITRS_PER_EPISODE,
+                           a2cnet=net, save_model_path=Path("./a2c_three_columns_output/"))
 
     # create the agent
-    agent = A2C(a2c_config, net)
+    agent = A2C(a2c_config)
 
     # create a trainer to train the Qlearning agent
     configuration = PyTorchMultiProcessTrainerConfig(n_episodes=N_EPISODES,

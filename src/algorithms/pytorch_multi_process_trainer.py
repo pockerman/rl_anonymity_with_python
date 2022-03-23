@@ -128,6 +128,7 @@ def worker(worker_idx: int, worker_model: nn.Module, params: dir):
                                           model_params=worker_model.parameters(),
                                           **params["optimizer_config"])
 
+    worker_model.set_train_mode()
     for episode in range(params["n_episodes"]):
 
         if worker_idx == params["master_process"]:
@@ -272,6 +273,11 @@ class PyTorchMultiProcessTrainer(object):
                                                             "master_process": self.configuration.master_process}))
 
         process_handler.join_and_terminate()
+
+        self.actions_after_training()
+
+    def actions_after_training(self) -> None:
+        self.agent.actions_after_training()
 
 
 
