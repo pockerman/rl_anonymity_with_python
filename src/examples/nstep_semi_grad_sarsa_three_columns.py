@@ -11,9 +11,8 @@ from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNum
 from src.utils.reward_manager import RewardManager
 from src.utils.serial_hierarchy import SerialHierarchy
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
-from src.policies.softmax_policy import SoftMaxPolicy
-from src.utils.numeric_distance_type import NumericDistanceType
-from src.utils.string_distance_calculator import StringDistanceType
+from src.maths.numeric_distance_type import NumericDistanceType
+from src.maths.string_distance_calculator import StringDistanceType
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment, DiscreteEnvConfig
 from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig

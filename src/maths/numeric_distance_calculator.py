@@ -4,7 +4,7 @@ Various methods to calculate distance between numeric vectors
 import numpy as np
 from typing import TypeVar
 
-from src.utils.numeric_distance_type import NumericDistanceType
+from src.maths.numeric_distance_type import NumericDistanceType
 from src.exceptions.exceptions import IncompatibleVectorSizesException, InvalidParamValue
 
 Vector = TypeVar("Vector")

@@ -20,6 +20,8 @@ sys.path.append(os.path.abspath("../../src/spaces/"))
 sys.path.append(os.path.abspath("../../src/policies/"))
 sys.path.append(os.path.abspath("../../src/maths/"))
 sys.path.append(os.path.abspath("../../src/utils/"))
+sys.path.append(os.path.abspath("../../src/datasets/"))
+sys.path.append(os.path.abspath("../../src/networks/"))
 print(sys.path)
 
 

@@ -3,15 +3,15 @@ import numpy as np
 
 from src.algorithms.q_learning import QLearning, QLearnConfig
 from src.algorithms.trainer import Trainer
-from src.utils.string_distance_calculator import StringDistanceType
-from src.spaces.actions import ActionSuppress, ActionIdentity, ActionStringGeneralize, ActionTransform
+from src.maths.string_distance_calculator import StringDistanceType
+from src.spaces.actions import ActionSuppress, ActionIdentity, ActionStringGeneralize
 from src.spaces.discrete_state_environment import Environment, EnvConfig
 from src.spaces.action_space import ActionSpace
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.utils.reward_manager import RewardManager
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.utils.serial_hierarchy import SerialHierarchy
-from src.utils.numeric_distance_type import NumericDistanceType
+from src.maths.numeric_distance_type import NumericDistanceType
 
 
 def plot_running_avg(avg_rewards):

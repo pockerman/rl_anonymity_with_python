@@ -2,10 +2,9 @@ import random
 from pathlib import Path
 import numpy as np
 import torch
-import torch.nn as nn
 
 from src.algorithms.a2c import A2C, A2CConfig
-from src.networks.a2c_networks import A2CNetSimple
+from src.networks.a2c_networks import A2CNetSimpleLinear
 from src.utils.serial_hierarchy import SerialHierarchy
 from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig, Layer
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment
@@ -13,12 +12,10 @@ from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
-from src.algorithms.epsilon_greedy_q_estimator import EpsilonGreedyQEstimatorConfig, EpsilonGreedyQEstimator
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
-from src.utils.numeric_distance_type import NumericDistanceType
-from src.utils.string_distance_calculator import StringDistanceType
+from src.maths.numeric_distance_type import NumericDistanceType
+from src.maths.string_distance_calculator import StringDistanceType
 from src.utils.reward_manager import RewardManager
-from src.utils.plot_utils import plot_running_avg
 from src.algorithms.pytorch_multi_process_trainer import PyTorchMultiProcessTrainer, PyTorchMultiProcessTrainerConfig, OptimizerConfig
 from src.utils import INFO
 
@@ -167,7 +164,7 @@ if __name__ == '__main__':
     # set the seed for random engine
     random.seed(42)
 
-    net = A2CNetSimple(n_columns=3,  n_actions=ACTION_SPACE_SIZE)
+    net = A2CNetSimpleLinear(n_columns=3, n_actions=ACTION_SPACE_SIZE)
 
     # agent configuration
     a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=N_ITRS_PER_EPISODE,
