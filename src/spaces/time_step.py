@@ -85,4 +85,13 @@ def copy_time_step(time_step: TimeStep, **copy_options) -> TimeStep:
                     reward=reward, discount=discount)
 
 
+class VectorTimeStep(object):
+
+    def __init__(self):
+        self.time_steps = []
+
+    def append(self, time_step: TimeStep) -> None:
+        self.time_steps.append(time_step)
+
+
 

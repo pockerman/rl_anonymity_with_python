@@ -18,7 +18,7 @@
    :members: __init__, act
    
 .. autoclass:: ActionRestore
-   :members:: __init__, act
+   :members: __init__, act
 
 .. autoclass:: ActionStringGeneralize
    :members: __init__, act, add

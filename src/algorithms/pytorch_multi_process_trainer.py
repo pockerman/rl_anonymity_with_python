@@ -8,7 +8,7 @@ import torch.nn as nn
 from typing import TypeVar, Any
 from dataclasses import dataclass
 
-import torch.multiprocessing as mp
+
 
 from src.utils import INFO
 from src.utils.function_wraps import time_func, time_func_wrapper
@@ -61,47 +61,6 @@ class PyTorchMultiProcessTrainerConfig(object):
 @dataclass(init=True, repr=True)
 class WorkerResult(object):
     worker_idx: int
-
-
-class TorchProcsHandler(object):
-    """The TorchProcsHandler class. Utility
-    class to handle PyTorch processe
-
-    """
-
-    def __init__(self, n_procs: int) -> None:
-        """Constructor
-
-        Parameters
-        ----------
-        n_procs: The number of processes to handle
-
-        """
-        self.n_procs = n_procs
-        self.processes = []
-
-    def create_and_start(self, target: Any, *args) -> None:
-        for i in range(self.n_procs):
-            p = mp.Process(target=target, args=args)
-            p.start()
-            self.processes.append(p)
-
-    def create_process_and_start(self, target: Any, args) -> None:
-        p = mp.Process(target=target, args=args)
-        p.start()
-        self.processes.append(p)
-
-    def join(self) -> None:
-        for p in self.processes:
-            p.join()
-
-    def terminate(self) -> None:
-        for p in self.processes:
-            p.terminate()
-
-    def join_and_terminate(self):
-        self.join()
-        self.terminate()
 
 
 def worker(worker_idx: int, worker_model: nn.Module, params: dir):
