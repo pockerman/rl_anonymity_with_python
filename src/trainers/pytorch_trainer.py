@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from src.utils import INFO
 from src.utils.function_wraps import time_func, time_func_wrapper
-from src.utils.episode_info import EpisodeInfo
+from src.utils.episode_info import EpisodeInfo,
 from src.maths.optimizer_type import OptimizerType
 from src.maths.pytorch_optimizer_builder import pytorch_optimizer_builder
 from src.utils import INFO
@@ -22,27 +22,7 @@ Agent = TypeVar("Agent")
 EnvLoader = TypeVar('EnvLoader')
 
 
-@dataclass(init=True, repr=True)
-class OptimizerConfig(object):
-    """Configuration class for the optimizer
 
-    """
-    optimizer_type: OptimizerType = OptimizerType.ADAM
-    optimizer_learning_rate: float = 0.01
-    optimizer_eps = 1.0e-5
-    optimizer_betas: tuple = (0.9, 0.999)
-    optimizer_weight_decay: float = 0
-    optimizer_amsgrad: bool = False
-    optimizer_maximize = False
-
-    def as_dict(self) -> dict:
-        return {"optimizer_type": self.optimizer_type,
-                "learning_rate": self.optimizer_learning_rate,
-                "eps": self.optimizer_eps,
-                "betas": self.optimizer_betas,
-                "weight_decay": self.optimizer_weight_decay,
-                "amsgrad": self.optimizer_amsgrad,
-                "maximize": self.optimizer_maximize}
 
 
 @dataclass(init=True, repr=True)
@@ -116,7 +96,7 @@ class PyTorchMultiProcessTrainer(object):
 
     """
 
-    def __init__(self, agent: Agent, config: PyTorchMultiProcessTrainerConfig) -> None:
+    def __init__(self, env: Env, agent: Agent, config: PyTorchMultiProcessTrainerConfig) -> None:
         """Constructor. Initialize a trainer by passing the training environment
         instance the agent to train and configuration dictionary
 
@@ -128,6 +108,7 @@ class PyTorchMultiProcessTrainer(object):
 
         """
 
+        self.env: Env = env
         self.agent = agent
         self.configuration = config
         # monitor performance
@@ -166,7 +147,7 @@ class PyTorchMultiProcessTrainer(object):
         None
         """
 
-        self.agent.share_memory()
+        self.env.reset()
 
     def actions_before_episode_begins(self, env: Env, episode_idx: int,  **options) -> None:
         """Perform any actions necessary before the training begins
@@ -217,6 +198,18 @@ class PyTorchMultiProcessTrainer(object):
         self.actions_before_training()
 
         # create the processes by attaching the worker
+
+        for episode in range(0, self.configuration["n_episodes"]):
+            print("{0} On episode {1}/{2}".format(INFO, episode, self.configuration["n_episodes"]))
+
+            self.actions_before_episode_begins(self.env, episode)
+
+            # train for a number of iterations
+            episode_info: EpisodeInfo = self.agent.on_episode(self.env, episode)
+
+            print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
+            print("{0} Episode score={1}, episode total avg distortion {2}".format(INFO, episode_info.episode_score,
+                                                                                   episode_info.total_distortion / episode_info.episode_itrs))
 
         process_handler = TorchProcsHandler(n_procs=self.configuration.n_procs)
 

@@ -20,6 +20,16 @@ class TorchProcsHandler(object):
         self.n_procs = n_procs
         self.processes = []
 
+    def __len__(self) -> int:
+        """The number of workers handled by this
+        instance
+
+        Returns
+        -------
+
+        """
+        return len(self.processes)
+
     def create_and_start(self, target: Callable, *args) -> None:
         for i in range(self.n_procs):
             p = mp.Process(target=target, args=args)

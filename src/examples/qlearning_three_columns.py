@@ -7,7 +7,7 @@ import random
 from pathlib import Path
 
 from src.algorithms.q_learning import QLearning, QLearnConfig
-from src.algorithms.trainer import Trainer
+from src.trainers.trainer import Trainer
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize

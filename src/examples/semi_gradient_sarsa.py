@@ -9,7 +9,7 @@ from src.spaces.discrete_state_environment import DiscreteStateEnvironment
 from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
-from src.algorithms.trainer import Trainer
+from src.trainers.trainer import Trainer
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
 from src.algorithms.epsilon_greedy_q_estimator import EpsilonGreedyQEstimatorConfig, EpsilonGreedyQEstimator
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator

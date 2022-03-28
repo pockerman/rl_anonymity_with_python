@@ -1,6 +1,9 @@
 """Module multiprocess_env. Specifies
-a vectorsized environment where each instance
-of the environment is run independently
+a vectorized environment where each instance
+of the environment is run independently. The implementation
+of the environment is taken from the book
+Grokking Deep Reinforcement Learning Algorithms
+by Manning publications
 
 """
 
@@ -23,6 +26,16 @@ class MultiprocessEnv(object):
         self.n_workers = n_workers
         self.workers = TorchProcsHandler(n_procs=n_workers)
         self.pipes = [mp.Pipe() for _ in range(self.n_workers)]
+
+    def __len__(self) -> int:
+        """The number of workers handled by this
+        instance
+
+        Returns
+        -------
+
+        """
+        return len(self.workers)
 
     def make(self):
         """Create the workers
@@ -73,12 +86,33 @@ class MultiprocessEnv(object):
                 pipe_end.close()
                 break
 
-    def reset(self) -> TimeStep:
-        pass
+    def reset(self, rank=None, **kwargs) -> VectorTimeStep:
+
+        time_step = VectorTimeStep()
+        if rank is not None:
+            parent_end, _ = self.pipes[rank]
+            self._send_msg(('reset', {}), rank)
+            o = parent_end.recv()
+            time_step.append(0)
+            return time_step
+
+        # if not reset for  a specific worker
+        # then all workers should reset
+        self._broadcast_msg(('reset', kwargs))
+
+        # collect all the timesteps from the
+        # workers
+        for rank in range(self.n_workers):
+            parent_end, _ = self.pipes[rank]
+            process_time_step = parent_end.recv()
+            time_step.append(process_time_step)
+
+        return time_step
 
     def step(self, actions: ActionVector) -> VectorTimeStep:
 
-        assert len(actions) == self.n_workers
+        if len(actions) != self.n_workers:
+            raise ValueError("Number of actions is not equal to the number of workers")
 
         # send the messages to the workers
         [self._send_msg(('step', {'action': actions[rank]}), rank) for rank in range(self.n_workers)]
@@ -101,6 +135,9 @@ class MultiprocessEnv(object):
         """
         return time_step
 
+    def close(self, **kwargs):
+        self._close(**kwargs)
+
     def _close(self, **kwargs):
         self._broadcast_msg(('close', kwargs))
 
@@ -121,4 +158,14 @@ class MultiprocessEnv(object):
         parent_end.send(msg)
 
     def _broadcast_msg(self, msg):
+        """Broadcast the message to all workers
+
+        Parameters
+        ----------
+        msg
+
+        Returns
+        -------
+
+        """
         [parent_end.send(msg) for parent_end, _ in self.pipes]

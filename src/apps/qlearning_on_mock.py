@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from src.algorithms.q_learning import QLearning, QLearnConfig
-from src.algorithms.trainer import Trainer
+from src.trainers.trainer import Trainer
 from src.maths.string_distance_calculator import StringDistanceType
 from src.spaces.actions import ActionSuppress, ActionIdentity, ActionStringGeneralize
 from src.spaces.discrete_state_environment import Environment, EnvConfig

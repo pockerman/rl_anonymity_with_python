@@ -11,6 +11,9 @@ from src.utils.experience_buffer import unpack_batch
 from src.utils.episode_info import EpisodeInfo
 from src.utils.function_wraps import time_func_wrapper
 from src.utils.replay_buffer import ReplayBuffer
+from src.spaces.time_step import VectorTimeStep
+from src.maths.pytorch_optimizer_config import PyTorchOptimizerConfig
+from src.maths.pytorch_optimizer_builder import pytorch_optimizer_builder
 
 Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
@@ -65,6 +68,7 @@ class A2CConfig(object):
     device: str = 'cpu'
     a2cnet: nn.Module = None
     save_model_path: Path = None
+    optimizer_config: PyTorchOptimizerConfig = None
 
 
 class A2C(Generic[Optimizer]):
@@ -134,6 +138,7 @@ class A2C(Generic[Optimizer]):
     def __init__(self, config: A2CConfig):
 
         self.config: A2CConfig = config
+        self.optimizer: Optimizer = None
         self.name = "A2C"
 
     @property
@@ -222,6 +227,61 @@ class A2C(Generic[Optimizer]):
             if time_step.done:
                 time_step = env.reset()
 
+    def optimize_model(self, logpas, entropies, values, rewards, n_workers) -> None:
+        logpas = torch.stack(logpas).squeeze()
+        entropies = torch.stack(entropies).squeeze()
+        values = torch.stack(values).squeeze()
+
+        T = len(rewards)
+        discounts = np.logspace(0, T, num=T, base=self.config.gamma, endpoint=False)
+        rewards = np.array(rewards).squeeze()
+        returns = np.array([[np.sum(discounts[:T - t] * rewards[t:, w]) for t in range(T)]
+                            for w in range(n_workers)])
+
+        np_values = values.data.numpy()
+        tau_discounts = np.logspace(0, T - 1, num=T - 1, base=self.config.gamma * self.config.tau, endpoint=False)
+        advs = rewards[:-1] + self.config.gamma * np_values[1:] - np_values[:-1]
+        gaes = np.array([[np.sum(tau_discounts[:T - 1 - t] * advs[t:, w]) for t in range(T - 1)]
+                         for w in range(n_workers)])
+        discounted_gaes = discounts[:-1] * gaes
+
+        values = values[:-1, ...].view(-1).unsqueeze(1)
+        logpas = logpas.view(-1).unsqueeze(1)
+        entropies = entropies.view(-1).unsqueeze(1)
+        returns = torch.FloatTensor(returns.T[:-1]).view(-1).unsqueeze(1)
+        discounted_gaes = torch.FloatTensor(discounted_gaes.T).view(-1).unsqueeze(1)
+
+        T -= 1
+        T *= n_workers
+
+        assert returns.size() == (T, 1)
+        assert values.size() == (T, 1)
+        assert logpas.size() == (T, 1)
+        assert entropies.size() == (T, 1)
+
+        value_error = returns.detach() - values
+        value_loss = value_error.pow(2).mul(0.5).mean()
+        policy_loss = -(discounted_gaes.detach() * logpas).mean()
+        entropy_loss = -entropies.mean()
+        loss = self.policy_loss_weight * policy_loss + self.value_loss_weight * value_loss + self.entropy_loss_weight * entropy_loss
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.parameters(),
+                                       self.ac_model_max_grad_norm)
+        self.optimizer.step()
+
+    def actions_before_training_begins(self, env: Env, **options) -> None:
+
+        # build the optimizer we need in order to train the model
+        self.optimizer = pytorch_optimizer_builder(opt_type=self.config.optimizer_config.optimizer_type,
+                                                   model_params=self.parameters(),
+                                                   **self.config.optimizer_config.as_dict())
+
+    def actions_before_episode_begins(self, env: Env, episode_idx: int, **options) -> None:
+        self.set_train_mode()
+        self.optimizer.zero_grad()
+
     def actions_after_training(self) -> None:
         """Any actions the agent needs to perform after training
 
@@ -232,6 +292,10 @@ class A2C(Generic[Optimizer]):
 
         if self.config.save_model_path is not None:
             self.save_model(path=self.config.save_model_path)
+
+    def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
+
+        self.optimize_model(env.n_workers())
 
     def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
         """Train the algorithm on the episode
@@ -278,46 +342,30 @@ class A2C(Generic[Optimizer]):
 
         buffer = ReplayBuffer(options["buffer_size"])
 
-        time_step = env.reset()
-        state = torch.from_numpy(time_step.observation.to_numpy()).float()
-
-        # represent the state function values
-        values = []
+        time_step: VectorTimeStep = env.reset()
+        states = time_step.stack_observations() #torch.from_numpy(time_step.observation.to_numpy()).float()
 
         # represent the probabilities under the
         # policy
         logprobs = []
-
+        entropies = []
+        rewards = []
+        values = []
         for itr in range(self.config.n_iterations_per_episode):
 
-            # policy and critic values
-            policy, value = self.a2c_net(state)
+            # make a full pass on the model
+            action, is_exploratory, logprob, entropy, value = self._full_pass(state=states)
 
-            #
-            logits = policy.view(-1)
-
-            values.append(value)
-
-            # choose the action this should be
-            action = self.config.action_sampler(logits)
-
-            action_applied = action
-            if isinstance(action, torch.Tensor):
-                action_applied = env.get_action(action.item())
-
-            # the log probabilities of the policy
-            logprob_ = policy.view(-1)[action]
-            logprobs.append(logprob_)
-
-            time_step = env.step(action_applied)
+            # step with the given actions
+            time_step: VectorTimeStep = env.step(action)
 
             episode_score += time_step.reward
             total_distortion += time_step.info["total_distortion"]
 
-            state = torch.from_numpy(time_step.observation.to_numpy()).float()
+            state = time_step.stack_observations()
 
-            buffer.add(state=state, action=action, reward=time_step.reward, next_state=time_step.observation,
-                       done=time_step.done)
+            buffer.add(state=state, action=action, reward=time_step.reward,
+                       next_state=time_step.observation, done=time_step.done)
 
             if time_step.done:
                 break
@@ -332,3 +380,44 @@ class A2C(Generic[Optimizer]):
         return episode_info
 
 
+    def _full_pass(self, state) -> tuple:
+
+        # policy and critic values
+        policy, value = self.a2c_net(state)
+
+        logits = policy.view(-1)
+
+        ##dist = torch.distributions.Categorical(logits=logits)
+        ##action = dist.sample()
+
+        # choose the action. Typically this will be Categorical
+        # but we leave it open for the application
+        action_sampler_dist = self.config.action_sampler(logits)
+        action = action_sampler_dist.sample()
+
+        # the log probabilities of the policy
+        logprob = action_sampler_dist.log_prob(action).unsqueeze(-1)#policy.view(-1)[action]
+        entropy = action_sampler_dist.entropy().unsqueeze(-1)
+        #logprobs.append(logprob_)
+
+        #logpa = dist.log_prob(action).unsqueeze(-1)
+        #entropy = dist.entropy().unsqueeze(-1)
+
+        action = action.item() if len(action) == 1 else action.data.numpy()
+        is_exploratory = action != np.argmax(logits.detach().numpy(), axis=int(len(state) != 1))
+        return action, is_exploratory, logprob, entropy, value
+
+    def _interaction_step(self, states, env: Env):
+        actions, is_exploratory, logpas, entropies, values = self.ac_model.full_pass(states)
+        new_states, rewards, is_terminals, _ = env.step(actions)
+
+        self.logpas.append(logpas);
+        self.entropies.append(entropies)
+        self.rewards.append(rewards);
+        self.values.append(values)
+
+        self.running_reward += rewards
+        self.running_timestep += 1
+        self.running_exploration += is_exploratory[:, np.newaxis].astype(np.int)
+
+        return new_states, is_terminals

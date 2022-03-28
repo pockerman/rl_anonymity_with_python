@@ -16,7 +16,7 @@ from src.utils.distortion_calculator import DistortionCalculationType, Distortio
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
 from src.utils.reward_manager import RewardManager
-from src.algorithms.pytorch_multi_process_trainer import PyTorchMultiProcessTrainer, PyTorchMultiProcessTrainerConfig, OptimizerConfig
+from src.trainers.pytorch_trainer import PyTorchMultiProcessTrainer, PyTorchMultiProcessTrainerConfig, OptimizerConfig
 from src.utils import INFO
 
 
