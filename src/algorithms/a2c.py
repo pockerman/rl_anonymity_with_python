@@ -165,6 +165,12 @@ class _InteractionResult(object):
     values = None
 
 
+@dataclass(init=True, repr=True)
+class _FullPassResult(object):
+    logprobs: torch.Tensor
+    values: torch.Tensor
+
+
 class A2C(Generic[Optimizer]):
 
     @staticmethod
@@ -468,8 +474,6 @@ class A2C(Generic[Optimizer]):
         episode_iterations = 0
         total_distortion = 0
 
-        #buffer = ReplayBuffer(options["buffer_size"])
-
         time_step: VectorTimeStep = env.reset()
         states = time_step.stack_observations() #torch.from_numpy(time_step.observation.to_numpy()).float()
 
@@ -517,7 +521,7 @@ class A2C(Generic[Optimizer]):
         return episode_info
 
 
-    def _full_pass(self, state) -> tuple:
+    def _full_pass(self, state) -> _FullPassResult:
 
         if not isinstance(state, torch.Tensor):
             torch_state = torch.Tensor(state)
@@ -526,29 +530,40 @@ class A2C(Generic[Optimizer]):
 
         # policy and critic values. The policy
         # values are assumed raw
-        policy, value = self.a2c_net(torch_state)
+        logits, value = self.a2c_net(torch_state)
 
-        logits = policy #.view(-1)
+        # log_softmax may not sum up to one
+        # and can be negative as well
+        # get the logprobs for all batches?
+        logprobs = F.log_softmax(logits.view(-1), dim=0)
+
+        #logits = policy #.view(-1)
 
         ##dist = torch.distributions.Categorical(logits=logits)
         ##action = dist.sample()
 
         # choose the action. Typically this will be Categorical
         # but we leave it open for the application
+        # We don't call logits.view(-1) so that we get
+        # as many actions as in the logits rows.
+        # Each logit row is expected to corrspond to an
+        # environment worker
         action_sampler_dist = self.config.action_sampler(logits)
-        action = action_sampler_dist.sample()
+        actions = action_sampler_dist.sample()
 
         # the log probabilities of the policy
-        logprob = action_sampler_dist.log_prob(action).unsqueeze(-1)#policy.view(-1)[action]
+        #logprob = action_sampler_dist.log_prob(action).unsqueeze(-1)#policy.view(-1)[action]
         entropy = action_sampler_dist.entropy().unsqueeze(-1)
         #logprobs.append(logprob_)
 
         #logpa = dist.log_prob(action).unsqueeze(-1)
         #entropy = dist.entropy().unsqueeze(-1)
 
-        action = action.item() if len(action) == 1 else action.data.numpy()
-        is_exploratory = action != np.argmax(logits.detach().numpy(), axis=int(len(state) != 1))
-        return action, is_exploratory, logprob, entropy, value
+        #actions = actions.item() if len(action) == 1 else action.data.numpy()
+        is_exploratory = actions != np.argmax(logits.detach().numpy(), axis=int(len(state) != 1))
+
+        full_pass_result = _FullPassResult(logprobs=logprobs, actions=actions)
+        return full_pass_result #action, is_exploratory, logprob, entropy, value
 
     def _interaction_step(self, states, env: Env) -> _InteractionResult:
         actions, is_exploratory, logpas, entropies, values = self._full_pass(states)

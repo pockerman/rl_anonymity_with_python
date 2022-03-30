@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     try:
 
-        env.make()
+        env.make(agent=agent)
         trainer = PyTorchTrainer(env=env, agent=agent, config=configuration)
 
         # train the agent

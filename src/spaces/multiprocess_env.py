@@ -14,7 +14,7 @@ import torch.multiprocessing as mp
 from src.spaces import TimeStep, VectorTimeStep
 from src.parallel import TorchProcsHandler
 
-
+Agent = TypeVar('Agent')
 ActionVector = TypeVar('ActionVector')
 
 
@@ -38,7 +38,7 @@ class MultiprocessEnv(object):
         """
         return len(self.workers)
 
-    def make(self):
+    def make(self, agent: Agent):
         """Create the workers
 
         Returns
@@ -50,12 +50,12 @@ class MultiprocessEnv(object):
             env_args = self.env_args
             env_args["rank"] = w
             self.workers.create_process_and_start(target=self.work, args=(w, self.env_builder,
-                                                                          env_args,
+                                                                          env_args, agent,
                                                                           self.pipes[w][1]))
 
         self.is_made = True
 
-    def work(self, rank, env_builder: Callable, env_args: dict, pipe_end) -> None:
+    def work(self, rank, env_builder: Callable, env_args: dict, agent: Agent, pipe_end) -> None:
         """The worker function
 
         Parameters
