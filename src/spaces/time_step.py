@@ -118,7 +118,7 @@ class VectorTimeStep(object):
         self.time_steps.append(time_step)
 
     def stack_observations(self):
-        return np.vstack([time_step.observation for time_step, in self.time_steps])
+        return np.vstack([time_step.observation.to_list() for time_step in self.time_steps])
 
 
 

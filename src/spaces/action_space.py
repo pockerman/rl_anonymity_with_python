@@ -69,7 +69,7 @@ class ActionSpace(Discrete):
     def __len__(self) -> int:
         return len(self.actions)
 
-    def shuffle(self) -> None:
+    def shuffle(self, seed: int = 42) -> None:
         """Shuffles the action list
 
         Returns
@@ -77,6 +77,7 @@ class ActionSpace(Discrete):
         None
         """
 
+        random.seed(seed)
         random.shuffle(self.actions)
 
         # fix the ids of the actions to

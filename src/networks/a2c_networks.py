@@ -23,6 +23,8 @@ class A2CNetSimpleLinear(nn.Module):
 
         """
         super(A2CNetSimpleLinear, self).__init__()
+        self.n_columns = n_columns
+        self.n_actions = n_actions
         self.linear_l1 = nn.Linear(in_features=n_columns, out_features=n_actions)
         self.actor = nn.Linear(in_features=n_actions, out_features=n_actions)
         self.critic = nn.Linear(n_actions, 1)
@@ -41,7 +43,7 @@ class A2CNetSimpleLinear(nn.Module):
 
         # activate
         y = F.relu(self.linear_l1(x))
-        actor = F.log_softmax(self.actor(y), dim=0)  # C
-        critic = torch.tanh(self.critic(y))  # D
+        actor = self.actor(y) #F.log_softmax(self.actor(y), dim=0)  # C
+        critic = self.critic(y) #torch.tanh(self.critic(y))  # D
 
         return actor,  critic

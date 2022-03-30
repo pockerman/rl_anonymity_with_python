@@ -3,9 +3,11 @@ Tile environment
 """
 
 import copy
+import numpy as np
 from typing import TypeVar, List, Any
 from dataclasses import dataclass
 
+import numpy
 import numpy as np
 
 from src.extern.tile_coding import IHT, tiles
@@ -350,7 +352,10 @@ class TiledEnv(object):
     def config(self) -> Config:
         return self.env.config
 
-    def step(self, action: ActionBase, **options) -> TimeStep:
+    def close(self, **options) -> None:
+        pass
+
+    def step(self, action: Any, **options) -> TimeStep:
         """Execute the action in the environment and return
         a new state for observation
 
@@ -364,6 +369,10 @@ class TiledEnv(object):
          An instance of TimeStep type
 
         """
+
+        # choose the action
+        if isinstance(action, int) or isinstance(action, numpy.int64):
+            action = self.get_action(aidx=action)
 
         raw_time_step = self.env.step(action)
 

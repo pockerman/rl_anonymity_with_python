@@ -1,5 +1,5 @@
 import numpy as np
-from typing import TypeVar, Generic, Any, Callable
+from typing import TypeVar, Generic, Any, Callable, List
 from pathlib import Path
 import torch
 import torch.nn as nn
@@ -14,6 +14,7 @@ from src.utils.replay_buffer import ReplayBuffer
 from src.spaces.time_step import VectorTimeStep
 from src.maths.pytorch_optimizer_config import PyTorchOptimizerConfig
 from src.maths.pytorch_optimizer_builder import pytorch_optimizer_builder
+from src.maths.loss_functions import mse
 
 Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
@@ -53,6 +54,85 @@ class A2CNet(nn.Module):
         return pol_out, val_out
 
 
+def create_discounts_array(end: int, base: float, start=0, endpoint=False):
+    """
+
+    Parameters
+    ----------
+    end
+    base
+    start
+    endpoint
+
+    Returns
+    -------
+
+    """
+    return np.logspace(start, end, num=end, base=base, endpoint=endpoint)
+
+
+def discounted_returns(rewards: List[float], discounts: List[float], gamma: float, n_workers: int = 1) -> np.array:
+    """Calculate the discounted returns from the episode rewards
+
+    Parameters
+    ----------
+    rewards: The list of rewards
+    gamma: The discount factor
+    n_workers: The number of workers
+
+    Returns
+    -------
+
+    """
+
+    # T
+    total_time = len(rewards)
+
+    # Return numbers spaced evenly on a log scale.
+    # In linear space, the sequence starts at base ** start
+    # (base to the power of start) and ends with base ** stop (see endpoint below).
+    #discounts = np.logspace(0, total_time, num=total_time, base=gamma, endpoint=False)
+
+    # The return is the sum of discounted rewards from step until the
+    # final step T
+    returns = np.array([[np.sum(discounts[: total_time - t] * rewards[t:, w]) for t in range(total_time)] for w in range(n_workers)])
+    return returns
+
+
+def generalized_advantage_estimate(rewards: List[float],
+                                   values: List[float],
+                                   gamma: float, tau: float,
+                                   n_workers: int) -> np.array:
+    """Computes an estimate of the advantage funcion
+
+    Parameters
+    ----------
+    rewards
+    values
+    gamma
+    tau
+    n_workers: The number of workers
+
+    Returns
+    -------
+
+    """
+
+    # T
+    total_time = len(rewards)
+
+    # (gamma*tau)^t
+    tau_discounts = np.logspace(0, total_time - 1, num=total_time-1,
+                                base=gamma*tau, endpoint=False)
+
+    # create TD errors: R_t + gamma*V_{t+1} - V_t for t=0 to T
+    advantages = rewards[:-1] + gamma * values[1:] - values[: -1]
+
+    # create the GAES by multiplying the tau discounts times the TD errors
+    gaes = np.array([[np.sum(tau_discounts[: total_time - 1 - t] * advantages[t:]) for t in range(total_time)] for w in range(n_workers)])
+    return gaes
+
+
 @dataclass(init=True, repr=True)
 class A2CConfig(object):
     """Configuration for A2C algorithm
@@ -61,9 +141,15 @@ class A2CConfig(object):
 
     gamma: float = 0.99
     tau: float = 1.2
+    beta: float = 1.0
+    policy_loss_weight: float = 1.0
+    value_loss_weight: float = 1.0
+    max_grad_norm: float = 1.0
     n_iterations_per_episode: int = 100
+    n_workers: int = 1
     action_sampler: Callable = None
-    loss_function: LossFunction = None
+    value_function: LossFunction = None
+    policy_loss: LossFunction = None
     batch_size: int = 0
     device: str = 'cpu'
     a2cnet: nn.Module = None
@@ -71,7 +157,21 @@ class A2CConfig(object):
     optimizer_config: PyTorchOptimizerConfig = None
 
 
+@dataclass(init=True, repr=True)
+class _InteractionResult(object):
+    logpas: float
+    entropies = None
+    rewards = None
+    values = None
+
+
 class A2C(Generic[Optimizer]):
+
+    @staticmethod
+    def default_action_sampler(logits: torch.Tensor) -> torch.distributions.Distribution:
+
+        action_dist = torch.distributions.Categorical(logits=logits)
+        return action_dist
 
     @staticmethod
     def update_parameters(optimizer: Optimizer, episode_info: EpisodeInfo, *, config: A2CConfig):
@@ -90,7 +190,7 @@ class A2C(Generic[Optimizer]):
         """
 
         # unroll the batch notice the flip we go in reverse
-        rewards = rewards = torch.Tensor(episode_info.info["replay_buffer"].to_numpy("reward")).flip(dims=(0,)).view(-1)
+        rewards = rewards = torch.Tensor(episode_info.info["replay_buffer"].to_ndarray("reward")).flip(dims=(0,)).view(-1)
         logprobs = torch.stack(episode_info.info["logprobs"]).flip(dims=(0,)).view(-1)
         values = torch.stack(episode_info.info["values"]).flip(dims=(0,)).view(-1)
 
@@ -147,17 +247,6 @@ class A2C(Generic[Optimizer]):
 
     def __call__(self, x: torch.Tensor):
         return self.a2c_net(x)
-
-    def share_memory(self) -> None:
-        """Instruct the underlying network to
-        set up what is needed to share memory
-
-        Returns
-        -------
-
-        None
-        """
-        self.a2c_net.share_memory()
 
     def parameters(self) -> Any:
         """The parameters of the underlying model
@@ -216,7 +305,7 @@ class A2C(Generic[Optimizer]):
         time_step = env.reset()
 
         while criteria.continue_itrs():
-            state = time_step.observation.to_numpy()
+            state = time_step.observation.to_ndarray()
             state = torch.from_numpy(state).float()
             logits, values = self(state)
 
@@ -228,20 +317,62 @@ class A2C(Generic[Optimizer]):
                 time_step = env.reset()
 
     def optimize_model(self, logpas, entropies, values, rewards, n_workers) -> None:
+
+        discounts = create_discounts_array(end=len(rewards), base=self.config.gamma, start=0, endpoint=False)
+
+        # get the discounted returns
+        disreturns = discounted_returns(rewards, discounts, gamma=self.config.gamma, n_workers=self.config.n_workers)
+
+        # get the gaes
+        gaes  = generalized_advantage_estimate(rewards=rewards, gamma=self.config.gamma, values=values,
+                                               tau=self.config.tau, n_workers=self.config.n_workers)
+
+        # discounted gaes
+        discounted_gaes = discounts[:-1] * gaes
+
+        # the loss function for the critic network
+        value_loss_function = mse(returns=disreturns, values=values)
+        policy_loss = - (discounted_gaes * logpas).mean()
+
+        # compute a total loss function to minimize
+        if self.config.beta is not None:
+
+            # add entropy loss
+            entropy_loss = -entropies.mean()
+
+            loss = self.config.policy_loss_weight * policy_loss + \
+                self.config.value_loss_weight * value_loss_function + \
+                self.config.beta * entropy_loss
+        else:
+            loss = self.config.policy_loss_weight * policy_loss + \
+                   self.config.value_loss_weight * value_loss_function
+
+        self.optimizer.zero_grad()
+        loss.backward()
+
+        # clip the grad if needed
+        torch.nn.utils.clip_grad_norm_(self.parameters(),
+                                       self.config.max_grad_norm)
+        self.optimizer.step()
+
+
+        """
         logpas = torch.stack(logpas).squeeze()
         entropies = torch.stack(entropies).squeeze()
         values = torch.stack(values).squeeze()
 
-        T = len(rewards)
-        discounts = np.logspace(0, T, num=T, base=self.config.gamma, endpoint=False)
+        # T
+        total_episode_time = len(rewards)
+
+        discounts = np.logspace(0, total_episode_time, num=total_episode_time, base=self.config.gamma, endpoint=False)
         rewards = np.array(rewards).squeeze()
-        returns = np.array([[np.sum(discounts[:T - t] * rewards[t:, w]) for t in range(T)]
+        returns = np.array([[np.sum(discounts[:T - t] * rewards[t:, w]) for t in range(total_episode_time)]
                             for w in range(n_workers)])
 
         np_values = values.data.numpy()
-        tau_discounts = np.logspace(0, T - 1, num=T - 1, base=self.config.gamma * self.config.tau, endpoint=False)
+        tau_discounts = np.logspace(0, total_episode_time - 1, num=total_episode_time - 1, base=self.config.gamma * self.config.tau, endpoint=False)
         advs = rewards[:-1] + self.config.gamma * np_values[1:] - np_values[:-1]
-        gaes = np.array([[np.sum(tau_discounts[:T - 1 - t] * advs[t:, w]) for t in range(T - 1)]
+        gaes = np.array([[np.sum(tau_discounts[:total_episode_time - 1 - t] * advs[t:, w]) for t in range(total_episode_time - 1)]
                          for w in range(n_workers)])
         discounted_gaes = discounts[:-1] * gaes
 
@@ -251,25 +382,19 @@ class A2C(Generic[Optimizer]):
         returns = torch.FloatTensor(returns.T[:-1]).view(-1).unsqueeze(1)
         discounted_gaes = torch.FloatTensor(discounted_gaes.T).view(-1).unsqueeze(1)
 
-        T -= 1
-        T *= n_workers
+        total_episode_time -= 1
+        total_episode_time *= n_workers
 
-        assert returns.size() == (T, 1)
-        assert values.size() == (T, 1)
-        assert logpas.size() == (T, 1)
-        assert entropies.size() == (T, 1)
+        assert returns.size() == (total_episode_time, 1)
+        assert values.size() == (total_episode_time, 1)
+        assert logpas.size() == (total_episode_time, 1)
+        assert entropies.size() == (total_episode_time, 1)
 
         value_error = returns.detach() - values
         value_loss = value_error.pow(2).mul(0.5).mean()
         policy_loss = -(discounted_gaes.detach() * logpas).mean()
         entropy_loss = -entropies.mean()
-        loss = self.policy_loss_weight * policy_loss + self.value_loss_weight * value_loss + self.entropy_loss_weight * entropy_loss
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.parameters(),
-                                       self.ac_model_max_grad_norm)
-        self.optimizer.step()
+        """
 
     def actions_before_training_begins(self, env: Env, **options) -> None:
 
@@ -277,6 +402,9 @@ class A2C(Generic[Optimizer]):
         self.optimizer = pytorch_optimizer_builder(opt_type=self.config.optimizer_config.optimizer_type,
                                                    model_params=self.parameters(),
                                                    **self.config.optimizer_config.as_dict())
+
+        if self.config.action_sampler is None:
+            self.config.action_sampler = A2C.default_action_sampler
 
     def actions_before_episode_begins(self, env: Env, episode_idx: int, **options) -> None:
         self.set_train_mode()
@@ -340,7 +468,7 @@ class A2C(Generic[Optimizer]):
         episode_iterations = 0
         total_distortion = 0
 
-        buffer = ReplayBuffer(options["buffer_size"])
+        #buffer = ReplayBuffer(options["buffer_size"])
 
         time_step: VectorTimeStep = env.reset()
         states = time_step.stack_observations() #torch.from_numpy(time_step.observation.to_numpy()).float()
@@ -353,6 +481,11 @@ class A2C(Generic[Optimizer]):
         values = []
         for itr in range(self.config.n_iterations_per_episode):
 
+            # interact with the environemnt
+            interaction_result = self._interaction_step(states=states, env=env)
+
+
+            """
             # make a full pass on the model
             action, is_exploratory, logprob, entropy, value = self._full_pass(state=states)
 
@@ -366,6 +499,10 @@ class A2C(Generic[Optimizer]):
 
             buffer.add(state=state, action=action, reward=time_step.reward,
                        next_state=time_step.observation, done=time_step.done)
+                       
+            """
+
+            # check if we finished ma
 
             if time_step.done:
                 break
@@ -382,10 +519,16 @@ class A2C(Generic[Optimizer]):
 
     def _full_pass(self, state) -> tuple:
 
-        # policy and critic values
-        policy, value = self.a2c_net(state)
+        if not isinstance(state, torch.Tensor):
+            torch_state = torch.Tensor(state)
+        else:
+            torch_state = state
 
-        logits = policy.view(-1)
+        # policy and critic values. The policy
+        # values are assumed raw
+        policy, value = self.a2c_net(torch_state)
+
+        logits = policy #.view(-1)
 
         ##dist = torch.distributions.Categorical(logits=logits)
         ##action = dist.sample()
@@ -407,10 +550,15 @@ class A2C(Generic[Optimizer]):
         is_exploratory = action != np.argmax(logits.detach().numpy(), axis=int(len(state) != 1))
         return action, is_exploratory, logprob, entropy, value
 
-    def _interaction_step(self, states, env: Env):
-        actions, is_exploratory, logpas, entropies, values = self.ac_model.full_pass(states)
-        new_states, rewards, is_terminals, _ = env.step(actions)
+    def _interaction_step(self, states, env: Env) -> _InteractionResult:
+        actions, is_exploratory, logpas, entropies, values = self._full_pass(states)
+        time_step = env.step(actions)
+        #new_states, rewards, is_terminals, _ = env.step(actions)
 
+        interaction_result = _InteractionResult(logpas=logpas, values=values,
+                                                entropies=entropies, rewards=rewards)
+        return interaction_result
+        """
         self.logpas.append(logpas);
         self.entropies.append(entropies)
         self.rewards.append(rewards);
@@ -421,3 +569,4 @@ class A2C(Generic[Optimizer]):
         self.running_exploration += is_exploratory[:, np.newaxis].astype(np.int)
 
         return new_states, is_terminals
+        """

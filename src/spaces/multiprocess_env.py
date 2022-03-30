@@ -26,6 +26,7 @@ class MultiprocessEnv(object):
         self.n_workers = n_workers
         self.workers = TorchProcsHandler(n_procs=n_workers)
         self.pipes = [mp.Pipe() for _ in range(self.n_workers)]
+        self.is_made: bool = False
 
     def __len__(self) -> int:
         """The number of workers handled by this
@@ -46,9 +47,13 @@ class MultiprocessEnv(object):
         """
 
         for w in range(self.n_workers):
+            env_args = self.env_args
+            env_args["rank"] = w
             self.workers.create_process_and_start(target=self.work, args=(w, self.env_builder,
-                                                                          self.env_args,
+                                                                          env_args,
                                                                           self.pipes[w][1]))
+
+        self.is_made = True
 
     def work(self, rank, env_builder: Callable, env_args: dict, pipe_end) -> None:
         """The worker function
@@ -88,12 +93,15 @@ class MultiprocessEnv(object):
 
     def reset(self, rank=None, **kwargs) -> VectorTimeStep:
 
+        if not self.is_made:
+            raise ValueError("Environment is not created. Did you call make()?")
+
         time_step = VectorTimeStep()
         if rank is not None:
             parent_end, _ = self.pipes[rank]
             self._send_msg(('reset', {}), rank)
             o = parent_end.recv()
-            time_step.append(0)
+            time_step.append(o)
             return time_step
 
         # if not reset for  a specific worker
@@ -110,6 +118,9 @@ class MultiprocessEnv(object):
         return time_step
 
     def step(self, actions: ActionVector) -> VectorTimeStep:
+
+        if not self.is_made:
+            raise ValueError("Environment is not created. Did you call make()?")
 
         if len(actions) != self.n_workers:
             raise ValueError("Number of actions is not equal to the number of workers")
