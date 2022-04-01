@@ -81,7 +81,8 @@ class MultiprocessEnv(object):
             if cmd == 'reset':
                 pipe_end.send(env.reset(**kwargs))
             elif cmd == 'step':
-                pipe_end.send(env.step(**kwargs))
+                time_step: TimeStep = env.step(**kwargs)
+                pipe_end.send(time_step)
             elif cmd == '_past_limit':
                 pipe_end.send(env._elapsed_steps >= env._max_episode_steps)
             else:
@@ -135,8 +136,14 @@ class MultiprocessEnv(object):
         for rank in range(self.n_workers):
             parent_end, _ = self.pipes[rank]
             process_time_step = parent_end.recv()
+
+            # if on this step the local environment
+            # finished then reset
+            if process_time_step.done:
+                self.reset(rank=rank, **{})
+
             time_step.append(process_time_step)
-            """
+        """
             o, r, d, i = parent_end.recv()
             results.append((o,
                             np.array(r, dtype=np.float),

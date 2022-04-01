@@ -24,11 +24,11 @@ Action = TypeVar("Action")
 TimeStep = TypeVar("TimeStep")
 Criteria = TypeVar('Criteria')
 
-
+"""
 class A2CNetBase(nn.Module):
-    """Base class for A2C networks
+    Base class for A2C networks
 
-    """
+    
 
     def __init__(self, architecture):
         super(A2CNetBase, self).__init__()
@@ -52,6 +52,7 @@ class A2CNet(nn.Module):
         pol_out = self.policy_net(x)
         val_out = self.value_net(x)
         return pol_out, val_out
+"""
 
 
 def create_discounts_array(end: int, base: float, start=0, endpoint=False):
@@ -71,7 +72,7 @@ def create_discounts_array(end: int, base: float, start=0, endpoint=False):
     return np.logspace(start, end, num=end, base=base, endpoint=endpoint)
 
 
-def discounted_returns(rewards: List[float], discounts: List[float], gamma: float, n_workers: int = 1) -> np.array:
+def calculate_discounted_returns(rewards: List[float], discounts: List[float], gamma: float, n_workers: int = 1) -> np.array:
     """Calculate the discounted returns from the episode rewards
 
     Parameters
@@ -169,6 +170,8 @@ class _InteractionResult(object):
 class _FullPassResult(object):
     logprobs: torch.Tensor
     values: torch.Tensor
+    actions: torch.Tensor
+    entropies: torch.Tensor
 
 
 class A2C(Generic[Optimizer]):
@@ -327,7 +330,7 @@ class A2C(Generic[Optimizer]):
         discounts = create_discounts_array(end=len(rewards), base=self.config.gamma, start=0, endpoint=False)
 
         # get the discounted returns
-        disreturns = discounted_returns(rewards, discounts, gamma=self.config.gamma, n_workers=self.config.n_workers)
+        discounted_returns = calculate_discounted_returns(rewards, discounts, gamma=self.config.gamma, n_workers=self.config.n_workers)
 
         # get the gaes
         gaes  = generalized_advantage_estimate(rewards=rewards, gamma=self.config.gamma, values=values,
@@ -337,7 +340,7 @@ class A2C(Generic[Optimizer]):
         discounted_gaes = discounts[:-1] * gaes
 
         # the loss function for the critic network
-        value_loss_function = mse(returns=disreturns, values=values)
+        value_loss_function = mse(returns=discounted_returns, values=values)
         policy_loss = - (discounted_gaes * logpas).mean()
 
         # compute a total loss function to minimize
@@ -361,47 +364,6 @@ class A2C(Generic[Optimizer]):
                                        self.config.max_grad_norm)
         self.optimizer.step()
 
-
-        """
-        logpas = torch.stack(logpas).squeeze()
-        entropies = torch.stack(entropies).squeeze()
-        values = torch.stack(values).squeeze()
-
-        # T
-        total_episode_time = len(rewards)
-
-        discounts = np.logspace(0, total_episode_time, num=total_episode_time, base=self.config.gamma, endpoint=False)
-        rewards = np.array(rewards).squeeze()
-        returns = np.array([[np.sum(discounts[:T - t] * rewards[t:, w]) for t in range(total_episode_time)]
-                            for w in range(n_workers)])
-
-        np_values = values.data.numpy()
-        tau_discounts = np.logspace(0, total_episode_time - 1, num=total_episode_time - 1, base=self.config.gamma * self.config.tau, endpoint=False)
-        advs = rewards[:-1] + self.config.gamma * np_values[1:] - np_values[:-1]
-        gaes = np.array([[np.sum(tau_discounts[:total_episode_time - 1 - t] * advs[t:, w]) for t in range(total_episode_time - 1)]
-                         for w in range(n_workers)])
-        discounted_gaes = discounts[:-1] * gaes
-
-        values = values[:-1, ...].view(-1).unsqueeze(1)
-        logpas = logpas.view(-1).unsqueeze(1)
-        entropies = entropies.view(-1).unsqueeze(1)
-        returns = torch.FloatTensor(returns.T[:-1]).view(-1).unsqueeze(1)
-        discounted_gaes = torch.FloatTensor(discounted_gaes.T).view(-1).unsqueeze(1)
-
-        total_episode_time -= 1
-        total_episode_time *= n_workers
-
-        assert returns.size() == (total_episode_time, 1)
-        assert values.size() == (total_episode_time, 1)
-        assert logpas.size() == (total_episode_time, 1)
-        assert entropies.size() == (total_episode_time, 1)
-
-        value_error = returns.detach() - values
-        value_loss = value_error.pow(2).mul(0.5).mean()
-        policy_loss = -(discounted_gaes.detach() * logpas).mean()
-        entropy_loss = -entropies.mean()
-        """
-
     def actions_before_training_begins(self, env: Env, **options) -> None:
 
         # build the optimizer we need in order to train the model
@@ -422,6 +384,7 @@ class A2C(Generic[Optimizer]):
         Returns
         -------
 
+        None
         """
 
         if self.config.save_model_path is not None:
@@ -476,6 +439,7 @@ class A2C(Generic[Optimizer]):
 
         time_step: VectorTimeStep = env.reset()
         states = time_step.stack_observations() #torch.from_numpy(time_step.observation.to_numpy()).float()
+        actions = self._full_pass(states)
 
         # represent the probabilities under the
         # policy
@@ -483,10 +447,20 @@ class A2C(Generic[Optimizer]):
         entropies = []
         rewards = []
         values = []
+
+        buffer = ReplayBuffer(buffer_size=self.config.n_iterations_per_episode)
         for itr in range(self.config.n_iterations_per_episode):
 
-            # interact with the environemnt
-            interaction_result = self._interaction_step(states=states, env=env)
+            time_step: VectorTimeStep = env.step(actions)
+            next_states = time_step.stack_observations()
+            full_pass: _FullPassResult = self._network_pass(next_states)
+
+            # if we finished the episode we go to the optimization
+            # else step on the envifonment
+
+
+
+
 
 
             """
@@ -520,8 +494,7 @@ class A2C(Generic[Optimizer]):
                                          "values": values})
         return episode_info
 
-
-    def _full_pass(self, state) -> _FullPassResult:
+    def _network_pass(self, state) -> _FullPassResult:
 
         if not isinstance(state, torch.Tensor):
             torch_state = torch.Tensor(state)
@@ -530,7 +503,7 @@ class A2C(Generic[Optimizer]):
 
         # policy and critic values. The policy
         # values are assumed raw
-        logits, value = self.a2c_net(torch_state)
+        logits, values = self.a2c_net(torch_state)
 
         # log_softmax may not sum up to one
         # and can be negative as well
@@ -553,7 +526,7 @@ class A2C(Generic[Optimizer]):
 
         # the log probabilities of the policy
         #logprob = action_sampler_dist.log_prob(action).unsqueeze(-1)#policy.view(-1)[action]
-        entropy = action_sampler_dist.entropy().unsqueeze(-1)
+        entropies = action_sampler_dist.entropy().unsqueeze(-1)
         #logprobs.append(logprob_)
 
         #logpa = dist.log_prob(action).unsqueeze(-1)
@@ -562,9 +535,12 @@ class A2C(Generic[Optimizer]):
         #actions = actions.item() if len(action) == 1 else action.data.numpy()
         is_exploratory = actions != np.argmax(logits.detach().numpy(), axis=int(len(state) != 1))
 
-        full_pass_result = _FullPassResult(logprobs=logprobs, actions=actions)
+        full_pass_result = _FullPassResult(logprobs=logprobs, actions=actions,
+                                           values=values, entropies=entropies)
+
         return full_pass_result #action, is_exploratory, logprob, entropy, value
 
+    """
     def _interaction_step(self, states, env: Env) -> _InteractionResult:
         actions, is_exploratory, logpas, entropies, values = self._full_pass(states)
         time_step = env.step(actions)
@@ -573,7 +549,8 @@ class A2C(Generic[Optimizer]):
         interaction_result = _InteractionResult(logpas=logpas, values=values,
                                                 entropies=entropies, rewards=rewards)
         return interaction_result
-        """
+    """
+    """
         self.logpas.append(logpas);
         self.entropies.append(entropies)
         self.rewards.append(rewards);
@@ -584,4 +561,4 @@ class A2C(Generic[Optimizer]):
         self.running_exploration += is_exploratory[:, np.newaxis].astype(np.int)
 
         return new_states, is_terminals
-        """
+    """
