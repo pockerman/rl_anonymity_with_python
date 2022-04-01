@@ -6,8 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dataclasses import dataclass
 
-
-from src.utils.experience_buffer import unpack_batch
+from src.utils import INFO
 from src.utils.episode_info import EpisodeInfo
 from src.utils.function_wraps import time_func_wrapper
 from src.utils.replay_buffer import ReplayBuffer
@@ -23,36 +22,6 @@ State = TypeVar("State")
 Action = TypeVar("Action")
 TimeStep = TypeVar("TimeStep")
 Criteria = TypeVar('Criteria')
-
-"""
-class A2CNetBase(nn.Module):
-    Base class for A2C networks
-
-    
-
-    def __init__(self, architecture):
-        super(A2CNetBase, self).__init__()
-        self.architecture = architecture
-
-    def forward(self, x):
-        return self.architecture(x)
-
-
-class A2CNet(nn.Module):
-
-    def __init__(self, common_net: A2CNetBase, policy_net: A2CNetBase, value_net: A2CNetBase):
-        super(A2CNet, self).__init__()
-        self.common_net = common_net
-        self.policy_net = policy_net
-        self.value_net = value_net
-
-    def forward(self, x):
-        x = self.common_net(x)
-
-        pol_out = self.policy_net(x)
-        val_out = self.value_net(x)
-        return pol_out, val_out
-"""
 
 
 def create_discounts_array(end: int, base: float, start=0, endpoint=False):
@@ -72,7 +41,7 @@ def create_discounts_array(end: int, base: float, start=0, endpoint=False):
     return np.logspace(start, end, num=end, base=base, endpoint=endpoint)
 
 
-def calculate_discounted_returns(rewards: List[float], discounts: List[float], gamma: float, n_workers: int = 1) -> np.array:
+def calculate_discounted_returns(rewards: List[float], discounts: List[float], n_workers: int = 1) -> np.array:
     """Calculate the discounted returns from the episode rewards
 
     Parameters
@@ -182,49 +151,6 @@ class A2C(Generic[Optimizer]):
         action_dist = torch.distributions.Categorical(logits=logits)
         return action_dist
 
-    @staticmethod
-    def update_parameters(optimizer: Optimizer, episode_info: EpisodeInfo, *, config: A2CConfig):
-        """Update the parameters
-
-        Parameters
-        ----------
-
-        optimizer: The optimizer instance used in training
-        episode_info: The episode info
-        config: The training configuration
-
-        Returns
-        -------
-
-        """
-
-        # unroll the batch notice the flip we go in reverse
-        rewards = rewards = torch.Tensor(episode_info.info["replay_buffer"].to_ndarray("reward")).flip(dims=(0,)).view(-1)
-        logprobs = torch.stack(episode_info.info["logprobs"]).flip(dims=(0,)).view(-1)
-        values = torch.stack(episode_info.info["values"]).flip(dims=(0,)).view(-1)
-
-        returns = []
-        ret_ = torch.Tensor([0])
-
-        # Loop through the rewards in reverse order to generate
-        # R = r i + γ * R
-        for r in range(rewards.shape[0]):  # B
-            ret_ = rewards[r] + config.gamma * ret_
-            returns.append(ret_)
-
-        returns = torch.stack(returns).view(-1)
-        returns = F.normalize(returns, dim=0)
-
-        # compute the actor loss.
-        # Minimize the actor loss: –1 * γ t * (R – v(s t )) * π (a ⏐ s)
-        actor_loss = -1 * logprobs * (returns - values.detach())  # C
-
-        # compute the critic loss. Minimize the critic loss: (R – v) 2 .
-        critic_loss = torch.pow(values - returns, 2)  # D
-        loss = actor_loss.sum() + config.tau * critic_loss.sum()  # E
-        loss.backward()
-        optimizer.step()
-
     @classmethod
     def from_path(cls, config: A2CConfig, path: Path):
         """Load the A2C model parameters from the given path
@@ -325,16 +251,19 @@ class A2C(Generic[Optimizer]):
             if time_step.done:
                 time_step = env.reset()
 
-    def optimize_model(self, logpas, entropies, values, rewards, n_workers) -> None:
+    @time_func_wrapper(show_time=False)
+    def optimize_model(self, logpas, entropies, values, rewards, n_workers: int) -> None:
 
+        print("{0} optimizing model={1}".format(INFO, self.name))
         discounts = create_discounts_array(end=len(rewards), base=self.config.gamma, start=0, endpoint=False)
 
         # get the discounted returns
-        discounted_returns = calculate_discounted_returns(rewards, discounts, gamma=self.config.gamma, n_workers=self.config.n_workers)
+        discounted_returns = calculate_discounted_returns(rewards.detach().numpy(), discounts, n_workers=n_workers)
 
         # get the gaes
-        gaes  = generalized_advantage_estimate(rewards=rewards, gamma=self.config.gamma, values=values,
-                                               tau=self.config.tau, n_workers=self.config.n_workers)
+        gaes = generalized_advantage_estimate(rewards=rewards.detach().numpy(), gamma=self.config.gamma,
+                                              values=values.detach().numpy(),
+                                              tau=self.config.tau, n_workers=self.config.n_workers)
 
         # discounted gaes
         discounted_gaes = discounts[:-1] * gaes
@@ -391,8 +320,28 @@ class A2C(Generic[Optimizer]):
             self.save_model(path=self.config.save_model_path)
 
     def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
+        """Actions the agent applis after the episode ends
 
-        self.optimize_model(env.n_workers())
+        Parameters
+        ----------
+        env
+        episode_idx
+        options
+
+        Returns
+        -------
+
+        """
+
+        episode_info: EpisodeInfo = options["episode_info"]
+
+        buffer: ReplayBuffer = episode_info.info["buffer"]
+
+        self.optimize_model(rewards=buffer.get_item_as_torch_tensor("reward"),
+                            logpas=buffer.get_torch__tensor_info_item_as_torch_tensor("logprobs"),
+                            values=buffer.get_torch__tensor_info_item_as_torch_tensor("values"),
+                            entropies=buffer.get_torch__tensor_info_item_as_torch_tensor("entropies"),
+                            n_workers=env.n_workers)
 
     def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
         """Train the algorithm on the episode
@@ -438,49 +387,26 @@ class A2C(Generic[Optimizer]):
         total_distortion = 0
 
         time_step: VectorTimeStep = env.reset()
-        states = time_step.stack_observations() #torch.from_numpy(time_step.observation.to_numpy()).float()
-        actions = self._full_pass(states)
-
-        # represent the probabilities under the
-        # policy
-        logprobs = []
-        entropies = []
-        rewards = []
-        values = []
+        states = time_step.stack_observations()
+        #torch.from_numpy(time_step.observation.to_numpy()).float()
 
         buffer = ReplayBuffer(buffer_size=self.config.n_iterations_per_episode)
+
         for itr in range(self.config.n_iterations_per_episode):
 
-            time_step: VectorTimeStep = env.step(actions)
+            full_pass: _FullPassResult = self._network_pass(states)
+            time_step: VectorTimeStep = env.step(full_pass.actions)
             next_states = time_step.stack_observations()
-            full_pass: _FullPassResult = self._network_pass(next_states)
 
-            # if we finished the episode we go to the optimization
-            # else step on the envifonment
+            buffer.add(state=states, next_state=next_states,
+                       reward=time_step.stack_rewards(),
+                       action=full_pass.actions,
+                       done=time_step.stack_dones(),
+                       info={"values": full_pass.values,
+                             "entropies": full_pass.entropies,
+                             "logprobs": full_pass.logprobs})
 
-
-
-
-
-
-            """
-            # make a full pass on the model
-            action, is_exploratory, logprob, entropy, value = self._full_pass(state=states)
-
-            # step with the given actions
-            time_step: VectorTimeStep = env.step(action)
-
-            episode_score += time_step.reward
-            total_distortion += time_step.info["total_distortion"]
-
-            state = time_step.stack_observations()
-
-            buffer.add(state=state, action=action, reward=time_step.reward,
-                       next_state=time_step.observation, done=time_step.done)
-                       
-            """
-
-            # check if we finished ma
+            states = next_states
 
             if time_step.done:
                 break
@@ -489,9 +415,7 @@ class A2C(Generic[Optimizer]):
 
         episode_info = EpisodeInfo(episode_score=episode_score,
                                    total_distortion=total_distortion, episode_itrs=episode_iterations,
-                                   info={"replay_buffer": buffer,
-                                         "logprobs": logprobs,
-                                         "values": values})
+                                   info={"buffer": buffer})
         return episode_info
 
     def _network_pass(self, state) -> _FullPassResult:
@@ -510,11 +434,6 @@ class A2C(Generic[Optimizer]):
         # get the logprobs for all batches?
         logprobs = F.log_softmax(logits.view(-1), dim=0)
 
-        #logits = policy #.view(-1)
-
-        ##dist = torch.distributions.Categorical(logits=logits)
-        ##action = dist.sample()
-
         # choose the action. Typically this will be Categorical
         # but we leave it open for the application
         # We don't call logits.view(-1) so that we get
@@ -523,42 +442,9 @@ class A2C(Generic[Optimizer]):
         # environment worker
         action_sampler_dist = self.config.action_sampler(logits)
         actions = action_sampler_dist.sample()
-
-        # the log probabilities of the policy
-        #logprob = action_sampler_dist.log_prob(action).unsqueeze(-1)#policy.view(-1)[action]
         entropies = action_sampler_dist.entropy().unsqueeze(-1)
-        #logprobs.append(logprob_)
-
-        #logpa = dist.log_prob(action).unsqueeze(-1)
-        #entropy = dist.entropy().unsqueeze(-1)
-
-        #actions = actions.item() if len(action) == 1 else action.data.numpy()
-        is_exploratory = actions != np.argmax(logits.detach().numpy(), axis=int(len(state) != 1))
 
         full_pass_result = _FullPassResult(logprobs=logprobs, actions=actions,
                                            values=values, entropies=entropies)
 
-        return full_pass_result #action, is_exploratory, logprob, entropy, value
-
-    """
-    def _interaction_step(self, states, env: Env) -> _InteractionResult:
-        actions, is_exploratory, logpas, entropies, values = self._full_pass(states)
-        time_step = env.step(actions)
-        #new_states, rewards, is_terminals, _ = env.step(actions)
-
-        interaction_result = _InteractionResult(logpas=logpas, values=values,
-                                                entropies=entropies, rewards=rewards)
-        return interaction_result
-    """
-    """
-        self.logpas.append(logpas);
-        self.entropies.append(entropies)
-        self.rewards.append(rewards);
-        self.values.append(values)
-
-        self.running_reward += rewards
-        self.running_timestep += 1
-        self.running_exploration += is_exploratory[:, np.newaxis].astype(np.int)
-
-        return new_states, is_terminals
-    """
+        return full_pass_result

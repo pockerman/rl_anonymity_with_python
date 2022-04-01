@@ -4,6 +4,7 @@ Tile environment
 
 import copy
 import numpy as np
+import torch
 from typing import TypeVar, List, Any
 from dataclasses import dataclass
 
@@ -373,6 +374,8 @@ class TiledEnv(object):
         # choose the action
         if isinstance(action, int) or isinstance(action, numpy.int64):
             action = self.get_action(aidx=action)
+        elif isinstance(action, torch.Tensor):
+            action = self.get_action(aidx=action.item())
 
         raw_time_step = self.env.step(action)
 

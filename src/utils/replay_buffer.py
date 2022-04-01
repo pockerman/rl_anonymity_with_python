@@ -83,6 +83,37 @@ class ReplayBuffer(object):
     def to_numpy(self, name_attr: str) -> np.array:
         return np.array(self[name_attr])
 
+    def get_item_as_torch_tensor(self, name_attr: str) -> torch.Tensor:
+        """ Returns a torch.Tensor representation of the
+        the named item
+
+        Parameters
+        ----------
+
+        name_attr: The name of the attribute
+
+        Returns
+        -------
+
+        An instance of  torch.Tensor
+        """
+
+        items = self[name_attr]
+
+        # convert to np.array to avoid pytorch warning
+        return torch.Tensor(np.array(items))
+
+    def get_torch__tensor_info_item_as_torch_tensor(self, name_attr: str) -> torch. Tensor:
+
+        vals = []
+        for item in self._memory:
+            info = item.info
+
+            if name_attr in info:
+                vals.append(info[name_attr])
+
+        return torch.stack(vals)
+
     def add(self, state: Any, action: Any, reward: float,
             next_state: Any, done: bool, info: dict = {}) -> None:
         """Add a new experience tuple in the buffer
@@ -122,25 +153,7 @@ class ReplayBuffer(object):
 
         return random.sample(self._memory, k=batch_size)
 
-    def get_item_as_torch_tensor(self, name_attr) -> torch.Tensor:
-        """ Returns a torch.Tensor representation of the
-        the named item
 
-        Parameters
-        ----------
-
-        name_attr: The name of the attribute
-
-        Returns
-        -------
-
-        An instance of  torch.Tensor
-        """
-
-        items = self[name_attr]
-
-        # convert to np.array to avoid pytorch warning
-        return torch.Tensor(np.array(items))
 
     def reinitialize(self) -> None:
         """Reinitialize the internal buffer
@@ -153,4 +166,6 @@ class ReplayBuffer(object):
         """
 
         self._memory = deque(maxlen=self.capacity)
+
+
 

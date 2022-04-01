@@ -114,11 +114,30 @@ class VectorTimeStep(object):
         """
         return self.time_steps[idx]
 
+    @property
+    def done(self) -> bool:
+
+        for step in self.time_steps:
+            if not step.done:
+                return False
+
+        return True
+
     def append(self, time_step: TimeStep) -> None:
         self.time_steps.append(time_step)
 
-    def stack_observations(self):
+    def stack_observations(self) -> np.ndarray:
         return np.vstack([time_step.observation.to_list() for time_step in self.time_steps])
+
+    def stack_rewards(self) -> np.ndarray:
+        return np.vstack([time_step.reward for time_step in self.time_steps])
+
+    def stack_step_type(self) -> list:
+        return [time_step.step_type for time_step in self.time_steps]
+
+    def stack_dones(self):
+        return [time_step.done for time_step in self.time_steps]
+
 
 
 

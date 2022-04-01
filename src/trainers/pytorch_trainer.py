@@ -212,6 +212,8 @@ class PyTorchTrainer(object):
                   "avg distortion {2}".format(INFO, episode_info.episode_score,
                                               episode_info.total_distortion / episode_info.episode_itrs))
 
+            self.agent.actions_after_episode_ends(self.env, episode, **{"episode_info": episode_info})
+
         self.actions_after_training()
 
     def actions_after_training(self) -> None:
