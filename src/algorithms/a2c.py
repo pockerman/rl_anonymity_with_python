@@ -24,6 +24,38 @@ TimeStep = TypeVar("TimeStep")
 Criteria = TypeVar('Criteria')
 
 
+@dataclass(init=True, repr=True)
+class A2CConfig(object):
+    """Configuration for A2C algorithm
+
+    """
+
+    gamma: float = 0.99
+    tau: float = 1.2
+    beta: float = 1.0
+    policy_loss_weight: float = 1.0
+    value_loss_weight: float = 1.0
+    max_grad_norm: float = 1.0
+    n_iterations_per_episode: int = 100
+    n_workers: int = 1
+    action_sampler: Callable = None
+    value_function: LossFunction = None
+    policy_loss: LossFunction = None
+    batch_size: int = 0
+    device: str = 'cpu'
+    a2cnet: nn.Module = None
+    save_model_path: Path = None
+    optimizer_config: PyTorchOptimizerConfig = None
+
+
+@dataclass(init=True, repr=True)
+class _FullPassResult(object):
+    logprobs: torch.Tensor
+    values: torch.Tensor
+    actions: torch.Tensor
+    entropies: torch.Tensor
+
+
 def create_discounts_array(end: int, base: float, start=0, endpoint=False):
     """
 
@@ -99,48 +131,8 @@ def generalized_advantage_estimate(rewards: List[float],
     advantages = rewards[:-1] + gamma * values[1:] - values[: -1]
 
     # create the GAES by multiplying the tau discounts times the TD errors
-    gaes = np.array([[np.sum(tau_discounts[: total_time - 1 - t] * advantages[t:]) for t in range(total_time)] for w in range(n_workers)])
+    gaes = np.array([[np.sum(tau_discounts[: total_time - 1 - t] * advantages[t:, w]) for t in range(total_time - 1)] for w in range(n_workers)])
     return gaes
-
-
-@dataclass(init=True, repr=True)
-class A2CConfig(object):
-    """Configuration for A2C algorithm
-
-    """
-
-    gamma: float = 0.99
-    tau: float = 1.2
-    beta: float = 1.0
-    policy_loss_weight: float = 1.0
-    value_loss_weight: float = 1.0
-    max_grad_norm: float = 1.0
-    n_iterations_per_episode: int = 100
-    n_workers: int = 1
-    action_sampler: Callable = None
-    value_function: LossFunction = None
-    policy_loss: LossFunction = None
-    batch_size: int = 0
-    device: str = 'cpu'
-    a2cnet: nn.Module = None
-    save_model_path: Path = None
-    optimizer_config: PyTorchOptimizerConfig = None
-
-
-@dataclass(init=True, repr=True)
-class _InteractionResult(object):
-    logpas: float
-    entropies = None
-    rewards = None
-    values = None
-
-
-@dataclass(init=True, repr=True)
-class _FullPassResult(object):
-    logprobs: torch.Tensor
-    values: torch.Tensor
-    actions: torch.Tensor
-    entropies: torch.Tensor
 
 
 class A2C(Generic[Optimizer]):
@@ -255,28 +247,48 @@ class A2C(Generic[Optimizer]):
     def optimize_model(self, logpas, entropies, values, rewards, n_workers: int) -> None:
 
         print("{0} optimizing model={1}".format(INFO, self.name))
+
+        logpas_ = logpas #torch.stack(logpas).squeeze()
+        entropies_ = entropies #torch.stack(entropies).squeeze()
+        values_ = values #torch.stack(values).squeeze()
+
         discounts = create_discounts_array(end=len(rewards), base=self.config.gamma, start=0, endpoint=False)
 
+        rewards_ = np.array(rewards).squeeze()
+
         # get the discounted returns
-        discounted_returns = calculate_discounted_returns(rewards.detach().numpy(), discounts, n_workers=n_workers)
+        discounted_returns = calculate_discounted_returns(rewards_,
+                                                          discounts,
+                                                          n_workers=self.config.n_workers)
+
+        np_values = values.data.numpy().squeeze()
 
         # get the gaes
-        gaes = generalized_advantage_estimate(rewards=rewards.detach().numpy(), gamma=self.config.gamma,
-                                              values=values.detach().numpy(),
+        gaes = generalized_advantage_estimate(rewards=rewards_, gamma=self.config.gamma,
+                                              values=np_values,
                                               tau=self.config.tau, n_workers=self.config.n_workers)
 
         # discounted gaes
         discounted_gaes = discounts[:-1] * gaes
 
+        values_ = values_[:-1, ...].view(-1).unsqueeze(1)
+        #logpas_ = logpas_.view(-1).unsqueeze(1)
+        entropies_ = entropies_.view(-1).unsqueeze(1)
+        returns_ = torch.FloatTensor(discounted_returns.T[:-1]).view(-1).unsqueeze(1)
+        discounted_gaes = torch.FloatTensor(discounted_gaes.T)#.view(-1).unsqueeze(1)
+
         # the loss function for the critic network
-        value_loss_function = mse(returns=discounted_returns, values=values)
-        policy_loss = - (discounted_gaes * logpas).mean()
+        #if not isinstance(discounted_returns, torch.Tensor):
+        #    discounted_returns = torch.from_numpy(discounted_returns)
+
+        value_loss_function = mse(returns=returns_.detach(), values=values_)
+        policy_loss = - (discounted_gaes.detach() * logpas_).mean()
 
         # compute a total loss function to minimize
         if self.config.beta is not None:
 
             # add entropy loss
-            entropy_loss = -entropies.mean()
+            entropy_loss = -entropies_.mean()
 
             loss = self.config.policy_loss_weight * policy_loss + \
                 self.config.value_loss_weight * value_loss_function + \

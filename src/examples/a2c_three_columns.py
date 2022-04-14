@@ -26,6 +26,7 @@ from src.utils import INFO
 N_LAYERS = 1
 N_BINS = 10
 N_EPISODES = 10
+N_WORKERS = 2
 OUTPUT_MSG_FREQUENCY = 100
 GAMMA = 0.99
 ALPHA = 0.1
@@ -172,6 +173,7 @@ if __name__ == '__main__':
     # agent configuration
     a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=N_ITRS_PER_EPISODE,
                            a2cnet=net, save_model_path=Path("./a2c_three_columns_output/"),
+                           n_workers=N_WORKERS,
                            optimizer_config=PyTorchOptimizerConfig(optimizer_type=OptimizerType.ADAM))
 
     # create the agent
@@ -180,7 +182,7 @@ if __name__ == '__main__':
     # create a trainer to train the Qlearning agent
     configuration = PyTorchTrainerConfig(n_episodes=N_EPISODES)
 
-    env = MultiprocessEnv(env_builder=load_discrete_env, env_args={}, n_workers=2)
+    env = MultiprocessEnv(env_builder=load_discrete_env, env_args={}, n_workers=N_WORKERS)
 
     try:
 
