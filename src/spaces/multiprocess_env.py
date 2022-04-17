@@ -1,6 +1,9 @@
 """Module multiprocess_env. Specifies
-a vectorsized environment where each instance
-of the environment is run independently
+a vectorized environment where each instance
+of the environment is run independently. The implementation
+of the environment is taken from the book
+Grokking Deep Reinforcement Learning Algorithms
+by Manning publications
 
 """
 
@@ -11,7 +14,7 @@ import torch.multiprocessing as mp
 from src.spaces import TimeStep, VectorTimeStep
 from src.parallel import TorchProcsHandler
 
-
+Agent = TypeVar('Agent')
 ActionVector = TypeVar('ActionVector')
 
 
@@ -23,8 +26,19 @@ class MultiprocessEnv(object):
         self.n_workers = n_workers
         self.workers = TorchProcsHandler(n_procs=n_workers)
         self.pipes = [mp.Pipe() for _ in range(self.n_workers)]
+        self.is_made: bool = False
 
-    def make(self):
+    def __len__(self) -> int:
+        """The number of workers handled by this
+        instance
+
+        Returns
+        -------
+
+        """
+        return len(self.workers)
+
+    def make(self, agent: Agent):
         """Create the workers
 
         Returns
@@ -33,11 +47,15 @@ class MultiprocessEnv(object):
         """
 
         for w in range(self.n_workers):
+            env_args = self.env_args
+            env_args["rank"] = w
             self.workers.create_process_and_start(target=self.work, args=(w, self.env_builder,
-                                                                          self.env_args,
+                                                                          env_args, agent,
                                                                           self.pipes[w][1]))
 
-    def work(self, rank, env_builder: Callable, env_args: dict, pipe_end) -> None:
+        self.is_made = True
+
+    def work(self, rank, env_builder: Callable, env_args: dict, agent: Agent, pipe_end) -> None:
         """The worker function
 
         Parameters
@@ -63,7 +81,8 @@ class MultiprocessEnv(object):
             if cmd == 'reset':
                 pipe_end.send(env.reset(**kwargs))
             elif cmd == 'step':
-                pipe_end.send(env.step(**kwargs))
+                time_step: TimeStep = env.step(**kwargs)
+                pipe_end.send(time_step)
             elif cmd == '_past_limit':
                 pipe_end.send(env._elapsed_steps >= env._max_episode_steps)
             else:
@@ -73,12 +92,39 @@ class MultiprocessEnv(object):
                 pipe_end.close()
                 break
 
-    def reset(self) -> TimeStep:
-        pass
+    def reset(self, rank=None, **kwargs) -> VectorTimeStep:
+
+        if not self.is_made:
+            raise ValueError("Environment is not created. Did you call make()?")
+
+        time_step = VectorTimeStep()
+        if rank is not None:
+            parent_end, _ = self.pipes[rank]
+            self._send_msg(('reset', {}), rank)
+            o = parent_end.recv()
+            time_step.append(o)
+            return time_step
+
+        # if not reset for  a specific worker
+        # then all workers should reset
+        self._broadcast_msg(('reset', kwargs))
+
+        # collect all the timesteps from the
+        # workers
+        for rank in range(self.n_workers):
+            parent_end, _ = self.pipes[rank]
+            process_time_step = parent_end.recv()
+            time_step.append(process_time_step)
+
+        return time_step
 
     def step(self, actions: ActionVector) -> VectorTimeStep:
 
-        assert len(actions) == self.n_workers
+        if not self.is_made:
+            raise ValueError("Environment is not created. Did you call make()?")
+
+        if len(actions) != self.n_workers:
+            raise ValueError("Number of actions is not equal to the number of workers")
 
         # send the messages to the workers
         [self._send_msg(('step', {'action': actions[rank]}), rank) for rank in range(self.n_workers)]
@@ -90,8 +136,14 @@ class MultiprocessEnv(object):
         for rank in range(self.n_workers):
             parent_end, _ = self.pipes[rank]
             process_time_step = parent_end.recv()
+
+            # if on this step the local environment
+            # finished then reset
+            if process_time_step.done:
+                self.reset(rank=rank, **{})
+
             time_step.append(process_time_step)
-            """
+        """
             o, r, d, i = parent_end.recv()
             results.append((o,
                             np.array(r, dtype=np.float),
@@ -100,6 +152,9 @@ class MultiprocessEnv(object):
         return [np.vstack(block) for block in np.array(results).T]
         """
         return time_step
+
+    def close(self, **kwargs):
+        self._close(**kwargs)
 
     def _close(self, **kwargs):
         self._broadcast_msg(('close', kwargs))
@@ -121,4 +176,14 @@ class MultiprocessEnv(object):
         parent_end.send(msg)
 
     def _broadcast_msg(self, msg):
+        """Broadcast the message to all workers
+
+        Parameters
+        ----------
+        msg
+
+        Returns
+        -------
+
+        """
         [parent_end.send(msg) for parent_end, _ in self.pipes]

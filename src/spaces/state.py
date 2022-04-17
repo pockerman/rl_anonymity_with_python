@@ -100,7 +100,7 @@ class State(object):
         """
         return self.column_distortions[name]
 
-    def to_numpy(self) -> np.array:
+    def to_ndarray(self) -> np.array:
         """Returns the self.column_distortions values as numpy array
 
         Returns
@@ -108,7 +108,14 @@ class State(object):
             np.array
 
         """
+        return np.array(self.to_list())
 
-        vals = list(self.column_distortions.values())
-        return np.array(vals)
+    def to_list(self) -> list:
+        """Returns the self.column_distortions values as numpy array
+
+        Returns
+        -------
+        A list of floats
+        """
+        return list(self.column_distortions.values())
 

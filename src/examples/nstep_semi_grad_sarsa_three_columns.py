@@ -4,7 +4,7 @@ from pathlib import Path
 
 from src.algorithms.n_step_semi_gradient_sarsa import SARSAnConfig, SARSAn
 from src.algorithms.q_estimator import QEstimator
-from src.algorithms.trainer import Trainer
+from src.trainers.trainer import Trainer
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize

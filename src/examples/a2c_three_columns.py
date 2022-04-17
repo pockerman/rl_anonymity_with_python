@@ -6,23 +6,27 @@ import torch
 from src.algorithms.a2c import A2C, A2CConfig
 from src.networks.a2c_networks import A2CNetSimpleLinear
 from src.utils.serial_hierarchy import SerialHierarchy
+from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
 from src.spaces.tiled_environment import TiledEnv, TiledEnvConfig, Layer
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment
-from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
+from src.spaces.multiprocess_env import MultiprocessEnv
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
 from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
+from src.maths.pytorch_optimizer_config import PyTorchOptimizerConfig
+from src.maths.optimizer_type import OptimizerType
 from src.utils.reward_manager import RewardManager
-from src.algorithms.pytorch_multi_process_trainer import PyTorchMultiProcessTrainer, PyTorchMultiProcessTrainerConfig, OptimizerConfig
+from src.trainers.pytorch_trainer import PyTorchTrainer, PyTorchTrainerConfig
 from src.utils import INFO
 
 
 N_LAYERS = 1
 N_BINS = 10
 N_EPISODES = 10
+N_WORKERS = 2
 OUTPUT_MSG_FREQUENCY = 100
 GAMMA = 0.99
 ALPHA = 0.1
@@ -98,7 +102,7 @@ def load_mock_subjects() -> MockSubjectsLoader:
     return ds
 
 
-def load_discrete_env() -> DiscreteStateEnvironment:
+def load_discrete_env(options) -> DiscreteStateEnvironment:
 
         mock_ds = load_mock_subjects()
 
@@ -118,7 +122,7 @@ def load_discrete_env() -> DiscreteStateEnvironment:
                               ActionNumericBinGeneralize(column_name="salary", generalization_table=bins),
                               ActionIdentity(column_name="diagnosis"))
 
-        action_space.shuffle()
+        action_space.shuffle(seed=options["rank"] + 42)
 
         discrete_env = DiscreteStateEnvironment.from_options(data_set=mock_ds,
                                                     action_space=action_space,
@@ -152,11 +156,10 @@ def load_discrete_env() -> DiscreteStateEnvironment:
         return tiled_env
 
 
-def action_sampler(logits) -> torch.Tensor:
+def action_sampler(logits: torch.Tensor) -> torch.distributions.Distribution:
 
     action_dist = torch.distributions.Categorical(logits=logits)
-    action = action_dist.sample()
-    return action
+    return action_dist
 
 
 if __name__ == '__main__':
@@ -164,24 +167,35 @@ if __name__ == '__main__':
     # set the seed for random engine
     random.seed(42)
 
+    # this the A2C network
     net = A2CNetSimpleLinear(n_columns=3, n_actions=ACTION_SPACE_SIZE)
 
     # agent configuration
     a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=N_ITRS_PER_EPISODE,
-                           a2cnet=net, save_model_path=Path("./a2c_three_columns_output/"))
+                           a2cnet=net, save_model_path=Path("./a2c_three_columns_output/"),
+                           n_workers=N_WORKERS,
+                           optimizer_config=PyTorchOptimizerConfig(optimizer_type=OptimizerType.ADAM))
 
     # create the agent
     agent = A2C(a2c_config)
 
     # create a trainer to train the Qlearning agent
-    configuration = PyTorchMultiProcessTrainerConfig(n_episodes=N_EPISODES,
-                                                     env_loader=load_discrete_env,
-                                                     optimizer_config=OptimizerConfig())
+    configuration = PyTorchTrainerConfig(n_episodes=N_EPISODES)
 
-    trainer = PyTorchMultiProcessTrainer(agent=agent, config=configuration)
+    env = MultiprocessEnv(env_builder=load_discrete_env, env_args={}, n_workers=N_WORKERS)
 
-    # train the agent
-    trainer.train()
+    try:
+
+        env.make(agent=agent)
+        trainer = PyTorchTrainer(env=env, agent=agent, config=configuration)
+
+        # train the agent
+        trainer.train()
+
+    except Exception as e:
+        print("An excpetion was thrown...{0}".format(str(e)))
+    finally:
+        env.close()
 
     # avg_rewards = trainer.avg_rewards()
     """

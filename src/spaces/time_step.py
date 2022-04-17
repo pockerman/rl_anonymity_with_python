@@ -6,6 +6,7 @@ for representing a step in the environment
 import copy
 import enum
 from typing import NamedTuple, Generic, Optional, TypeVar
+import numpy as np
 
 _Reward = TypeVar('_Reward')
 _Discount = TypeVar('_Discount')
@@ -90,8 +91,53 @@ class VectorTimeStep(object):
     def __init__(self):
         self.time_steps = []
 
+    def __len__(self) -> int:
+        """Returns the number of time-steps
+
+        Returns
+        -------
+
+        """
+        return len(self.time_steps)
+
+    def __getitem__(self, idx) -> TimeStep:
+        """Returns the idx-th time step in this
+        VectorTimeStep
+
+        Parameters
+        ----------
+        idx: The index of the time step to return
+
+        Returns
+        -------
+
+        """
+        return self.time_steps[idx]
+
+    @property
+    def done(self) -> bool:
+
+        for step in self.time_steps:
+            if not step.done:
+                return False
+
+        return True
+
     def append(self, time_step: TimeStep) -> None:
         self.time_steps.append(time_step)
+
+    def stack_observations(self) -> np.ndarray:
+        return np.vstack([time_step.observation.to_list() for time_step in self.time_steps])
+
+    def stack_rewards(self) -> np.ndarray:
+        return np.vstack([time_step.reward for time_step in self.time_steps])
+
+    def stack_step_type(self) -> list:
+        return [time_step.step_type for time_step in self.time_steps]
+
+    def stack_dones(self):
+        return [time_step.done for time_step in self.time_steps]
+
 
 
 

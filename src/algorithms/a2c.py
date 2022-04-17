@@ -1,16 +1,20 @@
 import numpy as np
-from typing import TypeVar, Generic, Any, Callable
+from typing import TypeVar, Generic, Any, Callable, List
 from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dataclasses import dataclass
 
-
-from src.utils.experience_buffer import unpack_batch
+from src.utils import INFO
 from src.utils.episode_info import EpisodeInfo
 from src.utils.function_wraps import time_func_wrapper
 from src.utils.replay_buffer import ReplayBuffer
+from src.spaces.time_step import VectorTimeStep
+from src.maths.pytorch_optimizer_config import PyTorchOptimizerConfig
+from src.maths.pytorch_optimizer_builder import pytorch_optimizer_builder
+from src.maths.loss_functions import mse
+from src.exceptions.exceptions import InvalidParamValue
 
 Env = TypeVar("Env")
 Optimizer = TypeVar("Optimizer")
@@ -21,35 +25,6 @@ TimeStep = TypeVar("TimeStep")
 Criteria = TypeVar('Criteria')
 
 
-class A2CNetBase(nn.Module):
-    """Base class for A2C networks
-
-    """
-
-    def __init__(self, architecture):
-        super(A2CNetBase, self).__init__()
-        self.architecture = architecture
-
-    def forward(self, x):
-        return self.architecture(x)
-
-
-class A2CNet(nn.Module):
-
-    def __init__(self, common_net: A2CNetBase, policy_net: A2CNetBase, value_net: A2CNetBase):
-        super(A2CNet, self).__init__()
-        self.common_net = common_net
-        self.policy_net = policy_net
-        self.value_net = value_net
-
-    def forward(self, x):
-        x = self.common_net(x)
-
-        pol_out = self.policy_net(x)
-        val_out = self.value_net(x)
-        return pol_out, val_out
-
-
 @dataclass(init=True, repr=True)
 class A2CConfig(object):
     """Configuration for A2C algorithm
@@ -58,59 +33,80 @@ class A2CConfig(object):
 
     gamma: float = 0.99
     tau: float = 1.2
+    beta: float = 1.0
+    policy_loss_weight: float = 1.0
+    value_loss_weight: float = 1.0
+    max_grad_norm: float = 1.0
     n_iterations_per_episode: int = 100
+    n_workers: int = 1
     action_sampler: Callable = None
-    loss_function: LossFunction = None
+    value_function: LossFunction = None
+    policy_loss: LossFunction = None
     batch_size: int = 0
     device: str = 'cpu'
     a2cnet: nn.Module = None
     save_model_path: Path = None
+    optimizer_config: PyTorchOptimizerConfig = None
+
+
+@dataclass(init=True, repr=True)
+class _ActResult(object):
+    logprobs: torch.Tensor
+    values: torch.Tensor
+    actions: torch.Tensor
+    entropies: torch.Tensor
+
+
+def create_discounts_array(end: int, base: float, start=0, endpoint=False):
+    """
+
+    Parameters
+    ----------
+    end
+    base
+    start
+    endpoint
+
+    Returns
+    -------
+
+    """
+    return np.logspace(start, end, num=end, base=base, endpoint=endpoint)
+
+
+def calculate_discounted_returns(rewards: np.array, discounts: np.array, n_workers: int = 1) -> np.array:
+    """Calculate the discounted returns from the episode rewards
+
+    Parameters
+    ----------
+    rewards: The list of rewards
+    discounts: The discount factor
+    n_workers: The number of workers
+
+    Returns
+    -------
+
+    """
+
+    # T
+    total_time = len(rewards)
+
+    # Return numbers spaced evenly on a log scale.
+    # In linear space, the sequence starts at base ** start
+    # (base to the power of start) and ends with base ** stop (see endpoint below).
+    # The return is the sum of discounted rewards from step until the
+    # final step T
+    returns = np.array([[np.sum(discounts[: total_time - t] * rewards[t:, w]) for t in range(total_time)] for w in range(n_workers)])
+    return returns
 
 
 class A2C(Generic[Optimizer]):
 
     @staticmethod
-    def update_parameters(optimizer: Optimizer, episode_info: EpisodeInfo, *, config: A2CConfig):
-        """Update the parameters
+    def default_action_sampler(logits: torch.Tensor) -> torch.distributions.Distribution:
 
-        Parameters
-        ----------
-
-        optimizer: The optimizer instance used in training
-        episode_info: The episode info
-        config: The training configuration
-
-        Returns
-        -------
-
-        """
-
-        # unroll the batch notice the flip we go in reverse
-        rewards = rewards = torch.Tensor(episode_info.info["replay_buffer"].to_numpy("reward")).flip(dims=(0,)).view(-1)
-        logprobs = torch.stack(episode_info.info["logprobs"]).flip(dims=(0,)).view(-1)
-        values = torch.stack(episode_info.info["values"]).flip(dims=(0,)).view(-1)
-
-        returns = []
-        ret_ = torch.Tensor([0])
-
-        # Loop through the rewards in reverse order to generate
-        # R = r i + γ * R
-        for r in range(rewards.shape[0]):  # B
-            ret_ = rewards[r] + config.gamma * ret_
-            returns.append(ret_)
-
-        returns = torch.stack(returns).view(-1)
-        returns = F.normalize(returns, dim=0)
-
-        # compute the actor loss.
-        # Minimize the actor loss: –1 * γ t * (R – v(s t )) * π (a ⏐ s)
-        actor_loss = -1 * logprobs * (returns - values.detach())  # C
-
-        # compute the critic loss. Minimize the critic loss: (R – v) 2 .
-        critic_loss = torch.pow(values - returns, 2)  # D
-        loss = actor_loss.sum() + config.tau * critic_loss.sum()  # E
-        loss.backward()
-        optimizer.step()
+        action_dist = torch.distributions.Categorical(logits=logits)
+        return action_dist
 
     @classmethod
     def from_path(cls, config: A2CConfig, path: Path):
@@ -134,6 +130,7 @@ class A2C(Generic[Optimizer]):
     def __init__(self, config: A2CConfig):
 
         self.config: A2CConfig = config
+        self.optimizer: Optimizer = None
         self.name = "A2C"
 
     @property
@@ -143,17 +140,6 @@ class A2C(Generic[Optimizer]):
     def __call__(self, x: torch.Tensor):
         return self.a2c_net(x)
 
-    def share_memory(self) -> None:
-        """Instruct the underlying network to
-        set up what is needed to share memory
-
-        Returns
-        -------
-
-        None
-        """
-        self.a2c_net.share_memory()
-
     def parameters(self) -> Any:
         """The parameters of the underlying model
 
@@ -162,6 +148,300 @@ class A2C(Generic[Optimizer]):
 
         """
         return self.a2c_net.parameters()
+
+    def actions_before_training_begins(self, env: Env, **options) -> None:
+
+        if env.n_workers != self.config.n_workers:
+            raise InvalidParamValue(param_name="self.config.n_workers",
+                                    param_value=str(self.config.n_workers) + " not equal to " + str(env.n_workers))
+
+        # build the optimizer we need in order to train the model
+        self.optimizer = pytorch_optimizer_builder(opt_type=self.config.optimizer_config.optimizer_type,
+                                                   model_params=self.parameters(),
+                                                   **self.config.optimizer_config.as_dict())
+
+        if self.config.action_sampler is None:
+            self.config.action_sampler = A2C.default_action_sampler
+
+    def actions_before_episode_begins(self, env: Env, episode_idx: int, **options) -> None:
+        self.set_train_mode()
+        self.optimizer.zero_grad()
+
+    def actions_after_training(self) -> None:
+        """Any actions the agent needs to perform after training
+
+        Returns
+        -------
+
+        None
+        """
+
+        if self.config.save_model_path is not None:
+            self.save_model(path=self.config.save_model_path)
+
+    def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
+        """Actions the agent applis after the episode ends
+
+        Parameters
+        ----------
+        env
+        episode_idx
+        options
+
+        Returns
+        -------
+
+        """
+
+        episode_info: EpisodeInfo = options["episode_info"]
+
+        buffer: ReplayBuffer = episode_info.info["buffer"]
+
+        reward = buffer.get_item_as_torch_tensor("reward"),
+
+        self._optimize_model(rewards=buffer.get_item_as_torch_tensor("reward"),
+                             logprobs=buffer.get_torch__tensor_info_item_as_torch_tensor("logprobs"),
+                             values=buffer.get_torch__tensor_info_item_as_torch_tensor("values"),
+                             entropies=buffer.get_torch__tensor_info_item_as_torch_tensor("entropies"))
+
+    def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
+        """Train the algorithm on the episode
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
+
+        episode_info, total_time = self._do_train(env, episode_idx, **options)
+        episode_info.total_execution_time = total_time
+        return episode_info
+
+    @time_func_wrapper(show_time=False)
+    def _do_train(self, env: Env, episode_idx: int, **options) -> EpisodeInfo:
+        """Train the algorithm on the episode. In fact this method simply
+        plays the environment to collect batches
+
+        Parameters
+        ----------
+
+        env: The environment to train on
+        episode_idx: The index of the training episode
+        options: Any keyword based options passed by the client code
+
+        Returns
+        -------
+
+        An instance of EpisodeInfo
+        """
+
+        # episode score
+        episode_score = 0
+        episode_iterations = 0
+        total_distortion = 0
+
+        time_step: VectorTimeStep = env.reset()
+        states = time_step.stack_observations()
+
+        buffer = ReplayBuffer(buffer_size=self.config.n_iterations_per_episode)
+
+        for itr in range(self.config.n_iterations_per_episode):
+
+            act_result: _ActResult = self._act(states)
+            time_step: VectorTimeStep = env.step(act_result.actions)
+            next_states = time_step.stack_observations()
+
+            reward = time_step.stack_rewards()
+
+            episode_score += np.mean(reward)
+
+            # append the roll outs
+            buffer.add(state=states, next_state=next_states,
+                       reward=time_step.stack_rewards(),
+                       action=act_result.actions,
+                       done=time_step.stack_dones(),
+                       info={"values": act_result.values,
+                             "entropies": act_result.entropies,
+                             "logprobs": act_result.logprobs})
+
+            states = next_states
+
+            if time_step.done:
+                break
+
+            episode_iterations += 1
+
+        # what do we do with this?
+        last_states = states
+
+        episode_info = EpisodeInfo(episode_score=episode_score,
+                                   total_distortion=total_distortion, episode_itrs=episode_iterations,
+                                   info={"buffer": buffer, "last_states": last_states})
+        return episode_info
+
+    def _act(self, state) -> _ActResult:
+        """The agent acts on the presented state by
+        choosing the actions
+
+        Parameters
+        ----------
+        state
+
+        Returns
+        -------
+
+        """
+
+        if not isinstance(state, torch.Tensor):
+            torch_state = torch.Tensor(state)
+        else:
+            torch_state = state
+
+        # policy and critic values. The policy
+        # values are assumed raw
+        logits, values = self.a2c_net(torch_state)
+
+        # log_softmax may not sum up to one
+        # and can be negative as well
+        # get the logprobs for all batches?
+        #logprobs = F.log_softmax(logits.view(-1), dim=0)
+
+        # choose the action. Typically this will be Categorical
+        # but we leave it open for the application
+        # We don't call logits.view(-1) so that we get
+        # as many actions as in the logits rows.
+        # Each logit row is expected to corrspond to an
+        # environment worker
+        action_sampler_dist = self.config.action_sampler(logits)
+        actions = action_sampler_dist.sample()
+        log_probs = action_sampler_dist.log_prob(actions)
+        entropies = action_sampler_dist.entropy().unsqueeze(-1)
+
+        full_pass_result = _ActResult(logprobs=log_probs, actions=actions,
+                                      values=values, entropies=entropies)
+
+        return full_pass_result
+
+    def _compute_advantages(self, rewards: np.array, values: np.array) -> np.array:
+        """Computes an estimate of the advantage function
+
+        Parameters
+        ----------
+        rewards: The rewards
+        values: The value estimates on the rollout
+
+        Returns
+        -------
+
+        A numpy array representing the advantage estimate
+        """
+        # T
+        total_time = len(rewards)
+
+        # (gamma*tau)^t
+        tau_discounts = np.logspace(0, total_time - 1, num=total_time - 1,
+                                    base=self.config.gamma * self.config.tau, endpoint=False)
+
+        rewards_ = rewards.squeeze()
+        values_ = values.squeeze()
+
+        # create TD errors: R_t + gamma*V_{t+1} - V_t for t=0 to T
+        advantages = rewards_[:-1] + self.config.gamma * values_[1:] - values_[: -1]
+
+        # create the GAES by multiplying the tau discounts times the TD errors
+        gaes = np.array(
+            [[np.sum(tau_discounts[: total_time - 1 - t] * advantages[t:, w]) for t in range(total_time - 1 )] for w in
+             range(self.config.n_workers)])
+        return gaes
+
+    def _compute_loss_function(self, advantages: torch.Tensor, logprobs: torch.Tensor,
+                               returns: torch.Tensor, values: torch.Tensor, entropies: torch.Tensor) -> torch.Tensor:
+        """compute the loss mixture function
+
+        Parameters
+        ----------
+
+        advantages: The advantage estimates
+        logprobs: The log probabilities
+        returns: The discounted returns
+        values: The value function
+        entropies: The entropies
+
+        Returns
+        -------
+
+        A tensor representing the mixed loss function
+        """
+
+        value_loss_function = mse(returns=returns, values=values)
+        policy_loss = - (advantages.T * logprobs).mean()
+
+        # compute a total loss function to minimize
+        if self.config.beta is not None:
+
+            # add entropy loss
+            entropy_loss = -entropies.mean()
+
+            loss = self.config.policy_loss_weight * policy_loss + \
+                   self.config.value_loss_weight * value_loss_function + \
+                   self.config.beta * entropy_loss
+        else:
+            loss = self.config.policy_loss_weight * policy_loss + \
+                   self.config.value_loss_weight * value_loss_function
+
+        return loss
+
+    @time_func_wrapper(show_time=False)
+    def _optimize_model(self, logprobs: torch.Tensor, entropies: torch.Tensor, values: torch.Tensor,
+                        rewards: torch.Tensor) -> None:
+        """Optimize the model
+
+        Parameters
+        ----------
+        logprobs
+        entropies
+        values
+        rewards
+
+        Returns
+        -------
+
+        """
+
+        print("{0} optimizing model={1}".format(INFO, self.name))
+
+        discounts: np.array = create_discounts_array(end=len(rewards),
+                                                     base=self.config.gamma, start=0, endpoint=False)
+
+        # get the discounted returns
+        discounted_returns: np.array = calculate_discounted_returns(rewards.numpy(),
+                                                                    discounts,
+                                                                    n_workers=self.config.n_workers)
+
+        advantages: np.array = self._compute_advantages(rewards=rewards.numpy(),
+                                                        values=values.detach().numpy())
+
+        loss: torch.Tensor = self._compute_loss_function(advantages=torch.from_numpy(advantages), values=values,
+                                                         entropies=entropies,
+                                                         returns=torch.from_numpy(discounted_returns),
+                                                         logprobs=logprobs[:-1])
+
+        self.optimizer.zero_grad()
+        loss.backward()
+
+        # clip the grad if needed
+        torch.nn.utils.clip_grad_norm_(self.parameters(),
+                                       self.config.max_grad_norm)
+        self.optimizer.step()
+
+        print("{0} Finished optimization step....".format(INFO))
 
     def set_train_mode(self) -> None:
         """Set the model to a training mode
@@ -211,7 +491,7 @@ class A2C(Generic[Optimizer]):
         time_step = env.reset()
 
         while criteria.continue_itrs():
-            state = time_step.observation.to_numpy()
+            state = time_step.observation.to_ndarray()
             state = torch.from_numpy(state).float()
             logits, values = self(state)
 
@@ -221,114 +501,3 @@ class A2C(Generic[Optimizer]):
 
             if time_step.done:
                 time_step = env.reset()
-
-    def actions_after_training(self) -> None:
-        """Any actions the agent needs to perform after training
-
-        Returns
-        -------
-
-        """
-
-        if self.config.save_model_path is not None:
-            self.save_model(path=self.config.save_model_path)
-
-    def on_episode(self, env: Env, episode_idx: int,  **options) -> EpisodeInfo:
-        """Train the algorithm on the episode
-
-        Parameters
-        ----------
-
-        env: The environment to train on
-        episode_idx: The index of the training episode
-        options: Any keyword based options passed by the client code
-
-        Returns
-        -------
-
-        An instance of EpisodeInfo
-        """
-
-        episode_info, total_time = self._do_train(env, episode_idx, **options)
-        episode_info.total_execution_time = total_time
-        return episode_info
-
-    @time_func_wrapper(show_time=False)
-    def _do_train(self, env: Env, episode_idx: int, **options) -> EpisodeInfo:
-        """Train the algorithm on the episode. In fact this method simply
-        plays the environment to collect batches
-
-        Parameters
-        ----------
-
-        env: The environment to train on
-        episode_idx: The index of the training episode
-        options: Any keyword based options passed by the client code
-
-        Returns
-        -------
-
-        An instance of EpisodeInfo
-        """
-
-        # episode score
-        episode_score = 0
-        episode_iterations = 0
-        total_distortion = 0
-
-        buffer = ReplayBuffer(options["buffer_size"])
-
-        time_step = env.reset()
-        state = torch.from_numpy(time_step.observation.to_numpy()).float()
-
-        # represent the state function values
-        values = []
-
-        # represent the probabilities under the
-        # policy
-        logprobs = []
-
-        for itr in range(self.config.n_iterations_per_episode):
-
-            # policy and critic values
-            policy, value = self.a2c_net(state)
-
-            #
-            logits = policy.view(-1)
-
-            values.append(value)
-
-            # choose the action this should be
-            action = self.config.action_sampler(logits)
-
-            action_applied = action
-            if isinstance(action, torch.Tensor):
-                action_applied = env.get_action(action.item())
-
-            # the log probabilities of the policy
-            logprob_ = policy.view(-1)[action]
-            logprobs.append(logprob_)
-
-            time_step = env.step(action_applied)
-
-            episode_score += time_step.reward
-            total_distortion += time_step.info["total_distortion"]
-
-            state = torch.from_numpy(time_step.observation.to_numpy()).float()
-
-            buffer.add(state=state, action=action, reward=time_step.reward, next_state=time_step.observation,
-                       done=time_step.done)
-
-            if time_step.done:
-                break
-
-            episode_iterations += 1
-
-        episode_info = EpisodeInfo(episode_score=episode_score,
-                                   total_distortion=total_distortion, episode_itrs=episode_iterations,
-                                   info={"replay_buffer": buffer,
-                                         "logprobs": logprobs,
-                                         "values": values})
-        return episode_info
-
-
