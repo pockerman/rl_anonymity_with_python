@@ -114,8 +114,8 @@ class ReplayBuffer(object):
 
         return torch.stack(vals)
 
-    def add(self, state: Any, action: Any, reward: float,
-            next_state: Any, done: bool, info: dict = {}) -> None:
+    def add(self, state: Any, action: Any, reward: Any,
+            next_state: Any, done: Any, info: dict = {}) -> None:
         """Add a new experience tuple in the buffer
 
         Parameters
