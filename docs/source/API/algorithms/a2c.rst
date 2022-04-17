@@ -1,13 +1,11 @@
 a2c
 ===
 .. automodule:: a2c
-.. autoclass:: A2CNetBase
-   :members: __init__, forward
-   
-.. autoclass:: A2CNet
-   :members: __init__, forward
-   
+   :members: create_discounts_array, calculate_discounted_returns
+
 .. autoclass:: A2CConfig
+
+.. autoclass:: _ActResult
   
 .. autoclass:: A2C
-   :members: update_parameters, __init__, share_memory, parameters, on_episode, _do_train
+   :members: __init__, share_memory, parameters, on_episode, default_action_sampler, from_path, _do_train

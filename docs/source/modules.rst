@@ -4,7 +4,6 @@ API
 .. toctree::
    :maxdepth: 4
    
-   
    API/algorithms/epsilon_greedy_q_estimator
    API/algorithms/a2c
    API/algorithms/q_learning
