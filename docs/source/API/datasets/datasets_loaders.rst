@@ -1,7 +1,7 @@
-dataset\_loaders
-================
+datasets\_loaders
+=================
 
-.. automodule:: dataset_loaders
+.. automodule:: datasets_loaders
 
 .. autoclass:: MockSubjectsData
 
