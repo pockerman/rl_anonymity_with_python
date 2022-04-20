@@ -5,7 +5,7 @@ from src.datasets.dataset_wrapper import PandasDSWrapper
 from src.preprocessor.cleanup_utils import replace, change_column_types
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
-from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
+from src.maths.distortion_calculator import DistortionCalculationType, DistortionCalculator
 
 def load_q_learn():
     # specify the columns to drop

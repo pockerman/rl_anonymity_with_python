@@ -36,6 +36,7 @@ class TiledEnvConfig(object):
     n_layers: int = 1
     n_bins: int = 1
     column_ranges: dict = None
+    column_types: list = None
 
 
 class Tile(object):
@@ -149,25 +150,14 @@ class Layer(object):
         for action in range(self.n_actions):
             bin_indices = {key: 0 for key in self.column_bins}
             next_local_tile_idx = 0
-            next_local_tile_idx, next_tile_global_idx = self._do_build_tile(action=action, next_local_tile_idx=next_local_tile_idx,
-                                next_tile_global_idx=next_tile_global_idx)
+            next_local_tile_idx, next_tile_global_idx = self._do_build_tile(action=action,
+                                                                            next_local_tile_idx=next_local_tile_idx,
+                                                                            next_tile_global_idx=next_tile_global_idx)
 
-            """
-            key_list = list(bin_indices.keys())
-            for t in range(n_total_tiles):
-                self.tiles[(action, t)] = Tile(global_id=next_tile_global_idx)
-                self.tiles[(action, t)].build(bin_indices, self.n_bins)
-
-                # check if we have reached the number of bins
-                # if yes zero everything and increment the
-                # next index
-
-                #next_tile_global_idx += 1
-            """
         return next_tile_global_idx
 
     def _do_build_tile(self, action: int, next_local_tile_idx: int,
-                                next_tile_global_idx: int) -> tuple:
+                       next_tile_global_idx: int) -> tuple:
 
         if len(self.column_bins) != 3:
             raise NotImplementedError("This function is not implemented for more than three columns")
@@ -656,19 +646,6 @@ class TiledEnv(object):
 
         None
 
-        """
-
-        """
-        if self.max_size <= 0:
-            raise InvalidParamValue(param_name="max_size",
-                                    param_value=str(self.max_size) + " should be > 0")
-
-        # Ensure max_size >= total number of tiles (num_tilings x tiling_dim x tiling_dim)
-        # to ensure no duplicates.
-        if self.max_size < self.n_layers * self.tiling_dim * self.tiling_dim:
-            raise InvalidParamValue(param_name="max_size",
-                                    param_value=str(self.max_size) +
-                                                " should be >=num_tilings * tiling_dim * tiling_dim")
         """
 
         if self.column_ranges is None:

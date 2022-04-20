@@ -13,7 +13,7 @@ from src.spaces.multiprocess_env import MultiprocessEnv
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
-from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
+from src.maths.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
 from src.maths.pytorch_optimizer_config import PyTorchOptimizerConfig

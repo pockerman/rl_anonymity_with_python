@@ -6,10 +6,10 @@ https://github.com/deepmind/dm_env/blob/master/dm_env/_environment.py
 import copy
 import numpy as np
 from pathlib import Path
-from typing import TypeVar, List
+from typing import TypeVar, List, Any
 from dataclasses import dataclass
-import torch
 
+from src.spaces.env_type import DiscreteEnvType
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep, StepType
 
@@ -30,13 +30,16 @@ class DiscreteEnvConfig(object):
     average_distortion_constraint: float = 0.0
     gamma: float = 0.99
     n_states: int = 10
-    min_distortion: float = 0.4
-    max_distortion: float = 0.7
-    punish_factor: float = 2.0
+    min_total_distortion: float = 0.4
+    min_distortion: Any = 0.4
+    max_distortion: Any = 0.7
+    max_total_distortion: float = 0.7
+    #punish_factor: float = 2.0
     reward_factor: float = 0.95
     n_rounds_below_min_distortion: int = 10
     distorted_set_path: Path = None
     distortion_calculator: DistortionCalculator = None
+    env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE
 
 
 class DiscreteStateEnvironment(object):
@@ -50,18 +53,23 @@ class DiscreteStateEnvironment(object):
     def from_options(cls, *, data_set: DataSet, action_space: ActionSpace,
                      reward_manager: RewardManager, distortion_calculator: DistortionCalculator,
                      average_distortion_constraint: float = 0.0,
-                     gamma: float = 0.99, n_states: int = 10, min_distortion: float = 0.4,
-                     max_distortion: float = 0.7, punish_factor: float = 2.0, reward_factor: float = 0.95,
-                     n_rounds_below_min_distortion: int = 10,
+                     gamma: float = 0.99, n_states: int = 10,
+                     min_distortion: Any = 0.4, min_total_distortion: float = 0.4,
+                     max_distortion: Any = 0.7, max_total_distortion: float = 0.7,
+                     reward_factor: float = 0.95,
+                     n_rounds_below_min_distortion: int = 10, env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE,
                      distorted_set_path: Path = None):
 
         config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
                                    distortion_calculator=distortion_calculator, distorted_set_path=distorted_set_path,
                                    reward_factor=reward_factor,
                                    n_rounds_below_min_distortion=n_rounds_below_min_distortion,
-                                   punish_factor=punish_factor, max_distortion=max_distortion, gamma=gamma,
+                                   max_distortion=max_distortion,
+                                   max_total_distortion=max_total_distortion,
+                                   gamma=gamma,
                                    n_states=n_states, min_distortion=min_distortion,
-                                   average_distortion_constraint=average_distortion_constraint)
+                                   min_total_distortion=min_total_distortion,
+                                   average_distortion_constraint=average_distortion_constraint, env_type=env_type)
 
         return cls(env_config=config)
 
@@ -77,12 +85,18 @@ class DiscreteStateEnvironment(object):
         self.config = env_config
         self.n_rounds_below_min_distortion = 0
         self.state_bins: List[float] = []
+        self.state_space: List[tuple] = []
         self.distorted_data_set = copy.deepcopy(self.config.data_set)
         self.current_time_step: TimeStep = None
 
         # dictionary that holds the distortion for every column
         # in the dataset
         self.column_distances = {}
+
+        # holds the discretization of [0.0, 1.0]
+        # for every column in the dataset. Only filled
+        # if config.state_type = MULTI_COLUMN_STATE
+        self.column_bins = {}
 
         # hold a copy of the visits per
         # column. An episode ends when all columns
@@ -113,6 +127,10 @@ class DiscreteStateEnvironment(object):
     @property
     def column_distortions(self) -> dict:
         return self.column_distances
+
+    @property
+    def env_type(self) -> DiscreteEnvType:
+        return self.config.env_type
 
     def get_action(self, aidx: int) -> ActionBase:
         """Returns the action if the global aidx index
@@ -150,54 +168,141 @@ class DiscreteStateEnvironment(object):
             save_index=save_index)
 
     def create_bins(self) -> None:
-        """
-        Create the bins
-        :return:
-        """
-        self.state_bins = np.linspace(0.0, 1.0, self.config.n_states)
+        """Create the bins for the state space
 
-    def get_aggregated_state(self, state_val: float) -> int:
+        Returns
+        -------
+
         """
-        Returns the bin index that the state_val corresponds to
-        :param state_val: The value of the state. This typically will be
-        either a column normalized distortion value or the dataset average total
-        distortion
-        :return:
+        if self.config.env_type == DiscreteEnvType.MULTI_COLUMN_STATE:
+            self._create_multi_column_state_bins()
+        else:
+
+            self.state_bins = np.linspace(0.0, 1.0, self.config.n_states)
+
+    def get_min_aggregated_state(self) -> Any:
+        """Returns the aggregated state for minimum distortions
+
+        Returns
+        -------
+
         """
-        return int(np.digitize(state_val, self.state_bins))
+
+        if self.config.env_type == DiscreteEnvType.MULTI_COLUMN_STATE:
+
+            state = []
+            for name in self.config.min_distortion:
+                bin_idx = int(np.digitize(self.config.min_distortion[name], self.column_bins[name]))
+                state.append(bin_idx)
+            return tuple(state)
+        else:
+            return int(np.digitize(self.config.min_distortion, self.state_bins))
+
+    def get_max_aggregated_state(self) -> Any:
+        """Returns the aggregated state for minimum distortions
+
+        Returns
+        -------
+
+        """
+
+        if self.config.env_type == DiscreteEnvType.MULTI_COLUMN_STATE:
+
+            state = []
+            for name in self.config.max_distortion:
+                bin_idx = int(np.digitize(self.config.max_distortion[name], self.column_bins[name]))
+                state.append(bin_idx)
+            return tuple(state)
+        else:
+            return int(np.digitize(self.config.max_distortion, self.state_bins))
+
+    def get_aggregated_state(self, state_val: Any, column_name: str = None) -> Any:
+        """Returns the aggregated state given the distortion.
+        In the case where only 1D state space is assumed this
+        will be the bin index that the state_val corresponds to.
+        Else it returns a tuple of bin indices such that
+        for every column it indicates the bin index of the distortion
+        corresponding to the column
+
+        Parameters
+        ----------
+
+        state_val:
+
+        Returns
+        -------
+
+        """
+
+        if self.config.env_type == DiscreteEnvType.MULTI_COLUMN_STATE:
+
+            if column_name is not None and column_name not in self.column_bins:
+                raise ValueError("Name {0} not in column bins names {1} ".format(column_name, list(self.column_bins.keys())))
+
+            if column_name is None:
+                column_dists = [(0.0, name) for name in self.column_bins]
+
+            else:
+                column_dists = [(self.column_distances[name], name) for name in self.column_bins]
+
+            state = []
+            for distortion, name in column_dists:
+                bin_idx = int(np.digitize(distortion, self.column_bins[name]))
+                state.append(bin_idx)
+
+            return tuple(state)
+
+        else:
+
+            return int(np.digitize(state_val, self.state_bins))
 
     def initialize_column_counts(self) -> None:
+        """Initialize the column counts
+
+        Returns
+        -------
+
         """
-        Set the column visit counts to zero
-        :return:
-        """
+
         col_names = self.config.data_set.get_columns_names()
         for col in col_names:
             self.column_visits[col] = 0
 
     def all_columns_visited(self) -> bool:
+        """Returns true is all columns have been visited
+
+        Returns
+        -------
+
         """
-        Returns True is all column counts are greater than zero
-        :return:
-        """
+
         return all(self.column_visits.values())
 
     def initialize_distances(self) -> None:
-        """
-        Initialize the text distances for features of type string. We set the
-        normalized distance to 0.0 meaning that no distortion is assumed initially
-        :return: None
+        """Initialize the structure that holds the
+        distances for every column
+
+        Returns
+        -------
+
+        None
         """
 
         col_names = self.config.data_set.get_columns_names()
         for col in col_names:
             self.column_distances[col] = 0.0
 
-    def apply_action(self, action: ActionBase):
-        """
-        Apply the action on the environment
-        :param action: The action to apply on the environment
-        :return:
+    def apply_action(self, action: ActionBase) -> None:
+        """Apply the given action on the underlying data set
+
+        Parameters
+        ----------
+        action: The action to apply
+
+        Returns
+        -------
+
+        None
         """
 
         # update the column visit count
@@ -229,26 +334,26 @@ class DiscreteStateEnvironment(object):
         self.column_distances[action.column_name] = distance
 
     def total_current_distortion(self) -> float:
-        """
-        Calculates the current total distortion of the dataset.
-        :return:
+        """The total distortion in the dataset
+
+        Returns
+        -------
+        a float representing the total distortion of the dataset
         """
 
-        return self.config.distortion_calculator.total_distortion(
-            list(self.column_distances.values()))
+        return self.config.distortion_calculator.total_distortion(list(self.column_distances.values()))
 
     def reset(self, **options) -> TimeStep:
-        """
-        Starts a new sequence and returns the first `TimeStep` of this sequence.
-        Returns:
-          A `TimeStep` namedtuple containing:
-            step_type: A `StepType` of `FIRST`.
-            reward: `None`, indicating the reward is undefined.
-            discount: `None`, indicating the discount is undefined.
-            observation: A NumPy array, or a nested dict, list or tuple of arrays.
-              Scalar values that can be cast to NumPy arrays (e.g. Python floats)
-              are also valid in place of a scalar array. Must conform to the
-              specification returned by `observation_spec()`.
+        """Starts a new sequence and returns the first `TimeStep` of this sequence.
+
+        Parameters
+        ----------
+        options
+
+        Returns
+        -------
+
+        An instance of `TimeStep`
         """
 
         # reset the copy of the dataset we hold
@@ -262,7 +367,7 @@ class DiscreteStateEnvironment(object):
 
         # the value of the state on reset is that no
         # distortion of the dataset exists
-        state = self.get_aggregated_state(state_val=0.0)
+        state = self.get_aggregated_state(state_val=0.0, column_name=None)
 
         self.current_time_step = TimeStep(step_type=StepType.FIRST, reward=0.0,
                                           observation=state, discount=self.config.gamma,
@@ -271,30 +376,37 @@ class DiscreteStateEnvironment(object):
         return self.current_time_step
 
     def step(self, action: ActionBase) -> TimeStep:
+        """Step in the environment i.e. apply the action given
+
+        Parameters
+        ----------
+        action: The action to apply on the environment
+
+        Returns
+        -------
+
+        An instance of the TimeStep class
         """
-        Apply the action and return new state
-        :param action: The action to apply
-        :return:
-        """
+        
         # apply the action and update distoration
         # and column count
 
         self.apply_action(action=action)
 
+        column_dist = self.column_distances[action.column_name]
+
         # calculate the distortion of the dataset
         current_distortion = self.total_current_distortion()
 
-        # get the reward for the current distortion
-        reward = self.config.reward_manager.get_reward_for_state(state=current_distortion, **{"action": action})
-
-        # the first exit condition
+        # the first exit condition. If all columns
+        # have been visited then we exit
         done1 = self.all_columns_visited()
 
         # if the current distortion is greater than
         # the maximum allowed distortion then end the
         # episode; the agent failed. This should be reflected
         # in the received reward
-        done2 = current_distortion > self.config.max_distortion
+        done2 = current_distortion > self.config.max_total_distortion
 
         # TODO: We want to consider also the scenario where
         # the same action is chosen over and over again
@@ -304,7 +416,7 @@ class DiscreteStateEnvironment(object):
             # if we start (and we do) at distortion 0.0 then
             # this condition may always be true and we do
             # no progress
-            done3 = current_distortion < self.config.min_distortion
+            done3 = current_distortion < self.config.min_total_distortion
 
             # if we are trapped below min distortion
             # and we have exceeded the amount of rounds we can stay there
@@ -316,14 +428,28 @@ class DiscreteStateEnvironment(object):
 
         # by default we are at the middle of the episode
         step_type = StepType.MID
-        next_state = self.get_aggregated_state(state_val=current_distortion)
 
-        # get the bin for the min distortion
-        min_dist_bin = self.get_aggregated_state(state_val=self.config.min_distortion)
-        max_dist_bin = self.get_aggregated_state(state_val=self.config.max_distortion)
+        # get the new aggregated state., If the self.config.env_type = DiscreteEnvType.MULTI_COLUMN_STATE
+        # then the state_val is not used instead we use the computed distances
+        next_state = self.get_aggregated_state(state_val=current_distortion,
+                                               column_name=action.column_name)
+
+        # get the bins for the min distortion
+        min_dist_bin = self.get_min_aggregated_state()
+        max_dist_bin = self.get_max_aggregated_state()
+
+        # get the reward for the current distortion
+        # We get reward according to the total dataset distortion
+        # or according to how the manager decides
+        reward = self.config.reward_manager.get_reward_for_state(total_distortion=current_distortion,
+                                                                 current_state=self.current_time_step.observation,
+                                                                 next_state=next_state, min_dist_bins=min_dist_bin,
+                                                                 **{"action": action, "column_distortion": column_dist})
 
         # TODO: these modifications will cause the agent to always
-        # move close to transition points
+        # move close to transition points Also need to account for
+        # tuple states
+        """
         if next_state is not None and self.current_time_step.observation is not None:
             if next_state < min_dist_bin <= self.current_time_step.observation:
                 # the agent chose to step into the chaos again
@@ -343,8 +469,13 @@ class DiscreteStateEnvironment(object):
                 # the agent goes towards the transition of max point so give a higher reward
                 # for this
                 reward = self.config.reward_factor * self.config.reward_manager.in_bounds_reward
+        """
 
-        if next_state is None or next_state >= self.n_states:
+        if next_state is None:
+            done = True
+
+        if self.config.env_type == DiscreteEnvType.TOTAL_DISTORTION_STATE \
+                and next_state >= self.n_states:
             done = True
 
         if done:
@@ -358,4 +489,24 @@ class DiscreteStateEnvironment(object):
                                           info={"total_distortion": current_distortion})
 
         return self.current_time_step
+
+    def _create_multi_column_state_bins(self) -> None:
+
+        # create the column bins
+        for name in self.column_names:
+            self.column_bins[name] = np.linspace(0.0, 1.0, self.config.n_states)
+
+        if len(self.column_bins) == 3:
+            self._build_three_columns()
+        else:
+            raise ValueError("Invalid number of columns. Cannot build the multi-column state bins")
+
+    def _build_three_columns(self):
+
+        name = self.column_names[0]
+        for i in range(len(self.column_bins[name])):
+            for j in range(len(self.column_bins[name])):
+                for k in range(len(self.column_bins[name])):
+                    self.state_space.append((i, j, k))
+
 

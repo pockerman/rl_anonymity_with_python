@@ -10,6 +10,7 @@ from src.exceptions.exceptions import InvalidParamValue
 from src.utils.mixins import WithMaxActionMixin, WithQTableMixinBase
 from src.utils.episode_info import EpisodeInfo
 from src.utils.function_wraps import time_func_wrapper
+from src.spaces.env_type import DiscreteEnvType
 
 Env = TypeVar('Env')
 Policy = TypeVar('Policy')
@@ -65,9 +66,19 @@ class QLearning(WithMaxActionMixin):
         if not isinstance(self.config.policy, WithQTableMixinBase):
             raise InvalidParamValue(param_name="policy", param_value=str(self.config.policy))
 
-        for state in range(1, env.n_states):
-            for action in range(env.n_actions):
-                self.q_table[state, action] = 0.0
+        if env.env_type == DiscreteEnvType.MULTI_COLUMN_STATE:
+
+            if len(env.state_space) == 0:
+                raise ValueError("The state space is empty")
+
+            for state in env.state_space:
+                for action in range(env.n_actions):
+                    self.q_table[state, action] = 0.0
+        else:
+
+            for state in range(1, env.n_states):
+                for action in range(env.n_actions):
+                    self.q_table[state, action] = 0.0
 
     def actions_before_episode_begins(self, env: Env, episode_idx, **options) -> None:
         """Execute any actions the algorithm needs before
