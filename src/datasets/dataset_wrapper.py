@@ -62,27 +62,46 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
     def show_head(self, n: int) -> None:
         print(self.ds.head(n))
 
-    def describe(self):
+    def describe(self) -> None:
         print(self.ds.describe())
 
-    def info(self):
+    def info(self) -> None:
+        """
+
+        Returns
+        -------
+
+        """
         print(self.ds.info())
 
     def save_to_csv(self, filename: Path, save_index: bool) -> None:
-        """
-        Save the underlying dataset in a csv format
-        :param filename:
-        :return:
+        """Save the dataset to the given file
+
+        Parameters
+        ----------
+        filename: The filepath to save the dataset
+        save_index: If true saves also the index
+
+        Returns
+        -------
+
         """
         self.ds.to_csv(filename, index=save_index)
 
     def read(self, filename: Path, **options) -> None:
+        """Read the dataset from the given path
+
+        Parameters
+        ----------
+        filename: Path to the dataset
+        options: Any application-defined options
+
+        Returns
+        -------
+
+        None
         """
-        Load a data set from a file
-        :param filename:
-        :param options:
-        :return:
-        """
+
         self.ds = read_csv(filename=filename,
                            features_drop_names=options["features_drop_names"],
                            names=options["names"])

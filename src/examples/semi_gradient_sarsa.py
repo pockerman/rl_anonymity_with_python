@@ -12,7 +12,7 @@ from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNum
 from src.trainers.trainer import Trainer
 from src.policies.epsilon_greedy_policy import EpsilonDecayOption
 from src.algorithms.epsilon_greedy_q_estimator import EpsilonGreedyQEstimatorConfig, EpsilonGreedyQEstimator
-from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
+from src.maths.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
 from src.utils.reward_manager import RewardManager

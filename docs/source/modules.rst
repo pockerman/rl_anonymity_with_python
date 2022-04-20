@@ -10,6 +10,8 @@ API
    API/trainers/trainer
    API/trainers/pytorch_trainer
    API/datasets/column_type
+   API/datasets/datasets_loaders
+   API/datasets/dataset_wrapper
    API/exceptions/exceptions
    API/maths/optimizer_type
    API/maths/pytorch_optimizer_builder

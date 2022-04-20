@@ -16,7 +16,7 @@ from src.utils.serial_hierarchy import SerialHierarchy
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
-from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
+from src.maths.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment, DiscreteEnvConfig
 from src.utils.iteration_control import IterationControl
 from src.utils.plot_utils import plot_running_avg
