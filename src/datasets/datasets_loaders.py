@@ -20,16 +20,18 @@ class MockSubjectsData(object):
     # the assumed column types. We use this map to cast
     # the types of the columns
     COLUMNS_TYPES: dict = field(default_factory=lambda: {"gender": str, "ethnicity": str, "education": int,
-                     "salary": int, "diagnosis": int, "preventative_treatment": str,
-                     "mutation_status": int,})
+                                                         "salary": int, "diagnosis": int, "preventative_treatment": str,
+                                                         "mutation_status": int,
+                                                         "NHSno": int, "given_name": str, "surname": str,
+                                                         "dob": str})
 
     # features to drop
     FEATURES_DROP_NAMES: List[str] = field(default_factory=lambda: ["NHSno", "given_name", "surname", "dob"])
 
     # Names of the columns in the dataset
     NAMES: List[str] = field(default_factory=lambda: ["NHSno", "given_name", "surname", "gender",
-                                              "dob", "ethnicity", "education", "salary",
-                                              "mutation_status", "preventative_treatment", "diagnosis"])
+                                                      "dob", "ethnicity", "education", "salary",
+                                                      "mutation_status", "preventative_treatment", "diagnosis"])
 
     # option to drop NaN
     DROP_NA: bool = True

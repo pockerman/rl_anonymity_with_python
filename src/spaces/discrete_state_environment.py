@@ -34,12 +34,12 @@ class DiscreteEnvConfig(object):
     min_distortion: Any = 0.4
     max_distortion: Any = 0.7
     max_total_distortion: float = 0.7
-    #punish_factor: float = 2.0
     reward_factor: float = 0.95
     n_rounds_below_min_distortion: int = 10
     distorted_set_path: Path = None
     distortion_calculator: DistortionCalculator = None
     env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE
+    column_types: dict = None
 
 
 class DiscreteStateEnvironment(object):
@@ -57,7 +57,8 @@ class DiscreteStateEnvironment(object):
                      min_distortion: Any = 0.4, min_total_distortion: float = 0.4,
                      max_distortion: Any = 0.7, max_total_distortion: float = 0.7,
                      reward_factor: float = 0.95,
-                     n_rounds_below_min_distortion: int = 10, env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE,
+                     n_rounds_below_min_distortion: int = 10,
+                     env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE,
                      distorted_set_path: Path = None):
 
         config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
@@ -387,7 +388,7 @@ class DiscreteStateEnvironment(object):
 
         An instance of the TimeStep class
         """
-        
+
         # apply the action and update distoration
         # and column count
 

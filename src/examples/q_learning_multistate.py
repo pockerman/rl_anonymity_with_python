@@ -9,7 +9,7 @@ from src.trainers.trainer import Trainer
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.utils.plot_utils import plot_running_avg
 from src.utils import INFO
-from src.examples.helpers.load_three_columns_dataset import load_discrete_env
+from src.examples.helpers.load_three_columns_mock_dataset import load_discrete_env
 
 N_BINS = 10
 N_EPISODES = 1000
@@ -45,16 +45,6 @@ if __name__ == '__main__':
                             total_min_distortion=MIN_DISTORTION, total_max_distortion=MAX_DISTORTION,
                             punish_factor=PUNISH_FACTOR)
     env.config.state_type = DiscreteEnvType.MULTI_COLUMN_STATE
-
-    # establish the configuration for the Tiled environment
-    #tiled_env_config = TiledEnvConfig(n_layers=N_LAYERS, n_bins=N_BINS,
-    #                                  env=discrete_env,
-    #                                  column_ranges={"ethnicity": [0.0, 1.0],
-    #                                                "salary": [0.0, 1.0],
-    #                                                "diagnosis": [0.0, 1.0]})
-    # create the Tiled environment
-    #tiled_env = TiledEnv(tiled_env_config)
-    #tiled_env.create_tiles()
 
     algo_config = QLearnConfig()
     algo_config.n_itrs_per_episode = N_ITRS_PER_EPISODE
