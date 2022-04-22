@@ -17,24 +17,6 @@ from src.utils.reward_manager import RewardManager
 from src.spaces.env_type import DiscreteEnvType
 
 
-#N_LAYERS = 5
-#N_BINS = 10
-#N_EPISODES = 1000
-#OUTPUT_MSG_FREQUENCY = 100
-#GAMMA = 0.99
-#ALPHA = 0.1
-
-#MAX_DISTORTION = 0.7
-#MIN_DISTORTION = 0.3
-#OUT_OF_MAX_BOUND_REWARD = -1.0
-#OUT_OF_MIN_BOUND_REWARD = -1.0
-#IN_BOUNDS_REWARD = 5.0
-#N_ROUNDS_BELOW_MIN_DISTORTION = 10
-
-#REWARD_FACTOR = 0.95
-#PUNISH_FACTOR = 2.0
-
-
 def get_ethinicity_hierarchy():
     ethnicity_hierarchy = SerialHierarchy(values={})
 
