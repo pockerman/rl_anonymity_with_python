@@ -141,18 +141,26 @@ class ActionRestore(ActionBase, WithHierarchyTable):
 
 
 class ActionTransform(ActionBase):
+    """ Implements the transform action
     """
-    Implements the transform action
-    """
-    def __init__(self, column_name: str):
+    def __init__(self, column_name: str, transform_value: Any):
         super(ActionTransform, self).__init__(column_name=column_name, action_type=ActionType.TRANSFORM)
+        self.transform = transform_value
 
     def act(self, **ops) -> Any:
         """
         Perform an action
         :return:
         """
-        pass
+        # get the values of the column
+        col_vals = ops['data']
+
+        # generalize the data given
+        for i, item in enumerate(ops["data"]):
+            col_vals[i] = self.transform
+
+        ops["data"] = col_vals
+        return ops['data']
 
 
 class ActionSuppress(ActionBase, WithHierarchyTable):

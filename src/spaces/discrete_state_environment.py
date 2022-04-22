@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from src.spaces.env_type import DiscreteEnvType
 from src.spaces.actions import ActionBase, ActionType
 from src.spaces.time_step import TimeStep, StepType
+from src.datasets import ColumnType
+from src.spaces.actions import ActionTransform
 
 DataSet = TypeVar("DataSet")
 RewardManager = TypeVar("RewardManager")
@@ -34,12 +36,13 @@ class DiscreteEnvConfig(object):
     min_distortion: Any = 0.4
     max_distortion: Any = 0.7
     max_total_distortion: float = 0.7
-    reward_factor: float = 0.95
     n_rounds_below_min_distortion: int = 10
     distorted_set_path: Path = None
     distortion_calculator: DistortionCalculator = None
     env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE
     column_types: dict = None
+    use_identifying_column_dist_in_total_dist: bool = True
+    use_identifying_column_dist_factor: float = 1.0
 
 
 class DiscreteStateEnvironment(object):
@@ -56,21 +59,26 @@ class DiscreteStateEnvironment(object):
                      gamma: float = 0.99, n_states: int = 10,
                      min_distortion: Any = 0.4, min_total_distortion: float = 0.4,
                      max_distortion: Any = 0.7, max_total_distortion: float = 0.7,
-                     reward_factor: float = 0.95,
                      n_rounds_below_min_distortion: int = 10,
                      env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE,
-                     distorted_set_path: Path = None):
+                     distorted_set_path: Path = None, column_types: dir={},
+                     use_identifying_column_dist_in_total_dist: bool = True,
+                     use_identifying_column_dist_factor: float = 1.0):
 
-        config = DiscreteEnvConfig(data_set=data_set, action_space=action_space, reward_manager=reward_manager,
-                                   distortion_calculator=distortion_calculator, distorted_set_path=distorted_set_path,
-                                   reward_factor=reward_factor,
+        config = DiscreteEnvConfig(data_set=data_set, action_space=action_space,
+                                   reward_manager=reward_manager,
+                                   distortion_calculator=distortion_calculator,
+                                   distorted_set_path=distorted_set_path,
                                    n_rounds_below_min_distortion=n_rounds_below_min_distortion,
                                    max_distortion=max_distortion,
                                    max_total_distortion=max_total_distortion,
                                    gamma=gamma,
                                    n_states=n_states, min_distortion=min_distortion,
                                    min_total_distortion=min_total_distortion,
-                                   average_distortion_constraint=average_distortion_constraint, env_type=env_type)
+                                   average_distortion_constraint=average_distortion_constraint,
+                                   env_type=env_type, column_types=column_types,
+                                   use_identifying_column_dist_in_total_dist=use_identifying_column_dist_in_total_dist,
+                                   use_identifying_column_dist_factor=use_identifying_column_dist_factor)
 
         return cls(env_config=config)
 
@@ -290,8 +298,28 @@ class DiscreteStateEnvironment(object):
         """
 
         col_names = self.config.data_set.get_columns_names()
-        for col in col_names:
-            self.column_distances[col] = 0.0
+
+        if self.config.use_identifying_column_dist_in_total_dist:
+            for name in col_names:
+                if self.config.column_types[name] == ColumnType.IDENTIFYING_ATTRIBUTE:
+
+                    current_column = self.distorted_data_set.get_column(col_name=name)
+                    start_column = self.config.data_set.get_column(col_name=name)
+                    datatype = 'float'
+                    if self.distorted_data_set.columns[name] == str:
+
+                        current_column = "".join(current_column.values)
+                        start_column = "".join(start_column.values)
+                        datatype = 'str'
+                    distance = self.config.distortion_calculator.calculate(current_column,
+                                                                               start_column, datatype)
+                    self.column_distances[name] = self.config.use_identifying_column_dist_factor * distance
+                else:
+                    self.column_distances[name] = 0.0
+        else:
+
+            for col in col_names:
+                self.column_distances[col] = 0.0
 
     def apply_action(self, action: ActionBase) -> None:
         """Apply the given action on the underlying data set
@@ -359,6 +387,7 @@ class DiscreteStateEnvironment(object):
 
         # reset the copy of the dataset we hold
         self.distorted_data_set = copy.deepcopy(self.config.data_set)
+        self._distort_identifying_attributes()
         self.n_rounds_below_min_distortion = 0
 
         # initialize the  distances for
@@ -509,5 +538,15 @@ class DiscreteStateEnvironment(object):
             for j in range(len(self.column_bins[name])):
                 for k in range(len(self.column_bins[name])):
                     self.state_space.append((i, j, k))
+
+    def _distort_identifying_attributes(self):
+
+        for name in self.config.column_types:
+
+            if self.config.column_types[name] == ColumnType.IDENTIFYING_ATTRIBUTE:
+                # we need to alter the column
+                action = ActionTransform(column_name=name, transform_value='*')
+                self.distorted_data_set.apply_column_transform(column_name=name,
+                                                               transform=action)
 
 

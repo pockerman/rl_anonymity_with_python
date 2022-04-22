@@ -66,11 +66,12 @@ class PandasDSWrapper(DSWrapper[pd.DataFrame]):
         print(self.ds.describe())
 
     def info(self) -> None:
-        """
+        """Prints information about the underlying Pandas
 
         Returns
         -------
 
+        None
         """
         print(self.ds.info())
 
