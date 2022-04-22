@@ -60,10 +60,8 @@ class EpsilonGreedyQEstimator(WithEstimatorMixin):
         self.weights: np.array = np.zeros((self.env.n_states * self.env.n_actions))
 
     def q_hat_value(self, state_action_vec: StateActionVec) -> float:
-        """Returns the
-        :math: \hat{q}
-
-        approximate value for the given state-action vector
+        """Returns the `:math: \hat{q}` approximate value for the
+        given state-action vector
 
         Parameters
         ----------

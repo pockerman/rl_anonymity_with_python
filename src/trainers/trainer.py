@@ -5,6 +5,7 @@ for training serial reinforcement learning algorithms
 
 import numpy as np
 from typing import TypeVar
+from dataclasses import dataclass
 
 from src.utils import INFO
 from src.utils.function_wraps import time_func, time_func_wrapper
@@ -14,9 +15,15 @@ Env = TypeVar("Env")
 Agent = TypeVar("Agent")
 
 
+@dataclass(init=True, repr=True)
+class TrainerConfig(object):
+    n_episodes: int = 1
+    output_msg_frequency: int = -1
+
+
 class Trainer(object):
 
-    def __init__(self, env: Env,  agent: Agent, configuration: dir) -> None:
+    def __init__(self, env: Env,  agent: Agent, configuration: TrainerConfig) -> None:
         """Constructor. Initialize a trainer by passing the training environment
         instance the agen to train and configuration dictionary
 
@@ -32,7 +39,7 @@ class Trainer(object):
         self.agent = agent
         self.configuration = configuration
         # monitor performance
-        self.total_rewards: np.array = np.zeros(configuration['n_episodes'])
+        self.total_rewards: np.array = np.zeros(configuration.n_episodes)
         self.iterations_per_episode = []
         self.total_distortions = []
 
@@ -67,7 +74,7 @@ class Trainer(object):
         None
         """
 
-        self.total_rewards: np.array = np.zeros(self.configuration['n_episodes'])
+        self.total_rewards: np.array = np.zeros(self.configuration.n_episodes)
         self.iterations_per_episode = []
         self.agent.actions_before_training(self.env)
 
@@ -105,18 +112,25 @@ class Trainer(object):
         """
         self.agent.actions_after_episode_ends(env, episode_idx, **options)
 
-        if episode_idx % self.configuration['output_msg_frequency'] == 0:
+        if episode_idx % self.configuration.output_msg_frequency == 0:
             if self.env.config.distorted_set_path is not None:
                 self.env.save_current_dataset(episode_idx)
 
     @time_func_wrapper(show_time=True)
-    def train(self):
+    def train(self) -> None:
+        """Train the agent on the given environment
+
+        Returns
+        -------
+
+        None
+        """
 
         print("{0} Training agent {1}".format(INFO, self.agent.name))
         self.actions_before_training()
 
-        for episode in range(0, self.configuration["n_episodes"]):
-            print("{0} On episode {1}/{2}".format(INFO, episode, self.configuration["n_episodes"]))
+        for episode in range(0, self.configuration.n_episodes):
+            print("{0} On episode {1}/{2}".format(INFO, episode, self.configuration.n_episodes))
 
             self.actions_before_episode_begins(self.env, episode)
 
@@ -131,7 +145,7 @@ class Trainer(object):
 
             self.iterations_per_episode.append(episode_info.episode_itrs)
             self.total_rewards[episode] = episode_info.episode_score
-            self.total_distortions.append(episode_info.total_distortion)
+            self.total_distortions.append(episode_info.total_distortion / episode_info.episode_itrs) #episode_info.total_distortion)
             self.actions_after_episode_ends(self.env, episode, **{})
 
         print("{0} Training finished for agent {1}".format(INFO, self.agent.name))

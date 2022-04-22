@@ -21,7 +21,7 @@ def load_q_learn():
     # specify the columns to use
     MockSubjectsLoader.COLUMNS_TYPES = {"ethnicity": str, "salary": float, "diagnosis": int}
     MockSubjectsLoader.NAMES = ["ethnicity", "salary", "diagnosis"]
-    MockSubjectsLoader.FILENAME = "/home/alex/qi3/drl_anonymity/src/examples/q_learn_distorted_sets/distorted_set_-2"
+    MockSubjectsLoader.FILENAME = "/src/examples/q_learning_three_columns_results/distorted_set_-2"
     ds_q_learn = MockSubjectsLoader()
 
     assert ds_q_learn.n_columns == 3, "Invalid number of columns {0} not equal to 3".format(ds_q_learn.n_columns)
@@ -40,7 +40,7 @@ def load_k_anonymity():
                          "dob", "ethnicity", "education", "salary",
                          "mutation_status", "preventative_treatment", "diagnosis"]}
 
-    ds_k_anonymity.read(filename=Path("/home/alex/qi3/drl_anonymity/src/examples/q_learn_distorted_sets/kanonymity_distorted.csv"),
+    ds_k_anonymity.read(filename=Path("/src/examples/q_learning_three_columns_results/kanonymity_distorted.csv"),
                         **options)
 
     assert ds_k_anonymity.n_columns == 3, "Invalid number of columns {0} not equal to 3".format(ds_k_anonymity.n_columns)

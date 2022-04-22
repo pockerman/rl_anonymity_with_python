@@ -5,6 +5,9 @@ Overview
 --------
 
 In this example, we use a tabular Q-learning algorithm to anonymize a data set with three columns.
+In particular, we discretize the total dataset distortion into bins. Another approach could be 
+to discretize the distortion of each column into bins and create tuples of indeces representing a state.
+We follow the latter approach in another example. 
 
 Q-learning
 ----------
@@ -13,24 +16,37 @@ Q-learning is one of the early breakthroughs in the field of reinforcement learn
 Q-learning is an off-policy algorithm where the learned state-action value function :math:`Q(s, \alpha)` directly approximates
 the optimal state-action value function :math:`Q^*`. This is done independently of the policy :math:`\pi`  being followed [1].
 
-
-The update equation is shown below:
-
-.. math::
-   Q(s_t, \alpha_t) = Q(s_t, \alpha_t)  + \eta  \left[r_{t+1} + \gamma max_{\alpha} Q(s_{t+1}, \alpha) - Q(s_t, \alpha_t)\right]
-   
-where :math:`\eta` is a user-defined learning factor and :math:`\gamma` is the user-defined discount factor.
-
-Although with Q-learning :math:`Q(s, \alpha)` directly approximates :math:`Q^*` independently of the policy :math:`\pi`  being followed,
-the policy still has an effect in that it determines which state-action pairs and visited updated. 
-However, for correct convergence all that is required is that all pairs continue to be updated [1]. In fact, any method guaranteed to find optimal behavior in the general case must require it [1]. The overall algorithm is shown in the box below.
+The Q-learning algorithm is an iterative algorithm where we iterate over a number of episodes. At each episode
+the algorithm steps over the environment for a user-specified number steps it executes an action which results
+in a new state and an observed state. This is shown collectively in the image below
 
 .. figure:: images/q_learning.png
 
    Q-learning algorithm. Image from [1].
 
 
-In this simple example we show how to apply QLearning on a dataset with three columns.
+At each episode step, the algorithm updates :math:`Q(s, \alpha)` according to:
+
+.. math::
+   Q(s_t, \alpha_t) = Q(s_t, \alpha_t)  + \alpha  \left[r_{t+1} + \gamma max_{\alpha} Q(s_{t+1}, \alpha) - Q(s_t, \alpha_t)\right]
+   
+where :math:`\alpha` is a user-defined learning factor and :math:`\gamma` is the user-defined discount factor. The algorithm requires the following user-defined input
+
+- Number of episodes
+- Number of steps per episode
+- :math:`\gamma`
+- :math:`\alpha`
+- An external policy function to decide which action to take (e.g. :math:`\epsilon`-greedy)
+
+Although with Q-learning :math:`Q(s, \alpha)` directly approximates :math:`Q^*` independently of the policy :math:`\pi`  being followed,
+the policy still has an effect in that it determines which state-action pairs and visited updated. 
+However, for correct convergence all that is required is that all pairs continue to be updated [1]. In fact, any method guaranteed to find optimal behavior in the general case must require it [1]. 
+
+The algorithm above,  stores the expected value estimate for each state-action pair in a table.
+This  means you cannot use it when we have continuous states or actions, which would lead to an array of infinite length.
+Given that the total dataset distortion is assumed to be in the range :math:`[0, 1]` of the real numbers, we 
+discretize this range into bins and for each entailed value of the distortion we use the corresponding bin as a state index. 
+Alternatively, we could discretize the distortion of each column into bins and create tuples of indeces representing a state.
 
 
 Code
@@ -42,68 +58,45 @@ The necessary imports
 
 	import numpy as np
 	import random
-	from pathlib import Path
 
+
+	from src.trainers.trainer import Trainer, TrainerConfig
 	from src.algorithms.q_learning import QLearning, QLearnConfig
-	from src.algorithms.trainer import Trainer
-	from src.datasets.datasets_loaders import MockSubjectsLoader
 	from src.spaces.action_space import ActionSpace
 	from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
-	from src.utils.reward_manager import RewardManager
-	from src.utils.serial_hierarchy import SerialHierarchy
 	from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
-	from src.policies.softmax_policy import SoftMaxPolicy
-	from src.utils.numeric_distance_type import NumericDistanceType
-	from src.utils.string_distance_calculator import StringDistanceType
-	from src.utils.distortion_calculator import DistortionCalculationType, DistortionCalculator
-	from src.spaces.discrete_state_environment import DiscreteStateEnvironment, DiscreteEnvConfig
 	from src.utils.iteration_control import IterationControl
-	from src.utils.plot_utils import plot_running_avg
+	from src.examples.helpers.plot_utils import plot_running_avg
+	from src.datasets import ColumnType
+	from src.examples.helpers.load_three_columns_mock_dataset import load_discrete_env, \
+	    get_ethinicity_hierarchy, get_salary_bins, load_mock_subjects
+	from src.spaces.env_type import DiscreteEnvType
 	from src.utils import INFO
 
-Next establish a helper function that creates the transoformations
-for the `ethnicity` column.
+Next establish a set of configuration parameters
 
 .. code-block::
 
-	def get_ethinicity_hierarchy():
-	    ethnicity_hierarchy = SerialHierarchy(values={})
-
-	    ethnicity_hierarchy["Mixed White/Asian"] = "White/Asian"
-	    ethnicity_hierarchy["White/Asian"] = "Mixed"
-
-	    ethnicity_hierarchy["Chinese"] = "Asian"
-	    ethnicity_hierarchy["Indian"] = "Asian"
-	    ethnicity_hierarchy["Mixed White/Black African"] = "White/Black"
-	    ethnicity_hierarchy["White/Black"] = "Mixed"
-
-	    ethnicity_hierarchy["Black African"] = "African"
-	    ethnicity_hierarchy["African"] = "Black"
-	    ethnicity_hierarchy["Asian other"] = "Asian"
-	    ethnicity_hierarchy["Black other"] = "Black"
-	    ethnicity_hierarchy["Mixed White/Black Caribbean"] = "White/Black"
-	    ethnicity_hierarchy["White/Black"] = "Mixed"
-
-	    ethnicity_hierarchy["Mixed other"] = "Mixed"
-	    ethnicity_hierarchy["Arab"] = "Asian"
-	    ethnicity_hierarchy["White Irish"] = "Irish"
-	    ethnicity_hierarchy["Irish"] = "European"
-	    ethnicity_hierarchy["Not stated"] = "Not stated"
-	    ethnicity_hierarchy["White Gypsy/Traveller"] = "White"
-	    ethnicity_hierarchy["White British"] = "British"
-	    ethnicity_hierarchy["British"] = "European"
-	    ethnicity_hierarchy["Bangladeshi"] = "Asian"
-	    ethnicity_hierarchy["White other"] = "White"
-	    ethnicity_hierarchy["Black Caribbean"] = "Caribbean"
-	    ethnicity_hierarchy["Caribbean"] = "Black"
-	    ethnicity_hierarchy["Pakistani"] = "Asian"
-
-	    ethnicity_hierarchy["European"] = "European"
-	    ethnicity_hierarchy["Mixed"] = "Mixed"
-	    ethnicity_hierarchy["Asian"] = "Asian"
-	    ethnicity_hierarchy["Black"] = "Black"
-	    ethnicity_hierarchy["White"] = "White"
-	    return ethnicity_hierarchy
+	# configuration params
+	EPS = 1.0
+	EPSILON_DECAY_OPTION = EpsilonDecayOption.CONSTANT_RATE  # .INVERSE_STEP
+	EPSILON_DECAY_FACTOR = 0.01
+	GAMMA = 0.99
+	ALPHA = 0.1
+	N_EPISODES = 1001
+	N_ITRS_PER_EPISODE = 30
+	N_STATES = 10
+	# fix the rewards. Assume that any average distortion in
+	# (0.3, 0.7) suits us
+	MAX_DISTORTION = 0.7
+	MIN_DISTORTION = 0.3
+	OUT_OF_MAX_BOUND_REWARD = -1.0
+	OUT_OF_MIN_BOUND_REWARD = -1.0
+	IN_BOUNDS_REWARD = 5.0
+	OUTPUT_MSG_FREQUENCY = 100
+	N_ROUNDS_BELOW_MIN_DISTORTION = 10
+	SAVE_DISTORTED_SETS_DIR = "q_learning_three_columns_results/distorted_set"
+	PUNISH_FACTOR = 2.0
 
 The dirver code creates brings all the elements together
 
@@ -114,109 +107,55 @@ The dirver code creates brings all the elements together
 	    # set the seed for random engine
 	    random.seed(42)
 
-	    # configuration params
-	    EPS = 1.0
-	    EPSILON_DECAY_OPTION = EpsilonDecayOption.CONSTANT_RATE #.INVERSE_STEP
-	    EPSILON_DECAY_FACTOR = 0.01
-	    GAMMA = 0.99
-	    ALPHA = 0.1
-	    N_EPISODES = 1001
-	    N_ITRS_PER_EPISODE = 30
-	    N_STATES = 10
-	    # fix the rewards. Assume that any average distortion in
-	    # (0.4, 0.7) suits us
-	    MAX_DISTORTION = 0.7
-	    MIN_DISTORTION = 0.3
-	    OUT_OF_MAX_BOUND_REWARD = -1.0
-	    OUT_OF_MIN_BOUND_REWARD = -1.0
-	    IN_BOUNDS_REWARD = 5.0
-	    OUTPUT_MSG_FREQUENCY = 100
-	    N_ROUNDS_BELOW_MIN_DISTORTION = 10
-	    SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/q_learn_distorted_sets/distorted_set"
+	    # set the seed for random engine
+	    random.seed(42)
 
-	    # specify the columns to drop
-	    drop_columns = MockSubjectsLoader.FEATURES_DROP_NAMES + ["preventative_treatment", "gender",
-		                                                     "education", "mutation_status"]
-	    MockSubjectsLoader.FEATURES_DROP_NAMES = drop_columns
+	    column_types = {"ethnicity": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
+		            "salary": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
+		            "diagnosis": ColumnType.INSENSITIVE_ATTRIBUTE}
 
-	    # do a salary normalization so that we work with
-	    # salaries in [0, 1] this is needed as we will
-	    # be using normalized distances
-	    MockSubjectsLoader.NORMALIZED_COLUMNS = ["salary"]
-
-	    # specify the columns to use
-	    MockSubjectsLoader.COLUMNS_TYPES = {"ethnicity": str, "salary": float, "diagnosis": int}
-	    ds = MockSubjectsLoader()
-
-	    assert ds.n_columns == 3, "Invalid number of columns {0} not equal to 3".format(ds.n_columns)
-
-	    # create bins for the salary generalization
-	    unique_salary = ds.get_column_unique_values(col_name="salary")
-	    unique_salary.sort()
-
-	    # modify slightly the max value because
-	    # we get out of bounds for the maximum salary
-	    bins = np.linspace(unique_salary[0], unique_salary[-1] + 1, N_STATES)
-
-	    # establish the action space. For every column
-	    # we assume three actions except for the ```diagnosis```
-	    # which we do not alter
 	    action_space = ActionSpace(n=5)
-	    action_space.add_many(ActionIdentity(column_name="ethnicity"),
+	    # all the columns that are SENSITIVE_ATTRIBUTE will be kept as they are
+	    # because currently we have no model
+	    # also INSENSITIVE_ATTRIBUTE will be kept as is
+	    action_space.add_many(ActionIdentity(column_name="salary"),
+		                  ActionIdentity(column_name="diagnosis"),
+		                  ActionIdentity(column_name="ethnicity"),
 		                  ActionStringGeneralize(column_name="ethnicity",
 		                                         generalization_table=get_ethinicity_hierarchy()),
-		                  ActionIdentity(column_name="salary"),
-		                  ActionNumericBinGeneralize(column_name="salary", generalization_table=bins),
-		                  ActionIdentity(column_name="diagnosis"))
+		                  ActionNumericBinGeneralize(column_name="salary",
+		                                             generalization_table=get_salary_bins(ds=load_mock_subjects(),
+		                                                                                  n_states=N_STATES)))
 
-	    action_space.shuffle()
-
-	    env_config = DiscreteEnvConfig()
-
-	    env_config.action_space = action_space
-	    env_config.reward_manager = RewardManager(bounds=(MIN_DISTORTION, MAX_DISTORTION),
-		                                      out_of_max_bound_reward=OUT_OF_MAX_BOUND_REWARD,
-		                                      out_of_min_bound_reward=OUT_OF_MIN_BOUND_REWARD,
-		                                      in_bounds_reward=IN_BOUNDS_REWARD)
-	    env_config.data_set = ds
-	    env_config.gamma = GAMMA
-	    env_config.max_distortion = MAX_DISTORTION
-	    env_config.min_distortion = MIN_DISTORTION
-	    env_config.n_states = N_STATES
-	    env_config.n_rounds_below_min_distortion = N_ROUNDS_BELOW_MIN_DISTORTION
-	    env_config.distorted_set_path = Path(SAVE_DISTORTED_SETS_DIR)
-	    env_config.distortion_calculator = DistortionCalculator(
-		numeric_column_distortion_metric_type=NumericDistanceType.L2_AVG,
-		string_column_distortion_metric_type=StringDistanceType.COSINE_NORMALIZE,
-		dataset_distortion_type=DistortionCalculationType.SUM)
-	    env_config.reward_factor = 0.95
-	    env_config.punish_factor = 2.0
-
-	    # create the environment
-	    env = DiscreteStateEnvironment(env_config=env_config)
-	    env.reset()
+	    env = load_discrete_env(env_type=DiscreteEnvType.TOTAL_DISTORTION_STATE, n_states=N_STATES,
+		                    action_space=action_space,
+		                    min_distortion=MIN_DISTORTION, max_distortion=MIN_DISTORTION,
+		                    total_min_distortion=MIN_DISTORTION, total_max_distortion=MAX_DISTORTION,
+		                    punish_factor=PUNISH_FACTOR, column_types=column_types,
+		                    save_distoreted_sets_dir=SAVE_DISTORTED_SETS_DIR,
+		                    use_identifying_column_dist_in_total_dist=False,
+		                    use_identifying_column_dist_factor=-100,
+		                    gamma=GAMMA,
+		                    in_bounds_reward=IN_BOUNDS_REWARD,
+		                    out_of_min_bound_reward=OUT_OF_MIN_BOUND_REWARD,
+		                    out_of_max_bound_reward=OUT_OF_MAX_BOUND_REWARD,
+		                    n_rounds_below_min_distortion=N_ROUNDS_BELOW_MIN_DISTORTION)
 
 	    # save the data before distortion so that we can
 	    # later load it on ARX
 	    env.save_current_dataset(episode_index=-1, save_index=False)
 
 	    # configuration for the Q-learner
-	    algo_config = QLearnConfig()
-	    algo_config.n_itrs_per_episode = N_ITRS_PER_EPISODE
-	    algo_config.gamma = GAMMA
-	    algo_config.alpha = ALPHA
-	    #algo_config.policy = SoftMaxPolicy(n_actions=len(action_space), tau=1.2)
-	    algo_config.policy = EpsilonGreedyPolicy(eps=EPS, n_actions=env.n_actions,
-		                                     decay_op=EPSILON_DECAY_OPTION,
-		                                     epsilon_decay_factor=EPSILON_DECAY_FACTOR)
+	    algo_config = QLearnConfig(gamma=GAMMA, alpha=ALPHA,
+		                       n_itrs_per_episode=N_ITRS_PER_EPISODE,
+		                       policy=EpsilonGreedyPolicy(eps=EPS, n_actions=env.n_actions,
+		                                                  decay_op=EPSILON_DECAY_OPTION,
+		                                                  epsilon_decay_factor=EPSILON_DECAY_FACTOR))
 
-	    # the learner we want to train
 	    agent = QLearning(algo_config=algo_config)
 
-	    configuration = {"n_episodes": N_EPISODES, "output_msg_frequency": OUTPUT_MSG_FREQUENCY}
-
-	    # create a trainer to train the Qlearning agent
-	    trainer = Trainer(env=env, agent=agent, configuration=configuration)
+	    trainer_config = TrainerConfig(n_episodes=N_EPISODES, output_msg_frequency=OUTPUT_MSG_FREQUENCY)
+	    trainer = Trainer(env=env, agent=agent, configuration=trainer_config)
 	    trainer.train()
 
 	    # avg_rewards = trainer.avg_rewards()
@@ -242,7 +181,77 @@ The dirver code creates brings all the elements together
 	    env.save_current_dataset(episode_index=-2, save_index=False)
 	    print("{0} Done....".format(INFO))
 	    print("=============================================")
-	    
+	   
+Results
+-------
+
+The following images show the performance of the learning process
+
+.. figure:: images/qlearn_rewards_3_cols.png
+   
+   Running average reward.
+   
+   
+.. figure:: images/qlearn_distortion_3_cols.png
+   
+   Running average total distortion.
+
+Although there is evidence of learning, it should be noted that this depends heavily on the applied transformations on the columns and the
+metrics used. So typically, some experimentation should be employed in order to determine the right options.
+
+The following is snapshot of the distorted dataset produced by the agent
+
+.. code-block::
+
+	ethnicity,salary,diagnosis
+	British,0.3333333333333333,1
+	British,0.1111111111111111,0
+	British,0.5555555555555556,3
+	British,0.5555555555555556,3
+	British,0.1111111111111111,0
+	British,0.1111111111111111,1
+	British,0.1111111111111111,4
+	British,0.3333333333333333,3
+	British,0.1111111111111111,4
+	British,0.3333333333333333,0
+	Asian,0.1111111111111111,0
+	British,0.1111111111111111,0
+	British,0.1111111111111111,3
+	White,0.1111111111111111,0
+	British,0.1111111111111111,3
+	British,0.3333333333333333,4
+	Mixed,0.3333333333333333,4
+	British,0.7777777777777777,1
+	
+whilst the following is a snapshot of the distorted dataset by using ARX K-anonymity algorithm
+
+.. code-block::
+
+	NHSno,given_name,surname,gender,dob,ethnicity,education,salary,mutation_status,preventative_treatment,diagnosis
+	*,*,*,*,*,White British,*,0.3333333333333333,*,*,1
+	*,*,*,*,*,White British,*,0.1111111111111111,*,*,0
+	*,*,*,*,*,White British,*,0.1111111111111111,*,*,1
+	*,*,*,*,*,White British,*,0.3333333333333333,*,*,3
+	*,*,*,*,*,White British,*,0.1111111111111111,*,*,4
+	*,*,*,*,*,White British,*,0.3333333333333333,*,*,0
+	*,*,*,*,*,Bangladeshi,*,0.1111111111111111,*,*,0
+	*,*,*,*,*,White British,*,0.1111111111111111,*,*,0
+	*,*,*,*,*,White other,*,0.1111111111111111,*,*,0
+	*,*,*,*,*,White British,*,0.3333333333333333,*,*,4
+	*,*,*,*,*,White British,*,0.7777777777777777,*,*,1
+	*,*,*,*,*,White British,*,0.1111111111111111,*,*,2
+	*,*,*,*,*,White British,*,0.1111111111111111,*,*,2
+	*,*,*,*,*,White other,*,0.1111111111111111,*,*,2
+	*,*,*,*,*,White British,*,0.5555555555555556,*,*,0
+	*,*,*,*,*,White British,*,0.5555555555555556,*,*,4
+	*,*,*,*,*,White British,*,0.5555555555555556,*,*,0
+	*,*,*,*,*,White British,*,0.3333333333333333,*,*,0
+
+
+Note that the K-anonymity algorithm removes some rows during the anonymization process, so there is no one-to-one correspondence 
+to the two outpus. Nonetheless, it shows qualitatively what the two algorithms produce. 
+
+
 References
 ----------	   
 1. Richard S. Sutton and Andrw G. Barto, Reinforcement Learning. An Introduction 2nd Edition, MIT Press.
