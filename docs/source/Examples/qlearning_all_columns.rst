@@ -1,19 +1,13 @@
-Q-learning with column distortion
-=================================
+Q-learning with many columns 
+=============================
 
 Overview
 --------
 
 In the `previous <qlearning_three_columns.html>`_ example, we applied Q-learning on a dataset consisting
 of three columns. Moreover, we used a one dimensional state space; we discretized the range :math:`[0,1]` into bins and used the
-resulting bin index as the state index. 
-
-In this example,  we want to include in the state space the distortion of an individual column.
-We will do so by following what we did previously; for every column we assume a distortion in the range :math:`[0,1]`
-which we discretize into a number of bins. This way a state is a tuple of indexes. We can use different number
-of bins per column if needed but we won't do this here.
-
-The rest remain the same as in the previous tutorial.
+resulting bin index as the state index. In this example, we will simply allow for more columns in the data set. 
+Other than that, this example is the same as the previous one. 
 
 Code
 ----
@@ -83,7 +77,7 @@ The dirver code brings all the elements together
 		            "dob": ColumnType.SENSITIVE_ATTRIBUTE,
 		            "ethnicity": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
 		            "education": ColumnType.SENSITIVE_ATTRIBUTE,
-		            "salary": ColumnType.SENSITIVE_ATTRIBUTE,
+		            "salary": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
 		            "mutation_status": ColumnType.SENSITIVE_ATTRIBUTE,
 		            "preventative_treatment": ColumnType.SENSITIVE_ATTRIBUTE,
 		            "diagnosis": ColumnType.INSENSITIVE_ATTRIBUTE}

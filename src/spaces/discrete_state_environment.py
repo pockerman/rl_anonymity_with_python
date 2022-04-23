@@ -249,10 +249,10 @@ class DiscreteStateEnvironment(object):
                 raise ValueError("Name {0} not in column bins names {1} ".format(column_name, list(self.column_bins.keys())))
 
             if column_name is None:
-                column_dists = [(0.0, name) for name in self.column_bins]
+                column_dists = [(0.0, name) for name in self.column_bins if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]
 
             else:
-                column_dists = [(self.column_distances[name], name) for name in self.column_bins]
+                column_dists = [(self.column_distances[name], name) for name in self.column_bins if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]
 
             state = []
             for distortion, name in column_dists:
@@ -274,8 +274,13 @@ class DiscreteStateEnvironment(object):
         """
 
         col_names = self.config.data_set.get_columns_names()
-        for col in col_names:
-            self.column_visits[col] = 0
+        for name in col_names:
+            self.column_visits[name] = 0
+
+            # if it is an identifying attribute
+            # we have visited it
+            if self.config.column_types[name] == ColumnType.IDENTIFYING_ATTRIBUTE:
+                self.column_visits[name] = 1
 
     def all_columns_visited(self) -> bool:
         """Returns true is all columns have been visited
@@ -524,20 +529,82 @@ class DiscreteStateEnvironment(object):
 
         # create the column bins
         for name in self.column_names:
-            self.column_bins[name] = np.linspace(0.0, 1.0, self.config.n_states)
+
+            # we create bins only for the QUASI_IDENTIFYING_ATTRIBUTE
+            # attributes
+            if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
+                self.column_bins[name] = np.linspace(0.0, 1.0, self.config.n_states)
+            #else:
+            #    self.column_bins["all_the_rest"] = np.linspace(0.0, 1.0, self.config.n_states)
 
         if len(self.column_bins) == 3:
             self._build_three_columns()
+        elif len(self.column_bins) == 4:
+            self._build_4_columns()
+        elif len(self.column_bins) == 5:
+            self._build_5_columns()
         else:
             raise ValueError("Invalid number of columns. Cannot build the multi-column state bins")
 
+        # add the remaining columns
+        for name in self.column_names:
+
+            # we create bins only for the QUASI_IDENTIFYING_ATTRIBUTE
+            # attributes
+            if self.config.column_types[name] != ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
+                self.column_bins[name] = np.linspace(0.0, 1.0, self.config.n_states)
+
     def _build_three_columns(self):
 
-        name = self.column_names[0]
+        name = ""
+        for n in self.config.column_types:
+            if self.config.column_types[n] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
+                name = n
+                break
+
+        if name == "":
+            raise ValueError("No QUASI_IDENTIFYING_ATTRIBUTE has been specified")
+
         for i in range(len(self.column_bins[name])):
             for j in range(len(self.column_bins[name])):
                 for k in range(len(self.column_bins[name])):
                     self.state_space.append((i, j, k))
+
+    def _build_4_columns(self):
+
+        name = ""
+        for n in self.config.column_types:
+            if self.config.column_types[n] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
+                name = n
+                break
+
+        if name == "":
+            raise ValueError("No QUASI_IDENTIFYING_ATTRIBUTE has been specified")
+
+        for i1 in range(len(self.column_bins[name])):
+            for i2 in range(len(self.column_bins[name])):
+                for i3 in range(len(self.column_bins[name])):
+                    for i4 in range(len(self.column_bins[name])):
+                        self.state_space.append((i1, i2, i3, i4))
+
+    def _build_5_columns(self):
+
+        name = ""
+        for n in self.config.column_types:
+            if self.config.column_types[n] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
+                name = n
+                break
+
+        if name == "":
+            raise ValueError("No QUASI_IDENTIFYING_ATTRIBUTE has been specified")
+
+        name = self.column_names[0]
+        for i1 in range(len(self.column_bins[name])):
+            for i2 in range(len(self.column_bins[name])):
+                for i3 in range(len(self.column_bins[name])):
+                    for i4 in range(len(self.column_bins[name])):
+                        for i5 in range(len(self.column_bins[name])):
+                            self.state_space.append((i1, i2, i3, i4, i5))
 
     def _distort_identifying_attributes(self):
 

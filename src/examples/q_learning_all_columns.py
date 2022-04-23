@@ -52,7 +52,7 @@ if __name__ == '__main__':
                     "dob": ColumnType.SENSITIVE_ATTRIBUTE,
                     "ethnicity": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
                     "education": ColumnType.SENSITIVE_ATTRIBUTE,
-                    "salary": ColumnType.SENSITIVE_ATTRIBUTE,
+                    "salary": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
                     "mutation_status": ColumnType.SENSITIVE_ATTRIBUTE,
                     "preventative_treatment": ColumnType.SENSITIVE_ATTRIBUTE,
                     "diagnosis": ColumnType.INSENSITIVE_ATTRIBUTE}
