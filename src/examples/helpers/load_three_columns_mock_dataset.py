@@ -9,7 +9,6 @@ from src.utils.serial_hierarchy import SerialHierarchy
 from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
 from src.spaces.discrete_state_environment import DiscreteStateEnvironment
 from src.spaces.action_space import ActionSpace
-from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
 from src.maths.distortion_calculator import DistortionCalculationType, DistortionCalculator
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType

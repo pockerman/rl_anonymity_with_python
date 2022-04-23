@@ -40,6 +40,7 @@ N_ROUNDS_BELOW_MIN_DISTORTION = 10
 SAVE_DISTORTED_SETS_DIR = "q_learning_three_columns_results/distorted_set"
 PUNISH_FACTOR = 2.0
 
+
 if __name__ == '__main__':
 
     # set the seed for random engine

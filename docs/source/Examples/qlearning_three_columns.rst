@@ -48,6 +48,17 @@ Given that the total dataset distortion is assumed to be in the range :math:`[0,
 discretize this range into bins and for each entailed value of the distortion we use the corresponding bin as a state index. 
 Alternatively, we could discretize the distortion of each column into bins and create tuples of indeces representing a state.
 
+We preprocess the data set by normalizing the numeric columns. 
+We will use the cosine normalized distance to measure the distortion of columns with string data.
+Similarly, we use the following :math:`L_2`-based norm for calculating the distortion of
+numeric columns
+
+.. math::
+
+	dist(\mathbf{v}_1, \mathbf{v}_2) = \sqrt{\frac{||\mathbf{v}_1 - \mathbf{v}_2||_{L_2}}{N}}
+
+where $N$ is the size of the vector.	 This way the resulting distance, due to the normalization of numeric columns, will be in the range :math:`[0,1]`.
+
 
 Code
 ----
@@ -98,7 +109,7 @@ Next establish a set of configuration parameters
 	SAVE_DISTORTED_SETS_DIR = "q_learning_three_columns_results/distorted_set"
 	PUNISH_FACTOR = 2.0
 
-The dirver code creates brings all the elements together
+The dirver code  brings all the elements together
 
 .. code-block::
 
