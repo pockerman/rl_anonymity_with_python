@@ -1,5 +1,5 @@
-Q-learning with many columns 
-=============================
+Q-learning algorithm on mock data set 
+=====================================
 
 Overview
 --------
