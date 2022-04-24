@@ -1,4 +1,4 @@
-Semi-gradient SARSA algorithm on a three columns data set
+Semi-gradient SARSA algorithm on mock data set
 =========================================================
 
 Overview
@@ -263,6 +263,10 @@ The driver code brings all elements together
 .. figure:: images/sarsa_semi_grad_multi_cols_distortion.png
 
    Running average total distortion.
+   
+The images above illustrate that there is clear evidence of learning as it was when using Qlearning. Furthermore, the training time is a lot more than
+the simple Qlearning algorithm. Thus, with the current implementation of semi0gradient SARSA we do not have any clear advantage. Instead, it could be argued
+that we maintain the constraints related with Qlearning (this comes form the tiling approach we used) without and clear advantage.
    
 References
 ----------
