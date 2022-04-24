@@ -141,6 +141,40 @@ class DiscreteStateEnvironment(object):
     def env_type(self) -> DiscreteEnvType:
         return self.config.env_type
 
+    def n_quasi_identifying_columns(self) -> int:
+        """Returns the number of quasi identifying columns
+        assumed in the data set
+
+        Returns
+        -------
+
+        The number of quasi identifying columns
+        assumed in the data set
+        """
+
+        counter = 0
+        for name in self.column_names:
+
+            # we create bins only for the QUASI_IDENTIFYING_ATTRIBUTE
+            # attributes
+            if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
+                counter += 1
+        return counter
+
+    def is_quasi_identifying_column(self, col_name: str) -> bool:
+        """Returns true if the column is a quasi identifying column
+
+        Parameters
+        ----------
+        col_name: The column name to query
+
+        Returns
+        -------
+
+        Returns true if the column is a quasi identifying column
+        """
+        return self.config.column_types[col_name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE
+
     def get_action(self, aidx: int) -> ActionBase:
         """Returns the action if the global aidx index
 

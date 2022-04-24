@@ -97,9 +97,9 @@ class Tile(object):
             raise ValueError("len(bin_indices) = {0} != len( self.columns_bins) = {1}".format(len(bin_indices),
                                                                                               len(self.columns_bins)))
 
-        col_indices = []
-        for col in self.columns_bins:
-            col_indices.append((col, self.columns_bins[col]))
+        col_indices = [(col, self.columns_bins[col]) for col in self.columns_bins]
+        #for col in self.columns_bins:
+        #    col_indices.append((col, self.columns_bins[col]))
 
         if col_indices == bin_indices:
             return True
@@ -117,12 +117,13 @@ class Layer(object):
         return n_bins ** n_columns
 
     def __init__(self, column_bins, n_bins: int,
-                 n_actions: int, start_index: int, end_index: int):
+                 n_actions: int, start_index: int, end_index: int, env: Env):
         self.column_bins = column_bins
         self.n_bins = n_bins
         self.n_actions = n_actions
         self.start_index = start_index
         self.end_index = end_index
+        self.env = env
         self.tiles = {}
 
     def __len__(self):
@@ -201,7 +202,8 @@ class Layer(object):
         # get the bin indices in the layer for the
         # raw_state
         bin_indices = [(name, np.digitize(raw_state.column_distortions[name],
-                                          self.column_bins[name])) for name in raw_state.column_distortions]
+                                          self.column_bins[name]))
+                       for name in raw_state.column_distortions if self.env.is_quasi_identifying_column(name)]
 
         global_tile_idx = INVALID_ID
 
@@ -225,7 +227,8 @@ class Tiles(object):
 
     """
 
-    def __init__(self, n_layers: int, n_bins: int, n_actions: int, column_ranges: dict):
+    def __init__(self, n_layers: int, n_bins: int, n_actions: int, column_ranges: dict,
+                 env: Env):
         """Constructor. Initialize by passing the number of layers, number of bins,
         number of actions and the column ranges
 
@@ -237,6 +240,7 @@ class Tiles(object):
         n_bins: Number of bins to use per column
         n_actions: Number of actions allowed in the environment
         column_ranges: The range of values that each column can take
+        env: The environment that the tiles discretize
 
         """
         self.layers = {}
@@ -244,6 +248,7 @@ class Tiles(object):
         self.n_bins = n_bins
         self.n_actions = n_actions
         self.column_ranges = column_ranges
+        self.env = env
 
     def __getitem__(self, layer) -> Layer:
         return self.layers[layer]
@@ -278,7 +283,8 @@ class Tiles(object):
             new_layer = Layer(column_bins=column_bins, n_bins=self.n_bins,
                               n_actions=self.n_actions,
                               start_index=start_layer_idx,
-                              end_index=end_layer_idx)
+                              end_index=end_layer_idx,
+                              env=self.env)
 
             # build the tiles for the new layer
             next_tile_global_idx = new_layer.build_tiles(next_tile_global_idx)
@@ -490,7 +496,8 @@ class TiledEnv(object):
         # calculate the tile width for each column in the
         # data set
         self.tiles = Tiles(n_bins=self.n_bins, n_layers=self.n_layers,
-                           n_actions=self.n_actions, column_ranges=self.column_ranges)
+                           n_actions=self.n_actions, column_ranges=self.column_ranges,
+                           env=self.env)
         self.tiles.build()
 
     def get_aggregated_state(self, state_val: float) -> int:
@@ -589,7 +596,6 @@ class TiledEnv(object):
 
         tiled_state = np.zeros(self.n_layers * self.n_actions * self.n_bins ** (len(self.column_ranges)))
 
-        found = False
         for layer in range(self.n_layers):
             global_idx = self.tiles[layer].get_global_tile_index(raw_state=state, action=action)
             if global_idx != INVALID_ID:
@@ -635,6 +641,10 @@ class TiledEnv(object):
 
         for name in self.column_ranges:
             range_ = self.column_ranges[name]
+
+            if range_[1] - range_[0] <= 1.0e-5:
+                raise ValueError("Range for variable={0} is zero".format(name))
+
             self.column_scales[name] = self.n_bins / (range_[1] - range_[0])
 
     def _validate(self) -> None:
@@ -660,7 +670,10 @@ class TiledEnv(object):
             raise InvalidParamValue(param_name="env",
                                     param_value="None")
 
-        if len(self.column_ranges) != len(self.env.column_names):
+        # column ranges may be different than
+        # column names. We need to check on
+        n_quasi_ident_columns = self.env.n_quasi_identifying_columns()
+        if len(self.column_ranges) != n_quasi_ident_columns:
             raise ValueError("Column ranges is not equal to number of columns")
 
         if self.n_layers == 0:

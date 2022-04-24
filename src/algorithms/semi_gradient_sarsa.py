@@ -167,6 +167,7 @@ class SemiGradSARSA(object):
             # is set. then update the weights
             if time_step.done:
                 self._weights_update_episode_done(env=env, state=state, action=action, reward=reward)
+                episode_n_itrs += 1
                 break
 
             # choose action A prime as a function  of q_hat(S prime, *,  w)
