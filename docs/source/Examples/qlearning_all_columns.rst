@@ -160,3 +160,9 @@ The following images show the performance of the learning process
 .. figure:: images/qlearn_distortion_multi_cols.png
    
    Running average total distortion.
+   
+   
+References
+-----------
+
+1. Richard S. Sutton and Andrw G. Barto, Reinforcement Learning. An Introduction 2nd Edition, MIT Press.
