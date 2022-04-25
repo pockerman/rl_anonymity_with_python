@@ -5,6 +5,7 @@ https://github.com/deepmind/dm_env/blob/master/dm_env/_environment.py
 
 import copy
 import numpy as np
+import torch
 from pathlib import Path
 from typing import TypeVar, List, Any
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ class DiscreteEnvConfig(object):
     column_types: dict = None
     use_identifying_column_dist_in_total_dist: bool = True
     use_identifying_column_dist_factor: float = 1.0
+    state_as_distances: bool = False
 
 
 class DiscreteStateEnvironment(object):
@@ -63,7 +65,8 @@ class DiscreteStateEnvironment(object):
                      env_type: DiscreteEnvType = DiscreteEnvType.TOTAL_DISTORTION_STATE,
                      distorted_set_path: Path = None, column_types: dir={},
                      use_identifying_column_dist_in_total_dist: bool = True,
-                     use_identifying_column_dist_factor: float = 1.0):
+                     use_identifying_column_dist_factor: float = 1.0,
+                     state_as_distances: bool = False):
 
         config = DiscreteEnvConfig(data_set=data_set, action_space=action_space,
                                    reward_manager=reward_manager,
@@ -78,7 +81,8 @@ class DiscreteStateEnvironment(object):
                                    average_distortion_constraint=average_distortion_constraint,
                                    env_type=env_type, column_types=column_types,
                                    use_identifying_column_dist_in_total_dist=use_identifying_column_dist_in_total_dist,
-                                   use_identifying_column_dist_factor=use_identifying_column_dist_factor)
+                                   use_identifying_column_dist_factor=use_identifying_column_dist_factor,
+                                   state_as_distances=state_as_distances)
 
         return cls(env_config=config)
 
@@ -140,6 +144,9 @@ class DiscreteStateEnvironment(object):
     @property
     def env_type(self) -> DiscreteEnvType:
         return self.config.env_type
+
+    def close(self, **kwargs) -> None:
+        pass
 
     def n_quasi_identifying_columns(self) -> int:
         """Returns the number of quasi identifying columns
@@ -276,6 +283,15 @@ class DiscreteStateEnvironment(object):
         -------
 
         """
+
+        if self.config.state_as_distances:
+            if column_name is None:
+                column_dists = [0.0 for _ in self.column_bins] #if
+                                #self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]
+            else:
+                column_dists = [self.column_distances[name] for name in self.column_bins]
+
+            return column_dists
 
         if self.config.env_type == DiscreteEnvType.MULTI_COLUMN_STATE:
 
@@ -460,6 +476,11 @@ class DiscreteStateEnvironment(object):
         # apply the action and update distoration
         # and column count
 
+        if isinstance(action, int) or isinstance(action, np.int64):
+            action = self.get_action(aidx=action)
+        elif isinstance(action, torch.Tensor):
+            action = self.get_action(aidx=action.item())
+
         self.apply_action(action=action)
 
         column_dist = self.column_distances[action.column_name]
@@ -502,6 +523,9 @@ class DiscreteStateEnvironment(object):
         # then the state_val is not used instead we use the computed distances
         next_state = self.get_aggregated_state(state_val=current_distortion,
                                                column_name=action.column_name)
+
+        if next_state is None:
+            raise ValueError("Next state is None")
 
         # get the bins for the min distortion
         min_dist_bin = self.get_min_aggregated_state()
@@ -549,7 +573,7 @@ class DiscreteStateEnvironment(object):
 
         if done:
             step_type = StepType.LAST
-            next_state = None
+            #next_state = None
 
         self.current_time_step = TimeStep(step_type=step_type,
                                           reward=reward,
@@ -582,9 +606,6 @@ class DiscreteStateEnvironment(object):
 
         # add the remaining columns
         for name in self.column_names:
-
-            # we create bins only for the QUASI_IDENTIFYING_ATTRIBUTE
-            # attributes
             if self.config.column_types[name] != ColumnType.QUASI_IDENTIFYING_ATTRIBUTE:
                 self.column_bins[name] = np.linspace(0.0, 1.0, self.config.n_states)
 
