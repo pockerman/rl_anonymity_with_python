@@ -107,7 +107,7 @@ class PyTorchTrainer(object):
         # monitor performance
         self.total_rewards: np.array = np.zeros(self.configuration.n_episodes)
         self.iterations_per_episode = []
-        self.total_distortions = []
+        self.total_distortions = np.zeros(self.configuration.n_episodes)
 
     def avg_rewards(self) -> np.array:
         """
@@ -145,6 +145,10 @@ class PyTorchTrainer(object):
 
         if self.agent is None:
             raise ValueError("Agent has not been specified")
+
+        self.total_rewards: np.array = np.zeros(self.configuration.n_episodes)
+        self.iterations_per_episode = []
+        self.total_distortions = np.zeros(self.configuration.n_episodes)
 
         self.env.reset()
         self.agent.actions_before_training_begins(self.env)
@@ -212,6 +216,9 @@ class PyTorchTrainer(object):
                   "avg distortion {2}".format(INFO, episode_info.episode_score,
                                               episode_info.total_distortion / episode_info.episode_itrs))
 
+            self.iterations_per_episode.append(episode_info.episode_itrs)
+            self.total_rewards[episode] = episode_info.episode_score
+            self.total_distortions[episode] = episode_info.total_distortion / episode_info.episode_itrs
             self.agent.actions_after_episode_ends(self.env, episode, **{"episode_info": episode_info})
 
         self.actions_after_training()

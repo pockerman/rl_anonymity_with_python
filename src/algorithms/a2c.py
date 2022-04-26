@@ -32,8 +32,8 @@ class A2CConfig(object):
     """
 
     gamma: float = 0.99
-    tau: float = 1.2
-    beta: float = 1.0
+    tau: float = 0.1
+    beta: float = None
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     max_grad_norm: float = 1.0
@@ -58,7 +58,8 @@ class _ActResult(object):
 
 
 def create_discounts_array(end: int, base: float, start=0, endpoint=False):
-    """
+    """ Create an array of floating point numbers in [start, end)
+    with the given base
 
     Parameters
     ----------
@@ -197,7 +198,7 @@ class A2C(Generic[Optimizer]):
 
         buffer: ReplayBuffer = episode_info.info["buffer"]
 
-        reward = buffer.get_item_as_torch_tensor("reward"),
+        #reward = buffer.get_item_as_torch_tensor("reward"),
 
         self._optimize_model(rewards=buffer.get_item_as_torch_tensor("reward"),
                              logprobs=buffer.get_torch__tensor_info_item_as_torch_tensor("logprobs"),
@@ -247,6 +248,9 @@ class A2C(Generic[Optimizer]):
         episode_iterations = 0
         total_distortion = 0
 
+        # this is in parallel all
+        # participating workers reset their
+        # environment and return their TimeStep
         time_step: VectorTimeStep = env.reset()
         states = time_step.stack_observations()
 
@@ -259,8 +263,10 @@ class A2C(Generic[Optimizer]):
             next_states = time_step.stack_observations()
 
             reward = time_step.stack_rewards()
+            total_distortions = time_step.stack_total_distortion()
 
             episode_score += np.mean(reward)
+            total_distortion += np.mean(total_distortions)
 
             # append the roll outs
             buffer.add(state=states, next_state=next_states,

@@ -127,6 +127,10 @@ class VectorTimeStep(object):
         self.time_steps.append(time_step)
 
     def stack_observations(self) -> np.ndarray:
+
+        if isinstance(self.time_steps[0].observation, list):
+            return np.vstack([time_step.observation for time_step in self.time_steps])
+
         return np.vstack([time_step.observation.to_list() for time_step in self.time_steps])
 
     def stack_rewards(self) -> np.ndarray:
@@ -137,6 +141,9 @@ class VectorTimeStep(object):
 
     def stack_dones(self):
         return [time_step.done for time_step in self.time_steps]
+
+    def stack_total_distortion(self):
+        return [time_step.info["total_distortion"] for time_step in self.time_steps]
 
 
 
