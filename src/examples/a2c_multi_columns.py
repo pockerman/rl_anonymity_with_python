@@ -12,7 +12,6 @@ from src.spaces.env_type import DiscreteEnvType
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
 from src.utils.iteration_control import IterationControl
-from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.examples.helpers.plot_utils import plot_running_avg
 from src.spaces.multiprocess_env import MultiprocessEnv
 from src.trainers.pytorch_trainer import PyTorchTrainer, PyTorchTrainerConfig
