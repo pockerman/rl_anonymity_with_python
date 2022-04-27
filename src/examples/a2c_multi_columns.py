@@ -11,9 +11,7 @@ from src.datasets import ColumnType
 from src.spaces.env_type import DiscreteEnvType
 from src.spaces.action_space import ActionSpace
 from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNumericBinGeneralize
-from src.algorithms.q_learning import QLearnConfig, QLearning
-from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
-from src.trainers.trainer import Trainer, TrainerConfig
+from src.utils.iteration_control import IterationControl
 from src.examples.helpers.plot_utils import plot_running_avg
 from src.spaces.multiprocess_env import MultiprocessEnv
 from src.trainers.pytorch_trainer import PyTorchTrainer, PyTorchTrainerConfig
@@ -22,7 +20,7 @@ from src.maths.pytorch_optimizer_config import PyTorchOptimizerConfig
 from src.utils import INFO
 
 N_STATES = 10
-N_ITRS_PER_EPISODE = 30
+N_ITRS_PER_EPISODE = 400
 ACTION_SPACE_SIZE = 10
 N_WORKERS = 3
 N_EPISODES = 1001
@@ -32,9 +30,6 @@ PUNISH_FACTOR = 2.0
 MAX_DISTORTION = 0.7
 MIN_DISTORTION = 0.4
 SAVE_DISTORTED_SETS_DIR = "/home/alex/qi3/drl_anonymity/src/examples/a2c_all_cols_multi_state_results/distorted_set"
-EPS = 1.0
-EPSILON_DECAY_OPTION = EpsilonDecayOption.CONSTANT_RATE  # .INVERSE_STEP
-EPSILON_DECAY_FACTOR = 0.01
 USE_IDENTIFYING_COLUMNS_DIST = True
 IDENTIFY_COLUMN_DIST_FACTOR = 0.1
 OUT_OF_MAX_BOUND_REWARD = -1.0
@@ -131,8 +126,17 @@ if __name__ == '__main__':
 
     # agent configuration
     a2c_config = A2CConfig(action_sampler=action_sampler, n_iterations_per_episode=N_ITRS_PER_EPISODE,
-                           a2cnet=net, save_model_path=Path("./a2c_three_columns_output/"),
+                           a2cnet=net, save_model_path=Path("./a2c_all_cols_multi_state_results/"),
                            n_workers=N_WORKERS,
+                           normalize_advantages=True,
+                           gamma=GAMMA,
+                           tau=0.1,
+                           beta=None, # don't use entropy
+                           policy_loss_weight=1.0,
+                           value_loss_weight=1.0,
+                           max_grad_norm=1.0,
+                           batch_size=N_ITRS_PER_EPISODE,
+                           device='cpu',
                            optimizer_config=PyTorchOptimizerConfig(optimizer_type=OptimizerType.ADAM,
                                                                    optimizer_learning_rate=ALPHA))
 
@@ -164,6 +168,14 @@ if __name__ == '__main__':
         plot_running_avg(avg_episode_dist, steps=100,
                          xlabel="Episodes", ylabel="Distortion",
                          title="Running distortion average over 100 episodes")
+
+        # play the agent on the environment.
+        # call the environment builder to create
+        # an instance of the environment
+        discrte_env = env.env_builder()
+
+        stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
+        agent.play(env=discrte_env, criteria=stop_criterion)
 
     except Exception as e:
         print("An excpetion was thrown...{0}".format(str(e)))

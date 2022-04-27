@@ -39,11 +39,10 @@ class A2CConfig(object):
     max_grad_norm: float = 1.0
     n_iterations_per_episode: int = 100
     n_workers: int = 1
-    action_sampler: Callable = None
-    value_function: LossFunction = None
-    policy_loss: LossFunction = None
     batch_size: int = 0
+    normalize_advantages: bool = True
     device: str = 'cpu'
+    action_sampler: Callable = None
     a2cnet: nn.Module = None
     save_model_path: Path = None
     optimizer_config: PyTorchOptimizerConfig = None
@@ -147,6 +146,7 @@ class A2C(Generic[Optimizer]):
         Returns
         -------
 
+        An array with the model parameters
         """
         return self.a2c_net.parameters()
 
@@ -195,10 +195,7 @@ class A2C(Generic[Optimizer]):
         """
 
         episode_info: EpisodeInfo = options["episode_info"]
-
         buffer: ReplayBuffer = episode_info.info["buffer"]
-
-        #reward = buffer.get_item_as_torch_tensor("reward"),
 
         self._optimize_model(rewards=buffer.get_item_as_torch_tensor("reward"),
                              logprobs=buffer.get_torch__tensor_info_item_as_torch_tensor("logprobs"),
@@ -361,6 +358,10 @@ class A2C(Generic[Optimizer]):
         # create TD errors: R_t + gamma*V_{t+1} - V_t for t=0 to T
         advantages = rewards_[:-1] + self.config.gamma * values_[1:] - values_[: -1]
 
+        if self.config.normalize_advantages:
+            # normalize advantages
+            advantages = (advantages - np.mean(advantages)) / np.std(advantages)
+
         # create the GAES by multiplying the tau discounts times the TD errors
         gaes = np.array(
             [[np.sum(tau_discounts[: total_time - 1 - t] * advantages[t:, w]) for t in range(total_time - 1 )] for w in
@@ -504,6 +505,9 @@ class A2C(Generic[Optimizer]):
             # select action
             action = None
             time_step = env.step(action)
+
+            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state, total_dist,
+                                                                                  action.column_name + "-" + action.action_type.name))
 
             if time_step.done:
                 time_step = env.reset()
