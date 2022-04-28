@@ -359,8 +359,12 @@ class A2C(Generic[Optimizer]):
         advantages = rewards_[:-1] + self.config.gamma * values_[1:] - values_[: -1]
 
         if self.config.normalize_advantages:
-            # normalize advantages
-            advantages = (advantages - np.mean(advantages)) / np.std(advantages)
+
+            std = np.std(advantages)
+
+            if std > 1.0e-4:
+                # normalize advantages
+                advantages = (advantages - np.mean(advantages)) / np.std(advantages)
 
         # create the GAES by multiplying the tau discounts times the TD errors
         gaes = np.array(
@@ -448,6 +452,9 @@ class A2C(Generic[Optimizer]):
                                        self.config.max_grad_norm)
         self.optimizer.step()
 
+        for name, param in self.a2c_net.named_parameters():
+            print(name, torch.isfinite(param.grad).all())
+
         print("{0} Finished optimization step....".format(INFO))
 
     def set_train_mode(self) -> None:
@@ -496,18 +503,23 @@ class A2C(Generic[Optimizer]):
         """
 
         time_step = env.reset()
-
-        while criteria.continue_itrs():
-            state = time_step.observation.to_ndarray()
+        distortion = time_step.info["total_distortion"]
+        while criteria.continue_itrs(distortion=distortion):
+            state = np.array(time_step.observation)
             state = torch.from_numpy(state).float()
             logits, values = self(state)
 
-            # select action
-            action = None
-            time_step = env.step(action)
+            action_sampler_dist = self.config.action_sampler(logits)
+            action = action_sampler_dist.sample()
 
-            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state, total_dist,
+            action = env.get_action(aidx=action.item())
+
+            time_step = env.step(action)
+            distortion = time_step.info["total_distortion"]
+            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state, distortion,
                                                                                   action.column_name + "-" + action.action_type.name))
+
+            env.save_current_dataset(episode_index=criteria.iteration_counter)
 
             if time_step.done:
                 time_step = env.reset()

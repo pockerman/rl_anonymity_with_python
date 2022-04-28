@@ -16,7 +16,7 @@ class IterationControl(object):
         self.max_dist = max_dist
         self.iteration_counter = 0
 
-    def continue_itr(self, distortion: float):
+    def continue_itrs(self, distortion: float):
 
         if self.min_dist <= distortion <= self.max_dist:
             print("{0} Finished iteration with distortion={1} "
