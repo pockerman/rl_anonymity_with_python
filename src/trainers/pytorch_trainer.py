@@ -211,15 +211,20 @@ class PyTorchTrainer(object):
             # train for a number of iterations
             episode_info: EpisodeInfo = self.agent.on_episode(self.env, episode)
 
-            print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
-            print("{0} Episode score={1}, episode total "
-                  "avg distortion {2}".format(INFO, episode_info.episode_score,
-                                              episode_info.total_distortion / episode_info.episode_itrs))
+            #print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
+            #print("{0} Episode score={1}, episode total "
+             #     "avg distortion {2}".format(INFO, episode_info.episode_score,
+             #                                 episode_info.total_distortion / episode_info.episode_itrs))
 
             self.iterations_per_episode.append(episode_info.episode_itrs)
             self.total_rewards[episode] = episode_info.episode_score
             self.total_distortions[episode] = episode_info.total_distortion / episode_info.episode_itrs
             self.agent.actions_after_episode_ends(self.env, episode, **{"episode_info": episode_info})
+
+            print("{0} Episode {1} finished in {2} secs".format(INFO, episode, episode_info.total_execution_time))
+            print("{0} Episode score={1}, episode total "
+                  "avg distortion {2}".format(INFO, episode_info.episode_score,
+                                              episode_info.total_distortion / episode_info.episode_itrs))
 
         self.actions_after_training()
 

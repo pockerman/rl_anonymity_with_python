@@ -286,7 +286,7 @@ class DiscreteStateEnvironment(object):
 
         if self.config.state_as_distances:
             if column_name is None:
-                column_dists = [0.0 for _ in self.column_bins] #if
+                column_dists = [self.column_distances[name] for name in self.column_bins] #if
                                 #self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]
             else:
                 column_dists = [self.column_distances[name] for name in self.column_bins]

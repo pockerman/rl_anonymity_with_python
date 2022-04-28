@@ -38,6 +38,10 @@ IN_BOUNDS_REWARD = 5.0
 OUTPUT_MSG_FREQUENCY = 100
 N_ROUNDS_BELOW_MIN_DISTORTION = 10
 N_COLUMNS = 11
+DO_TRAIN = True
+
+# entropy coefficient
+BETA = 0.1
 
 
 def env_loader(kwargs):
@@ -120,6 +124,7 @@ if __name__ == '__main__':
 
     # set the seed for PyTorch
     torch.manual_seed(42)
+    torch.autograd.set_detect_anomaly(True)
 
     # this the A2C network
     net = A2CNetSimpleLinear(n_columns=N_COLUMNS, n_actions=ACTION_SPACE_SIZE)
@@ -131,7 +136,7 @@ if __name__ == '__main__':
                            normalize_advantages=True,
                            gamma=GAMMA,
                            tau=0.1,
-                           beta=None, # don't use entropy
+                           beta=BETA,
                            policy_loss_weight=1.0,
                            value_loss_weight=1.0,
                            max_grad_norm=1.0,
@@ -140,42 +145,49 @@ if __name__ == '__main__':
                            optimizer_config=PyTorchOptimizerConfig(optimizer_type=OptimizerType.ADAM,
                                                                    optimizer_learning_rate=ALPHA))
 
-    # create the agent
-    agent = A2C(a2c_config)
 
-    # create a trainer to train the Qlearning agent
-    configuration = PyTorchTrainerConfig(n_episodes=N_EPISODES)
-
-    # set up the arguments
+    # the multiprocess environment
     env = MultiprocessEnv(env_builder=env_loader, env_args={}, n_workers=N_WORKERS)
 
     try:
 
-        env.make(agent=agent)
-        trainer = PyTorchTrainer(env=env, agent=agent, config=configuration)
+        if DO_TRAIN:
 
-        # train the agent
-        trainer.train()
+            # create the agent
+            agent = A2C(a2c_config)
 
-        avg_rewards = trainer.total_rewards
-        plot_running_avg(avg_rewards, steps=100,
-                         xlabel="Episodes", ylabel="Reward",
-                         title="Running reward average over 100 episodes")
+            # create a trainer to train the Qlearning agent
+            configuration = PyTorchTrainerConfig(n_episodes=N_EPISODES)
 
-        avg_episode_dist = np.array(trainer.total_distortions)
-        print("{0} Max/Min distortion {1}/{2}".format(INFO, np.max(avg_episode_dist), np.min(avg_episode_dist)))
+            env.make(agent=agent)
+            trainer = PyTorchTrainer(env=env, agent=agent, config=configuration)
 
-        plot_running_avg(avg_episode_dist, steps=100,
-                         xlabel="Episodes", ylabel="Distortion",
-                         title="Running distortion average over 100 episodes")
+            # train the agent
+            trainer.train()
 
-        # play the agent on the environment.
-        # call the environment builder to create
-        # an instance of the environment
-        discrte_env = env.env_builder()
+            avg_rewards = trainer.total_rewards
+            plot_running_avg(avg_rewards, steps=100,
+                             xlabel="Episodes", ylabel="Reward",
+                             title="Running reward average over 100 episodes")
 
-        stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
-        agent.play(env=discrte_env, criteria=stop_criterion)
+            avg_episode_dist = np.array(trainer.total_distortions)
+            print("{0} Max/Min distortion {1}/{2}".format(INFO, np.max(avg_episode_dist), np.min(avg_episode_dist)))
+
+            plot_running_avg(avg_episode_dist, steps=100,
+                             xlabel="Episodes", ylabel="Distortion",
+                             title="Running distortion average over 100 episodes")
+        else:
+
+            # play the agent on the environment.
+            # call the environment builder to create
+            # an instance of the environment
+            discrte_env = env.env_builder({"rank": 41})
+
+            # load the agent
+            agent = A2C.from_path(a2c_config, path=Path("./a2c_all_cols_multi_state_results/A2C.pt"))
+
+            stop_criterion = IterationControl(n_itrs=100, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
+            agent.play(env=discrte_env, criteria=stop_criterion)
 
     except Exception as e:
         print("An excpetion was thrown...{0}".format(str(e)))
