@@ -7,13 +7,24 @@ The following packages are required:
 - `Sphinx <https://www.sphinx-doc.org/en/master/>`_
 - `Python Pandas <https://pandas.pydata.org/>`_
 - `PyTorch <https://pytorch.org/>`_
+- `Coverage.py <https://coverage.readthedocs.io/en/6.3.2/>`_
+
+You can install there as usual with ``pip``.
 
 .. code-block:: console
 
 	pip install -r requirements.txt
 	
+Installation of the package is done via ``setuptools``
+
+.. code-block:: console
+
+   python setup.py
+	
 Run tests
 ---------
+
+The is a series of tests to verify the implementation. You can executed these by running the script ``execute_tests_with_coverage.sh``.
 
 Generate documentation
 ----------------------
