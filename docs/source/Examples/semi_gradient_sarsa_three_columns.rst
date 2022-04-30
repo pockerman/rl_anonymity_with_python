@@ -27,23 +27,23 @@ information regarding anonimity and data set utility. Implicitly we decode this 
 Thus, in this example, instead to representing the state-action function :math:`q_{\pi}` using a table as we did in `Q-learning on a three columns dataset <qlearning_three_columns.html>`_, we will assume  a functional form for  it. Specifically, we assume that the state-action function can be approximated by :math:`\hat{q} \approx q_{\pi}` given by 
 
 .. math::
-	\hat{q}(s, \alpha) = \mathbf{w}^T\mathbf{x}(s, \alpha) = \sum_{i}^{d} w_i, x_i(s, \alpha)
+	\hat{q}(s, a) = \mathbf{w}^T\mathbf{x}(s, a) = \sum_{i}^{d} w_i, x_i(s, a)
 
-where :math:`\mathbf{w}` is the weights vector and :math:`\mathbf{x}(s, \alpha)` is called the feature vector representing state :math:`s` when taking action :math:`\alpha` [1]. We will use `Tile coding`_ to construct :math:`\mathbf{x}(s, \alpha)`.  Our goal now is to find the components of the weight vector. 
+where :math:`\mathbf{w}` is the weights vector and :math:`\mathbf{x}(s, a)` is called the feature vector representing state :math:`s` when taking action :math:`a` [1]. We will use `Tile coding`_ to construct :math:`\mathbf{x}(s, \alpha)`.  Our goal now is to find the components of the weight vector. 
 We can use stochastic gradient descent (or SGD ) for this [1]. In this case, the update rule is [1]
 
 .. math::
-   \mathbf{w}_{t + 1} = \mathbf{w}_t + \alpha\left[U_t - \gamma \hat{q}(s_t, \alpha_t, \mathbf{w}_t)\right] \nabla_{\mathbf{w}} \hat{q}(s_t, \alpha_t, \mathbf{w}_t)
+   \mathbf{w}_{t + 1} = \mathbf{w}_t + \alpha\left[U_t - \gamma \hat{q}(s_t, a_t, \mathbf{w}_t)\right] \nabla_{\mathbf{w}} \hat{q}(s_t, a_t, \mathbf{w}_t)
    
 where :math:`\alpha` is the learning rate and :math:`U_t`, for one-step SARSA, is given by [1]:
 
 .. math::
-   U_t = R_t + \gamma \hat{q}(s_{t + 1}, \alpha_{t + 1}, \mathbf{w}_t)
+   U_t = R_t + \gamma \hat{q}(s_{t + 1}, a_{t + 1}, \mathbf{w}_t)
 
-Since, :math:`\hat{q}(s, \alpha)` is a linear function with respect to the weights, its gradient is given by
+Since, :math:`\hat{q}(s, a)` is a linear function with respect to the weights, its gradient is given by
 
 .. math::
-   \nabla_{\mathbf{w}} \hat{q}(s, \alpha) = \mathbf{x}(s, \alpha)
+   \nabla_{\mathbf{w}} \hat{q}(s, a) = \mathbf{x}(s, a)
 
 The semi-gradient SARSA algorithm is shown below
 

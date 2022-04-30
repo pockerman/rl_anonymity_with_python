@@ -65,6 +65,7 @@ def load_mock_subjects() -> MockSubjectsLoader:
 
     COLUMN_TYPES = MockSubjectsData().COLUMNS_TYPES
     COLUMN_TYPES["NHSno"] = str
+    COLUMN_TYPES["salary"] = float
     mock_data = MockSubjectsData(FILENAME=Path("../../data/mocksubjects.csv"),
                                  FEATURES_DROP_NAMES=[],
                                  NORMALIZED_COLUMNS=["salary"],

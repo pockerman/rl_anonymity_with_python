@@ -18,7 +18,7 @@ the optimal state-action value function :math:`Q^*`. This is done independently 
 
 The Q-learning algorithm is an iterative algorithm where we iterate over a number of episodes. At each episode
 the algorithm steps over the environment for a user-specified number steps it executes an action which results
-in a new state and an observed state. This is shown collectively in the image below
+in a new state. This is shown collectively in the image below
 
 .. figure:: images/q_learning.png
 
@@ -43,7 +43,7 @@ the policy still has an effect in that it determines which state-action pairs an
 However, for correct convergence all that is required is that all pairs continue to be updated [1]. In fact, any method guaranteed to find optimal behavior in the general case must require it [1]. 
 
 The algorithm above,  stores the expected value estimate for each state-action pair in a table.
-This  means you cannot use it when we have continuous states or actions, which would lead to an array of infinite length.
+This  means we cannot use it when we have continuous states or actions, which would lead to an array of infinite length.
 Given that the total dataset distortion is assumed to be in the range :math:`[0, 1]` of the real numbers; where the edge points mean no distortion
 and full distortion of the data set/column respectively. We  discretize this range into bins and for each entailed value of the distortion we use the corresponding bin as a state index. 
 Alternatively, we could discretize the distortion of each column into bins and create tuples of indeces representing a state.
@@ -266,4 +266,5 @@ to the two outpus. Nonetheless, it shows qualitatively what the two algorithms p
 References
 ----------	   
 1. Richard S. Sutton and Andrw G. Barto, Reinforcement Learning. An Introduction 2nd Edition, MIT Press.
+2. C. J. C. H. Watkins, Learning from delayed rewards, King's College, Cambridge, Ph.D. thesis, 1989.
 

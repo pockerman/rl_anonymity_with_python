@@ -38,7 +38,7 @@ IN_BOUNDS_REWARD = 5.0
 OUTPUT_MSG_FREQUENCY = 100
 N_ROUNDS_BELOW_MIN_DISTORTION = 10
 N_COLUMNS = 11
-DO_TRAIN = True
+DO_TRAIN = False
 
 # entropy coefficient
 BETA = 0.1
@@ -184,7 +184,7 @@ if __name__ == '__main__':
             discrte_env = env.env_builder({"rank": 41})
 
             # load the agent
-            agent = A2C.from_path(a2c_config, path=Path("./a2c_all_cols_multi_state_results/A2C.pt"))
+            agent = A2C.from_path(a2c_config, path=Path("a2c_all_cols_multi_state_results/A2C.pt"))
 
             stop_criterion = IterationControl(n_itrs=100, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
             agent.play(env=discrte_env, criteria=stop_criterion)

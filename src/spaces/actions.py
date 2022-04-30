@@ -132,7 +132,7 @@ class ActionRestore(ActionBase, WithHierarchyTable):
         assert len(col_vals) == len(self.table), "Invalid size. Column size does not match self.table size"
 
         # generalize the data given
-        for i, item in enumerate(ops["data"]):
+        for i, item in enumerate(col_vals):
             value = self.table[i]
             col_vals[i] = value
 
@@ -224,7 +224,7 @@ class ActionStringGeneralize(ActionBase, WithHierarchyTable):
         """
 
         # get the values of the column
-        col_vals = ops['data'] #.values
+        col_vals = ops['data']
 
         # generalize the data given
         for i, item in enumerate(col_vals):
