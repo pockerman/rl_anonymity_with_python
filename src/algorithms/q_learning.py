@@ -76,7 +76,7 @@ class QLearning(WithMaxActionMixin):
                     self.q_table[state, action] = 0.0
         else:
 
-            for state in range(1, env.n_states):
+            for state in range(1, env.n_states + 1):
                 for action in range(env.n_actions):
                     self.q_table[state, action] = 0.0
 
@@ -137,7 +137,7 @@ class QLearning(WithMaxActionMixin):
         # set the q_table for the policy
         self.config.policy.q_table = self.q_table
         total_dist = env.total_current_distortion()
-        while stop_criterion.continue_itr(total_dist):
+        while stop_criterion.continue_itrs(total_dist):
 
             # use the policy to select an action
             state_idx = env.get_aggregated_state(total_dist)

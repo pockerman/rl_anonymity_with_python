@@ -46,9 +46,6 @@ if __name__ == '__main__':
     # set the seed for random engine
     random.seed(42)
 
-    # set the seed for random engine
-    random.seed(42)
-
     column_types = {"ethnicity": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
                     "salary": ColumnType.QUASI_IDENTIFYING_ATTRIBUTE,
                     "diagnosis": ColumnType.INSENSITIVE_ATTRIBUTE}
