@@ -61,15 +61,23 @@ def get_ethinicity_hierarchy():
     return ethnicity_hierarchy
 
 
-def load_mock_subjects() -> MockSubjectsLoader:
+def load_mock_subjects(filename: str="../../data/mocksubjects.csv",
+                       normalized_columns=["salary"],
+                       column_types: dict=None, change_column_vals: dir=None) -> MockSubjectsLoader:
 
-    COLUMN_TYPES = MockSubjectsData().COLUMNS_TYPES
-    COLUMN_TYPES["NHSno"] = str
-    COLUMN_TYPES["salary"] = float
-    mock_data = MockSubjectsData(FILENAME=Path("../../data/mocksubjects.csv"),
+    if column_types is None:
+        COLUMN_TYPES = MockSubjectsData().COLUMNS_TYPES
+        COLUMN_TYPES["NHSno"] = str
+        COLUMN_TYPES["salary"] = float
+        CHANGE_COLS_VALS = MockSubjectsData().CHANGE_COLS_VALS
+    else:
+        COLUMN_TYPES = column_types
+        CHANGE_COLS_VALS = change_column_vals
+    mock_data = MockSubjectsData(FILENAME=Path(filename),
                                  FEATURES_DROP_NAMES=[],
-                                 NORMALIZED_COLUMNS=["salary"],
-                                 COLUMNS_TYPES=COLUMN_TYPES)
+                                 NORMALIZED_COLUMNS=normalized_columns,
+                                 COLUMNS_TYPES=COLUMN_TYPES,
+                                 CHANGE_COLS_VALS=CHANGE_COLS_VALS)
 
     ds = MockSubjectsLoader(mock_data)
 

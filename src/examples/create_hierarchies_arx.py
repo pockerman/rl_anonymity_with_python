@@ -4,7 +4,7 @@ be loaded in the ARX tool
 """
 import csv
 import numpy as np
-from src.datasets.datasets_loaders import MockSubjectsLoader
+from src.datasets.datasets_loaders import MockSubjectsLoader, MockSubjectsData
 
 
 def get_ethnicity_hierarchy():
@@ -35,8 +35,18 @@ def get_ethnicity_hierarchy():
 
 if __name__ == '__main__':
 
+    mock_data = MockSubjectsData(FEATURES_DROP_NAMES=[],
+                                 NORMALIZED_COLUMNS=["salary"],
+                                 COLUMNS_TYPES={"gender": str, "ethnicity": str, "education": int,
+                                                "salary": float, "diagnosis": int, "preventative_treatment": str,
+                                                 "mutation_status": int, "NHSno": int, "given_name": str, "surname": str,
+                                                         "dob": str})
+
+    ds = MockSubjectsLoader(mock_data)
+
+    """
     # specify the columns to drop
-    drop_columns = MockSubjectsLoader.FEATURES_DROP_NAMES + ["preventative_treatment", "gender",
+    drop_columns = MockSubjectsLoader.FEATURES_DROP_NAMES + ["preventative_treatment",
                                                              "education", "mutation_status"]
     MockSubjectsLoader.FEATURES_DROP_NAMES = drop_columns
 
@@ -44,9 +54,12 @@ if __name__ == '__main__':
     MockSubjectsLoader.NORMALIZED_COLUMNS = ["salary"]
 
     # specify the columns to use
-    MockSubjectsLoader.COLUMNS_TYPES = {"ethnicity": str, "salary": float, "diagnosis": int}
+    MockSubjectsLoader.COLUMNS_TYPES = {"ethnicity": str, "salary": float, "diagnosis": int,
+                                        "gender": str}
     ds = MockSubjectsLoader()
+    """
 
+    """
     ehnicity_map = get_ethnicity_hierarchy()
     # get the ethincity column loop over
     # the values and create the hierarchy file
@@ -86,4 +99,18 @@ if __name__ == '__main__':
             row = [start, end]
             writer.writerow(row)
             start = end
+
+    """
+    # get the salary column
+    filename = "/home/alex/qi3/drl_anonymity/data/hierarchies/gender_hierarchy.csv"
+
+    with open(filename, 'w') as fh:
+        writer = csv.writer(fh, delimiter=";")
+
+        gender_column = ds.get_column(col_name="gender").values
+
+        for val in gender_column:
+
+            row = [val, '*']
+            writer.writerow(row)
 

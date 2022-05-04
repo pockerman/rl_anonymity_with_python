@@ -10,6 +10,7 @@ from src.spaces.actions import ActionIdentity, ActionStringGeneralize, ActionNum
 from src.algorithms.q_learning import QLearnConfig, QLearning
 from src.policies.epsilon_greedy_policy import EpsilonGreedyPolicy, EpsilonDecayOption
 from src.trainers.trainer import Trainer, TrainerConfig
+from src.utils.iteration_control import IterationControl
 from src.examples.helpers.plot_utils import plot_running_avg
 from src.utils import INFO
 
@@ -120,4 +121,15 @@ if __name__ == '__main__':
     plot_running_avg(avg_episode_dist, steps=100,
                      xlabel="Episodes", ylabel="Distortion",
                      title="Running distortion average over 100 episodes")
+
+    print("=============================================")
+    print("{0} Generating distorted dataset".format(INFO))
+    # Let's play
+    env.reset()
+
+    stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
+    agent.play(env=env, stop_criterion=stop_criterion)
+    env.save_current_dataset(episode_index=-2, save_index=False)
+    print("{0} Done....".format(INFO))
+    print("=============================================")
 
