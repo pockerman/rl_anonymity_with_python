@@ -48,16 +48,10 @@ def plot_categorical_data(data, col_name:str, x_label: str,
                 data_vals[i] = data_new_vals[data_vals[i]]
 
         data.ds[col_name] = data_vals
-        sns.countplot(data.ds[col_name])
+        sns.countplot(data.ds[col_name], data=data.ds)
+        #plt.hist(data.ds[col_name])
     else:
         sns.countplot(data.get_column(col_name=col_name), color='gray')
-
-
-    #col_data = data.get_column(col_name=col_name)
-    #vals = {}
-
-    #for item in col_data
-    #plt.bar(names, values)
 
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -73,6 +67,6 @@ def plot_categorical_data(data, col_name:str, x_label: str,
                      #"Mixed White/Black African": "M W/B A",
                      #"Mixed White/Black Caribbean": "M W/B C",
                      #"Mixed other": "MO", "Black other": "BO"]
-        plt.legend(labels=legend_vals, loc='upper right')
+        #plt.legend(labels=legend_vals, loc='upper right')
 
     plt.show()
