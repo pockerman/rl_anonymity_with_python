@@ -36,7 +36,9 @@ def plot_numeric(data, col_name: str, x_label: str,
 
 PLOT_DEFAULT = False
 PLOT_K_ANONYMITY_NO_SUPRESS = False
-PLOT_K_ANONYMITY_SUPRESS = True
+PLOT_K_ANONYMITY_SUPRESS = False
+PLOT_Q_LEARNING = False
+PLOT_SARSA = True
 
 if __name__ == '__main__':
 
@@ -157,52 +159,47 @@ if __name__ == '__main__':
                               x_label="Ethinicity",
                               y_label="Frequency", data_new_vals=data_new_vals)
 
-    '''
-    # get the salary columns
-    salary = kanonymity_data.get_column(col_name="salary")
 
-    plt.hist(salary, bins=25, density=True, alpha=0.75)
-    plt.xlabel("Salary")
-    plt.ylabel("Frequency")
-    plt.title("K-anonymity Salary column distribution")
-    #plt.show()
+    if PLOT_Q_LEARNING:
 
-    data_new_vals = {"White British": "WB", "Black Caribbean": "BC",
-                     "Black African": "BA", "*": "*", "Asian other": "AO",
-                     "White Irish": "WI", "White other": "WO",
-                     "Mixed White/Asian": "M W/A",
-                     "Mixed White/Black African": "M W/B A",
-                     "Mixed White/Black Caribbean": "M W/B C",
-                     "Mixed other": "MO", "Black other": "BO"}
-    plot_categorical_data(data=kanonymity_data, col_name="ethnicity",
-                          title="K-anonymity Ethnicity", x_label="Ethinicity category",
-                          y_label="Frequency", data_new_vals=data_new_vals)
+        # load the distorted dataset
+        qlearn_data = load_mock_subjects(
+            filename="/home/alex/qi3/drl_anonymity/src/examples/q_learning_all_cols_results/distorted_set_-2",
+            normalized_columns=[],
+            column_types={"NHSno": str,
+                          "given_name": str,
+                          "surname": str,
+                          "gender": str,
+                          "dob": str,
+                          "ethnicity": str,
+                          "education": str,
+                          "salary": float,
+                          "mutation_status": str,
+                          "preventative_treatment": str,
+                          "diagnosis": int},
+            change_column_vals={"diagnosis": [('N', 0)], "salary": [("*", 0.0)]})
 
-    # salary q-learning
-    qlearning_data = load_mock_subjects(
-        filename="/home/alex/qi3/drl_anonymity/src/examples/q_learning_all_cols_results/distorted_set_1000",
-        normalized_columns=[])
+        # plot the salary distribution
+        plot_numeric(data=qlearn_data, col_name="salary",
+                     x_label="Salary", y_label="Frequency",
+                     title="Salary column distribution Q-learning algorithm.",
+                     bins=25)
 
-    # get the salary columns
-    salary = qlearning_data.get_column(col_name="salary")
+        # plot the gender distribution
+        plot_categorical(data=qlearn_data, col_name="gender",
+                         x_label="Gender", y_label="Frequency",
+                         title="Gender column counts Q-learning algorithm.")
 
-    plt.hist(salary, bins=25, density=True, alpha=0.75)
-    plt.xlabel("Salary")
-    plt.ylabel("Frequency")
-    plt.title("Qlearning Salary column distribution")
-    #plt.show()
+        data_new_vals = {"White British": "WB", "Black Caribbean": "BC",
+                         "Black African": "BA", "*": "*", "Asian other": "AO",
+                         "White Irish": "WI", "White other": "WO",
+                         "Mixed White/Asian": "MW/A",
+                         "Mixed White/Black African": "MW/BA",
+                         "Mixed White/Black Caribbean": "MW/BC",
+                         "Mixed other": "MO", "Black other": "BO",
+                         "White Gypsy/Traveller": "WGT"}
+        plot_categorical_data(data=qlearn_data, col_name="ethnicity",
+                              title="Ethnicity column counts Q-learning algorithm.",
+                              x_label="Ethnicity",
+                              y_label="Frequency", data_new_vals=data_new_vals)
 
-
-    # salary a2c distorted
-    a2c_data = load_mock_subjects(filename="/home/alex/qi3/drl_anonymity/src/examples/a2c_all_cols_multi_state_results/distorted_set_14",
-                                  normalized_columns=[])
-
-    # get the salary columns
-    salary = a2c_data.get_column(col_name="salary")
-
-    plt.hist(salary, bins=25, density=True, alpha=0.75)
-    plt.xlabel("Salary")
-    plt.ylabel("Frequency")
-    plt.title("A2C Salary column distribution")
-    #plt.show()
-    '''

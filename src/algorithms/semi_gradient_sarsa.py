@@ -19,6 +19,7 @@ Policy = TypeVar('Policy')
 Env = TypeVar('Env')
 State = TypeVar('State')
 Action = TypeVar('Action')
+Criterion = TypeVar('Criterion')
 
 
 @dataclass(init=True, repr=True)
@@ -61,6 +62,38 @@ class SemiGradSARSA(object):
 
         self._validate()
         self._init()
+
+    def play(self, env: Env, stop_criterion: Criterion) -> None:
+        """Play the agent on the environment. This should produce
+        a distorted dataset
+
+        Parameters
+        ----------
+        env: The environment to
+        stop_criterion: The criteria to use to stop
+
+        Returns
+        -------
+        None
+
+        """
+        # loop over the columns and for the
+        # column get the action that corresponds to
+        # the max payout.
+        # TODO: This will no work as the distortion is calculated
+        # by summing over the columns.
+
+        total_dist = env.total_current_distortion()
+        while stop_criterion.continue_itrs(total_dist):
+
+            # use the policy to select an action
+            state_idx = env.get_aggregated_state(total_dist)
+            action_idx = self.config.policy.on_state(state_idx)
+            action = env.get_action(action_idx)
+            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state_idx, total_dist,
+                                                                                  action.column_name + "-" + action.action_type.name))
+            env.step(action=action)
+            total_dist = env.total_current_distortion()
 
     def actions_before_episode_begins(self, env: Env, episode_idx: int, **options) -> None:
         """Any actions to perform before the episode begins
