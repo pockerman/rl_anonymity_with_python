@@ -14,12 +14,13 @@ from src.spaces.env_type import DiscreteEnvType
 from src.examples.helpers.load_full_mock_dataset import load_discrete_env, get_ethinicity_hierarchy, \
     get_gender_hierarchy, get_salary_bins, load_mock_subjects
 from src.examples.helpers.plot_utils import plot_running_avg
+from src.utils.iteration_control import IterationControl
 from src.utils import INFO
 
 N_STATES = 10
 N_LAYERS = 5
 N_BINS = 10
-N_EPISODES = 10001
+N_EPISODES = 1001
 OUTPUT_MSG_FREQUENCY = 100
 GAMMA = 0.99
 ALPHA = 0.1
@@ -183,7 +184,8 @@ if __name__ == '__main__':
 
     # agent configuration
     agent_config = SemiGradSARSAConfig(gamma=GAMMA, alpha=ALPHA, n_itrs_per_episode=N_ITRS_PER_EPISODE,
-                                       policy=EpsilonGreedyQEstimator(EpsilonGreedyQEstimatorConfig(eps=EPS, n_actions=tiled_env.n_actions,
+                                       policy=EpsilonGreedyQEstimator(EpsilonGreedyQEstimatorConfig(eps=EPS,
+                                                                                                    n_actions=tiled_env.n_actions,
                                                                                                     decay_op=EPSILON_DECAY_OPTION,
                                                                                                     epsilon_decay_factor=EPSILON_DECAY_FACTOR,
                                                                                                     env=tiled_env,
@@ -211,4 +213,15 @@ if __name__ == '__main__':
     plot_running_avg(avg_episode_dist, steps=100,
                      xlabel="Episodes", ylabel="Distortion",
                      title="Running distortion average over 100 episodes")
+
+    print("=============================================")
+    print("{0} Generating distorted dataset".format(INFO))
+    # Let's play
+    env.reset()
+
+    stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
+    agent.play(env=env, stop_criterion=stop_criterion)
+    env.save_current_dataset(episode_index=-2, save_index=False)
+    print("{0} Done....".format(INFO))
+    print("=============================================")
 
