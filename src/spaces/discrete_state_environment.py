@@ -299,7 +299,7 @@ class DiscreteStateEnvironment(object):
                 raise ValueError("Name {0} not in column bins names {1} ".format(column_name, list(self.column_bins.keys())))
 
             if column_name is None:
-                column_dists = [(0.0, name) for name in self.column_bins if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]
+                column_dists = [(self.column_distances[name], name) for name in self.column_bins if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]
 
             else:
                 column_dists = [(self.column_distances[name], name) for name in self.column_bins if self.config.column_types[name] == ColumnType.QUASI_IDENTIFYING_ATTRIBUTE]

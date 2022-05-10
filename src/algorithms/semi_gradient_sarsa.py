@@ -77,22 +77,23 @@ class SemiGradSARSA(object):
         None
 
         """
-        # loop over the columns and for the
-        # column get the action that corresponds to
-        # the max payout.
-        # TODO: This will no work as the distortion is calculated
-        # by summing over the columns.
+        # reset the environment
+        time_step = env.reset(**{"tiled_state": False})
 
-        total_dist = env.total_current_distortion()
+        # obtain the initial state S
+        state: State = time_step.observation
+
+        total_dist = time_step.info["total_distortion"]
         while stop_criterion.continue_itrs(total_dist):
 
             # use the policy to select an action
-            state_idx = env.get_aggregated_state(total_dist)
-            action_idx = self.config.policy.on_state(state_idx)
-            action = env.get_action(action_idx)
-            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state_idx, total_dist,
+            #state_idx = env.get_aggregated_state(total_dist)
+            action = self.config.policy.on_state(state)
+            #action = env.get_action(action_idx)
+            print("{0} At state={1} with distortion={2} select action={3}".format("INFO: ", state, total_dist,
                                                                                   action.column_name + "-" + action.action_type.name))
-            env.step(action=action)
+            time_step = env.step(action=action, **{"tiled_state": False})
+            state: State = time_step.observation
             total_dist = env.total_current_distortion()
 
     def actions_before_episode_begins(self, env: Env, episode_idx: int, **options) -> None:
