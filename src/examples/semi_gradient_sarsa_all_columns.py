@@ -155,23 +155,6 @@ if __name__ == '__main__':
                             n_rounds_below_min_distortion=N_ROUNDS_BELOW_MIN_DISTORTION)
 
     # establish the configuration for the Tiled environment
-
-    """
-    tiled_env_config = TiledEnvConfig(n_layers=N_LAYERS, n_bins=N_BINS,
-                                      env=env,
-                                      column_ranges={"NHSno": [0.0, IDENTIFY_COLUMN_DIST_FACTOR],
-                                                     "given_name": [0.0, IDENTIFY_COLUMN_DIST_FACTOR],
-                                                     "surname": [0.0, IDENTIFY_COLUMN_DIST_FACTOR],
-                                                     "gender": [0.0, 1.0],
-                                                     "dob": [0.0, 0.0],
-                                                     "ethnicity": [0.0, 1.0],
-                                                     "education": [0.0, 0.0],
-                                                     "salary": [0.0, 1.0],
-                                                     "mutation_status": [0.0, 0.0],
-                                                     "preventative_treatment": [0.0, 0.0],
-                                                     "diagnosis": [0.0, 0.0]})
-    """
-
     tiled_env_config = TiledEnvConfig(n_layers=N_LAYERS, n_bins=N_BINS,
                                       env=env,
                                       column_ranges={"gender": [0.0, 1.0],
@@ -217,11 +200,11 @@ if __name__ == '__main__':
     print("=============================================")
     print("{0} Generating distorted dataset".format(INFO))
     # Let's play
-    env.reset()
+    tiled_env.reset()
 
     stop_criterion = IterationControl(n_itrs=10, min_dist=MIN_DISTORTION, max_dist=MAX_DISTORTION)
-    agent.play(env=env, stop_criterion=stop_criterion)
-    env.save_current_dataset(episode_index=-2, save_index=False)
+    agent.play(env=tiled_env, stop_criterion=stop_criterion)
+    tiled_env.save_current_dataset(episode_index=-2, save_index=False)
     print("{0} Done....".format(INFO))
     print("=============================================")
 
