@@ -112,6 +112,7 @@ class SemiGradSARSA(object):
         None
 
         """
+        pass
 
     def actions_after_episode_ends(self, env: Env, episode_idx: int, **options) -> None:
         """Any actions after the training episode ends

@@ -7,8 +7,8 @@ API
    API/algorithms/epsilon_greedy_q_estimator
    API/algorithms/a2c
    API/algorithms/q_learning
-   API/trainers/trainer
-   API/trainers/pytorch_trainer
+   API/algorithms/semi_gradient_sarsa
+   API/algorithms/distortion_calculator
    API/datasets/column_type
    API/datasets/datasets_loaders
    API/datasets/dataset_wrapper
@@ -24,6 +24,8 @@ API
    API/spaces/tiled_environment
    API/spaces/time_step
    API/replay_buffer
+   API/trainers/trainer
+   API/trainers/pytorch_trainer
    
    
   
