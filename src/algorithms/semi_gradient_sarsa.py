@@ -1,7 +1,7 @@
 """Module semi_gradient_sarsa. Implements
 episodic semi-gradient SARSA for estimating the state-action
 value function. the im[plementation follows the algorithm
- at page 244 in the book by Sutton and Barto: Reinforcement Learning An Introduction
+at page 244 in the book by Sutton and Barto: Reinforcement Learning An Introduction
 second edition 2020
 
 """

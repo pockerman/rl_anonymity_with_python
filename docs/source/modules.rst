@@ -8,13 +8,16 @@ API
    API/algorithms/a2c
    API/algorithms/q_learning
    API/algorithms/semi_gradient_sarsa
-   API/algorithms/distortion_calculator
    API/datasets/column_type
    API/datasets/datasets_loaders
    API/datasets/dataset_wrapper
    API/exceptions/exceptions
    API/maths/optimizer_type
    API/maths/pytorch_optimizer_builder
+   API/maths/loss_functions
+   API/maths/distortion_calculator
+   API/maths/numeric_distance_type
+   API/maths/numeric_distance_calculator
    API/networks/a2c_networks
    API/policies/epsilon_greedy_policy
    API/spaces/actions

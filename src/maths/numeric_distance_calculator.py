@@ -1,5 +1,4 @@
-"""
-Various methods to calculate distance between numeric vectors
+"""Various methods to calculate distance between numeric vectors
 """
 import numpy as np
 from typing import TypeVar
@@ -11,6 +10,9 @@ Vector = TypeVar("Vector")
 
 
 class NumericDistanceCalculator(object):
+    """Calculator for numeric attributes
+
+    """
 
     def __init__(self, dist_type: NumericDistanceType) -> None:
         self.dist_type = dist_type
@@ -60,12 +62,3 @@ def _normalized_l2_distance(state1: Vector, state2: Vector) -> float:
         dist += ((item1 - item2)**2) / size
 
     return np.sqrt(dist)
-
-
-"""
-def _l2_state_leakage(state1: Vector, state2: Vector) -> float:
-    return np.linalg.norm(state1 - state2, ord=None)
-
-def _l1_state_leakage(state1: Vector, state2: Vector) -> float:
-    return np.linalg.norm(state1 - state2, ord=1)
-"""
