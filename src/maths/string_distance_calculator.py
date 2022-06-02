@@ -49,7 +49,21 @@ class TextDistanceCalculator(object):
     def distance_type(self) -> StringDistanceType:
         return self._dist_type
 
-    def calculate(self, txt1, txt2, **options):
+    def calculate(self, txt1, txt2, **options) -> float:
+        """Calculate the distance between the two strings
+
+        Parameters
+        ----------
+        txt1: The first string
+        txt2: The second string
+        options: Any application options
+
+        Returns
+        -------
+
+        A floating point number representing the distance between the
+        two strings
+        """
 
         # build a calculator
         calculator = TextDistanceCalculator.build_calculator(dist_type=self._dist_type)

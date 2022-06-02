@@ -18,6 +18,8 @@ API
    API/maths/distortion_calculator
    API/maths/numeric_distance_type
    API/maths/numeric_distance_calculator
+   API/maths/pytorch_optimizer_config
+   API/maths/string_distance_calculator
    API/networks/a2c_networks
    API/policies/epsilon_greedy_policy
    API/spaces/actions
