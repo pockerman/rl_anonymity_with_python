@@ -19,6 +19,9 @@ ActionVector = TypeVar('ActionVector')
 
 
 class MultiprocessEnv(object):
+    """MultiprocessEnv class
+
+    """
 
     def __init__(self, env_builder: Callable, env_args: dict, n_workers: int):
         self.env_builder = env_builder

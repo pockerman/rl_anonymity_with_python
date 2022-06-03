@@ -22,6 +22,18 @@ class NumericDistanceCalculator(object):
 
 
 def _numeric_distance_calculator(state1: Vector, state2: Vector, dist_type: NumericDistanceType) -> float:
+    """
+
+    Parameters
+    ----------
+    state1
+    state2
+    dist_type
+
+    Returns
+    -------
+
+    """
 
     if len(state1) != len(state2):
         raise IncompatibleVectorSizesException(size1=len(state1), size2=len(state2))

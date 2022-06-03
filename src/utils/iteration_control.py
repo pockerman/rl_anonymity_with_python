@@ -1,5 +1,4 @@
-"""
-Utility to control iteration
+"""module iteration_control. Utility to control iteration
 """
 
 from src.utils import INFO, VERSION

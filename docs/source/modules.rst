@@ -30,9 +30,14 @@ API
    API/spaces/discrete_state_environment
    API/spaces/tiled_environment
    API/spaces/time_step
-   API/replay_buffer
+   API/spaces/multiprocess_env
+   API/utils/replay_buffer
    API/trainers/trainer
    API/trainers/pytorch_trainer
+   API/utils/replay_buffer
+   API/utils/iteration_control
+   API/utils/function_wraps
+   API/utils/episode_info
    
    
   
