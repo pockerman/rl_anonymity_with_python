@@ -5,5 +5,5 @@
 
 An experimental effort to use reinforcement learning techniques for data anonymization. The project documentation
 can be found at <a href="https://rl-anonymity-with-python.readthedocs.io/en/latest/index.html">RL anonymity (with Python)</a>.
-A report on some initial results can be found <a href="doc/pyrl_anonymity_v10.pdf">here</a>.
+A report on some initial results can be found <a href="doc/pyrl_anonymity_v11.pdf">here</a>.
 
