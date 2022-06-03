@@ -1,4 +1,4 @@
-"""Various methods to calculate distance between numeric vectors
+"""module numeric_distance_calculator. Various methods to calculate distance between numeric vectors
 """
 import numpy as np
 from typing import TypeVar

@@ -21,7 +21,9 @@ API
    API/maths/pytorch_optimizer_config
    API/maths/string_distance_calculator
    API/networks/a2c_networks
+   API/parallel/process_manager
    API/policies/epsilon_greedy_policy
+   API/preprocessor/preprocess_utils
    API/spaces/actions
    API/spaces/action_space
    API/spaces/state

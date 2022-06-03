@@ -1,10 +1,15 @@
+"""module dataset_wrapper. Utilities
+to wrap a DataFrame so that it can be uses
+as an environment suitable for RL algorithms
+
+"""
 from pathlib import Path
 import abc
 from typing import Generic, TypeVar
 import pandas as pd
 import numpy as np
 
-from src.preprocessor.cleanup_utils import read_csv, replace, change_column_types
+from src.preprocessor.preprocess_utils import read_csv, replace, change_column_types
 from src.exceptions.exceptions import InvalidDataTypeException
 
 DS = TypeVar("DS")
@@ -13,6 +18,9 @@ Transform = TypeVar("Transform")
 
 
 class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
+    """Base class for deriving data set wrappers
+
+    """
 
     def __init__(self) -> None:
         super(DSWrapper, self).__init__()
@@ -29,8 +37,7 @@ class DSWrapper(Generic[DS], metaclass=abc.ABCMeta):
 
 
 class PandasDSWrapper(DSWrapper[pd.DataFrame]):
-    """
-    Simple wrapper to a pandas DataFrame object.
+    """Simple wrapper to a pandas DataFrame object.
     Facilitates various actions on the original dataset
     """
 

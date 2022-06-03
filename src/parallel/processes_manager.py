@@ -1,3 +1,7 @@
+"""module process_manager. Utilities for managing
+processes
+
+"""
 from typing import Callable
 
 import torch.multiprocessing as mp

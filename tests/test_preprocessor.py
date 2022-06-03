@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from pathlib import Path
 import pandas as pd
-from src.preprocessor.cleanup_utils import read_csv, replace, change_column_types
+from src.preprocessor.preprocess_utils import read_csv, replace, change_column_types
 
 
 class TestPreprocessor(unittest.TestCase):

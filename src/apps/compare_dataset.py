@@ -2,7 +2,7 @@ from pathlib import Path
 
 from src.datasets.datasets_loaders import MockSubjectsLoader
 from src.datasets.dataset_wrapper import PandasDSWrapper
-from src.preprocessor.cleanup_utils import replace, change_column_types
+from src.preprocessor.preprocess_utils import replace, change_column_types
 from src.maths.numeric_distance_type import NumericDistanceType
 from src.maths.string_distance_calculator import StringDistanceType
 from src.maths.distortion_calculator import DistortionCalculationType, DistortionCalculator
