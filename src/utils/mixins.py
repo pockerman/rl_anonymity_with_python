@@ -1,5 +1,6 @@
-"""
+"""module mixins.
 Various mixin classes to use for simplifying  code
+
 """
 
 import numpy as np

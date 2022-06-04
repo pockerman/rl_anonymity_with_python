@@ -1,4 +1,4 @@
-"""Module reward_manager specifies a class that handles
+"""module reward_manager specifies a class that handles
 the rewards awarded by the environment.
 
 """

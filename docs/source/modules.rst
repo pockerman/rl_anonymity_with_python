@@ -38,6 +38,9 @@ API
    API/utils/iteration_control
    API/utils/function_wraps
    API/utils/episode_info
+   API/utils/mixins
+   API/utils/reward_manager
+   API/utils/serial_hierarchy
    
    
   
